@@ -1,5 +1,6 @@
 # Iris MAV navigation in an enclosed environment
 
+Iris model from [rotorS](https://github.com/ethz-asl/rotors_simulator).
 
 # Environment
 
