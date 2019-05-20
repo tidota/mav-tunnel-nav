@@ -1,0 +1,1 @@
+- git: {local-name: quadrotor-tunnel-nav, uri: 'https://github.com/tidota/iris-tunnel-nav.git', version: master}
