@@ -20,15 +20,15 @@ Assume you are in the catkin workspace.
 Make a `src` directory if you do not have it yet.
 ```
 mkdir src
+cd src
 ```
-
 Then, run the following commands.
 ```
 wget https://raw.githubusercontent.com/tidota/iris-tunnel-nav/master/iris_tunnel_nav.rosinstall
 wget https://raw.githubusercontent.com/ethz-asl/rotors_simulator/master/rotors_hil.rosinstall
-wstool init src iris_tunnel_nav.rosinstall
-wstool merge -t src rotors_hil.rosinstall
-wstool update -t src
+wstool init . iris_tunnel_nav.rosinstall
+wstool merge rotors_hil.rosinstall
+wstool update
 rosdep install --from-paths src --ignore-src --rosdistro=melodic --skip-keys "octomap_ros" -y
 sudo apt install ros-melodic-octomap-ros
 ```
