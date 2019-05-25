@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>iris_tunnel_nav</name>
+  <name>mav_tunnel_nav</name>
   <version>0.0.0</version>
   <description>Simulation of Iris navigation in an enclosed environment.</description>
 

@@ -1,6 +1,6 @@
-# Iris MAV navigation in an enclosed environment
+# MAV navigation in an enclosed environment
 
-Iris model from [rotorS](https://github.com/ethz-asl/rotors_simulator).
+MAV models from [rotorS](https://github.com/ethz-asl/rotors_simulator).
 
 # System Requirements
 
@@ -25,8 +25,8 @@ cd src
 
 Then, run the following commands.
 ```
-wget https://raw.githubusercontent.com/tidota/iris-tunnel-nav/master/iris_tunnel_nav.rosinstall
-wstool init . iris_tunnel_nav.rosinstall
+wget https://raw.githubusercontent.com/tidota/mav-tunnel-nav/master/mav_tunnel_nav.rosinstall
+wstool init . mav_tunnel_nav.rosinstall
 wstool update
 rosdep install --from-paths src --ignore-src --rosdistro=melodic --skip-keys "octomap_ros" -y
 sudo apt install ros-melodic-octomap-ros
