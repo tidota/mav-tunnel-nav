@@ -16,7 +16,8 @@
   OK, just provide instruction to install them.
 
 - [x] Make and test a launch file
-- [ ] Rename the package "mav_tunnel_nav"
+- [x] Rename the package "mav_tunnel_nav"
 - [ ] Rename the github repo as well
+- [ ] Solve the problem of library path (rotors_gazebo_plugins are not loaded?)
 - [ ] Update the installation+setup instructions
 - [ ] Add a manual control(?)
