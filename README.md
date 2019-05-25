@@ -2,7 +2,7 @@
 
 Iris model from [rotorS](https://github.com/ethz-asl/rotors_simulator).
 
-# Environment
+# System Requirements
 
 - Ubuntu 18.04 Bionic
 - ROS Melodic
@@ -33,11 +33,10 @@ sudo apt install ros-melodic-octomap-ros
 sudo apt install ros-melodic-rotors-*
 ```
 
-# Setup
+# Setup of the Simulation Environments
 
 To run a simulation, you need world models.
-The following commands download the files and install them into `~/.gazebo/models`.
 
-```
-TODO
-```
+Download `models.zip` from https://drive.google.com/file/d/1XFQKM-PIM0M39C8rlT6tAcLINDL0DOhb/view?usp=sharing
+
+Then, extend it and move the items into `~/.gazebo/models/`.

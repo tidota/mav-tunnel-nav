@@ -10,7 +10,11 @@
 
   maybe, I can just add `rotors-simulator` in package.xml? => no it didn't..
 
-- [ ] Make a script to download and setup a world model in .gazebo
+- [x] Make a script to download and setup a world model in .gazebo
+
+  Google Drive now does not let command-line based downloading...?
+  OK, just provide instruction to install them.
+
 - [ ] Make and test a launch file
 - [ ] Rename the package "mav_tunnel_nav"
 - [ ] Rename the github repo as well
