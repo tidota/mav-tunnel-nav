@@ -17,7 +17,15 @@
 
 - [x] Make and test a launch file
 - [x] Rename the package "mav_tunnel_nav"
-- [ ] Rename the github repo as well
+- [x] Rename the github repo as well
 - [ ] Solve the problem of library path (rotors_gazebo_plugins are not loaded?)
+
+  - the rotors package itself has a problem to load plugins?
+
+  - [ ] try catkin_make and catkin-tools in the same workspace
+    do the error messages disappear?
+
+  - [ ] try to make this repo compatible to catkin-tools
+
 - [ ] Update the installation+setup instructions
 - [ ] Add a manual control(?)

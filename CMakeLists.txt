@@ -135,7 +135,7 @@ catkin_package(
 #  LIBRARIES quadrotor_tunnel_nav
   CATKIN_DEPENDS
     message_runtime gazebo_ros roscpp rospy std_msgs
-    visualization_msgs nav_msgs sensor_msgs
+    visualization_msgs nav_msgs sensor_msgs mav_msgs
 #  DEPENDS system_lib
 )
 
