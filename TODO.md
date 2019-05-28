@@ -18,14 +18,16 @@
 - [x] Make and test a launch file
 - [x] Rename the package "mav_tunnel_nav"
 - [x] Rename the github repo as well
-- [ ] Solve the problem of library path (rotors_gazebo_plugins are not loaded?)
+- [x] Solve the problem of library path (rotors_gazebo_plugins are not loaded?)
 
   - the rotors package itself has a problem to load plugins?
 
-  - [ ] try catkin_make and catkin-tools in the same workspace
-    do the error messages disappear?
+    https://github.com/ethz-asl/rotors_simulator/pull/506
+    seems like libmav_msgs.so is missing
 
-  - [ ] try to make this repo compatible to catkin-tools
+    The error messages disappeared after copying `libmav_msgs` to `/opt/ros/melodic/lib`.
+
+- [ ] Setup joy control by Sanwa gamepad.
 
 - [ ] Update the installation+setup instructions
 - [ ] Add a manual control(?)
