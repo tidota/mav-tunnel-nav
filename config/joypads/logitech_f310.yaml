@@ -1,0 +1,11 @@
+# (almost) Mode 2 controls on a Logitech F310 gamepad
+axis_roll_ : 2
+axis_pitch_ : 3
+axis_thrust_ : 1
+# buttons for iris yaw :( so use left and right bumpers
+button_yaw_left_: 4
+button_yaw_right_: 5
+# make it more fun to fly
+max_roll: 0.3
+max_pitch: 0.3
+max_yaw_rate: 3
