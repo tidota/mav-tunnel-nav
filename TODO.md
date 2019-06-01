@@ -27,7 +27,9 @@
 
     The error messages disappeared after copying `libmav_msgs` to `/opt/ros/melodic/lib`.
 
-- [ ] Setup joy control by Sanwa gamepad.
+- [x] Setup joy control by Sanwa gamepad.
+
+  - the world plugin `librotors_gazebo_ros_interface_plugin.so` is necessary in a world file.
 
 - [ ] Update the installation+setup instructions
 - [ ] Add a manual control(?)

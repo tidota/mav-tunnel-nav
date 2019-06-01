@@ -39,5 +39,7 @@
       <uri>model://indian_tunnel</uri>
     </include>
 
+    <!-- support of rotors -->
+    <plugin name="ros_interface_plugin" filename="librotors_gazebo_ros_interface_plugin.so"/>
   </world>
 </sdf>
