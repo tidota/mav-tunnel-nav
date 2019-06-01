@@ -35,12 +35,23 @@
     <!-- Converts sensor_msgs/Joy to mav_msgs/RollPitchYawRateThrust messages -->
     <node name="rotors_joy_interface" pkg="rotors_joy_interface" type="rotors_joy_interface">
       <!-- (almost) Mode 2 controls on a Logitech F310 gamepad -->
+      <!--
       <param name="axis_roll_" value="2"/>
       <param name="axis_pitch_" value="3"/>
       <param name="axis_thrust_" value="1"/>
+      -->
+      <!-- Sanwa gamepad -->
+      <param name="axis_roll_" value="3"/>
+      <param name="axis_pitch_" value="2"/>
+      <param name="axis_thrust_" value="1"/>
       <!-- this node uses buttons for yaw :( so use left and right bumpers -->
+      <!--
       <param name="button_yaw_left_" value="4"/>
       <param name="button_yaw_right_" value="5"/>
+      -->
+      <!-- Sanwa gamepad -->
+      <param name="button_yaw_left_" value="6"/>
+      <param name="button_yaw_right_" value="8"/>
       <!-- make it more fun to fly -->
       <param name="max_roll" value="0.3"/>
       <param name="max_pitch" value="0.3"/>
