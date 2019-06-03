@@ -31,5 +31,7 @@
 
   - the world plugin `librotors_gazebo_ros_interface_plugin.so` is necessary in a world file.
 
+- [ ] Try to use only IMU for position estimation
+
 - [ ] Update the installation+setup instructions
 - [ ] Add a manual control(?)
