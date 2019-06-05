@@ -166,6 +166,9 @@ catkin_package(
     ${PROJECT_NAME}-extras.cmake
 )
 
+add_executable(imu_odom src/imu_odom.cpp)
+target_link_libraries(imu_odom ${catkin_LIBRARIES})
+
 ## Declare a C++ library
 # add_library(quadrotor_tunnel_nav
 #   src/${PROJECT_NAME}/quadrotor_tunnel_nav.cpp
