@@ -9,6 +9,10 @@
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name"
          value="$(find mav_tunnel_nav)/worlds/IndianTunnel.world" />
+    <!--
+     <arg name="world_name"
+          value="$(find rotors_gazebo)/worlds/basic.world" />
+    -->
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
     <arg name="gui" value="true"/>
@@ -44,7 +48,14 @@
     <node name="roll_pitch_yawrate_thrust_controller_node" pkg="rotors_control" type="roll_pitch_yawrate_thrust_controller_node">
       <rosparam command="load" file="$(find rotors_gazebo)/resource/roll_pitch_yawrate_thrust_controller_iris.yaml" />
       <rosparam command="load" file="$(find rotors_gazebo)/resource/iris.yaml" />
-      <remap from="odometry" to="odometry_sensor1/odometry" />
+      <remap from="odometry" to="imu_odom/odometry" />
+    </node>
+
+    <!-- imu odometry -->
+    <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom">
+      <param name="imu_topic" value="imu"/>
+      <param name="odom_topic" value="imu_odom/odometry"/>
+      <param name="child_frame_id" value="base_link"/>
     </node>
 
     <!-- Given robot_description parameter and joint states, publish TF frames -->
