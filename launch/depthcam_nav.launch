@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="mav_name" default="iris" />
+  <arg name="x" default="0.0"/>
+  <arg name="y" default="0.0"/>
+  <arg name="z" default="0.1"/>
+
+  <!-- Start Gazebo -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name"
+         value="$(find mav_tunnel_nav)/worlds/IndianTunnel.world" />
+    <!--
+     <arg name="world_name"
+          value="$(find rotors_gazebo)/worlds/basic.world" />
+    -->
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+    <arg name="extra_gazebo_args" value="--verbose"/>
+  </include>
+
+  <group ns="iris">
+    <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
+      <arg name="mav_name" value="$(arg mav_name)" />
+      <!--<arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_14ranges.xacro" />-->
+      <arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_depthcam.xacro" />
+      <arg name="enable_logging" value="false" />
+      <arg name="enable_ground_truth" value="false" />
+      <arg name="log_file" value="iris"/>
+      <arg name="x" value="$(arg x)"/>
+      <arg name="y" value="$(arg y)"/>
+      <arg name="z" value="$(arg z)"/>
+    </include>
+
+    <!-- Converts joystick movements into sensors_msgs/Joy messages -->
+    <node name="joy_node" pkg="joy" type="joy_node" />
+
+    <!-- Converts sensor_msgs/Joy to mav_msgs/RollPitchYawRateThrust messages -->
+    <node name="rotors_joy_interface" pkg="rotors_joy_interface" type="rotors_joy_interface">
+      <!--
+      <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/logitech_f310.yaml" />
+      -->
+      <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
+    </node>
+
+    <!-- Sends motor commands based given commanded rates for roll/pitch/yaw and thrust -->
+    <node name="roll_pitch_yawrate_thrust_controller_node" pkg="rotors_control" type="roll_pitch_yawrate_thrust_controller_node">
+      <rosparam command="load" file="$(find rotors_gazebo)/resource/roll_pitch_yawrate_thrust_controller_iris.yaml" />
+      <rosparam command="load" file="$(find rotors_gazebo)/resource/iris.yaml" />
+      <remap from="odometry" to="imu_odom/odometry" />
+    </node>
+
+    <!-- imu odometry -->
+    <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom">
+      <param name="imu_topic" value="imu"/>
+      <param name="odom_topic" value="imu_odom/odometry"/>
+      <param name="child_frame_id" value="base_link"/>
+    </node>
+
+    <!-- Given robot_description parameter and joint states, publish TF frames -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+  </group>
+</launch>
