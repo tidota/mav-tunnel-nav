@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<robot name="iris_with_sensors" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/rotors_custom/iris_base.xacro" />
+
+  <!-- ray sensors -->
+  <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/range/range1ray_14align.urdf.xacro" />
+  <xacro:range1ray_14align_macro
+    max="6.0"
+    min="0.01"
+    step_x1="0.10"
+    step_x2="0.09"
+    step_z1="0.05"
+    step_z2="0.04"
+  />
+</robot>
