@@ -4,7 +4,13 @@
   <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/rotors_custom/iris_base.xacro" />
 
   <!-- depth camera -->
-  
+  <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/depthcam/depthcam.urdf.xacro" />
+  <xacro:depth_camera
+    name="camera" parent="${namespace}/base_link" ros_topic="depthcam"
+    update_rate="20" min_range="0" max_range="3"
+    field_of_view="2" ray_count="1">
+    <origin xyz="0 0 0.036" rpy="0 0 0" />
+  </xacro:depth_camera>
   <!-- ray sensors -->
   <!-- <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/range/range1ray_14align.urdf.xacro" />
   <xacro:range1ray_14align_macro

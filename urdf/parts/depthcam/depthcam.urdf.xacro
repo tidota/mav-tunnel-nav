@@ -3,8 +3,7 @@
 http://gazebosim.org/tutorials?tut=ros_depth_camera&cat=connect_ros
 -->
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  
-  <!-- <xacro:macro name="sonar_sensor" params="name parent *origin ros_topic update_rate min_range max_range field_of_view ray_count">
+  <xacro:macro name="depth_camera" params="name parent *origin ros_topic update_rate min_range max_range field_of_view ray_count">
     <joint name="${name}_joint" type="fixed">
       <xacro:insert_block name="origin" />
       <parent link="${parent}"/>
@@ -20,53 +19,59 @@ http://gazebosim.org/tutorials?tut=ros_depth_camera&cat=connect_ros
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <box size="0.01 0.01 0.01" />
+          <box size="0.073000 0.276000 0.072000" />
         </geometry>
       </visual>
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0" />
         <geometry>
-          <box size="0.01 0.01 0.01" />
+          <box size="0.073000 0.276000 0.072000" />
         </geometry>
       </collision>
     </link>
 
     <gazebo reference="${name}_link">
-      <sensor type="ray" name="${name}">
-        <pose>0 0 0 0 0 0</pose>
-        <visualize>true</visualize>
-        <update_rate>${update_rate}</update_rate>
-        <ray>
-          <scan>
-            <horizontal>
-              <samples>${ray_count}</samples>
-              <resolution>1</resolution>
-              <min_angle>-${field_of_view/2}</min_angle>
-              <max_angle> ${field_of_view/2}</max_angle>
-            </horizontal>
-            <vertical>
-              <samples>${ray_count}</samples>
-              <resolution>1</resolution>
-              <min_angle>-${field_of_view/2}</min_angle>
-              <max_angle> ${field_of_view/2}</max_angle>
-            </vertical>
-          </scan>
-          <range>
-            <min>${min_range}</min>
-            <max>${max_range}</max>
-            <resolution>0.01</resolution>
-          </range>
-        </ray>
-        <plugin filename="libgazebo_ros_range.so" name="gazebo_ros_range">
-          <gaussianNoise>0.005</gaussianNoise>
+      <sensor name="camera" type="depth">
+        <update_rate>20</update_rate>
+        <camera>
+          <horizontal_fov>1.047198</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>3</far>
+          </clip>
+        </camera>
+
+        <plugin name="camera_plugin" filename="libgazebo_ros_openni_kinect.so">
+          <baseline>0.2</baseline>
           <alwaysOn>true</alwaysOn>
-          <updateRate>${update_rate}</updateRate>
-          <topicName>${ros_topic}</topicName>
-          <frameName>${name}_link</frameName>
-          <radiation>infrared</radiation>
-          <fov>${field_of_view}</fov>
+          <!-- Keep this zero, update_rate in the parent <sensor> tag
+            will control the frame rate. -->
+          <updateRate>0.0</updateRate>
+          <cameraName>camera_ir</cameraName>
+          <imageTopicName>/camera/depth/image_raw</imageTopicName>
+          <cameraInfoTopicName>/camera/depth/camera_info</cameraInfoTopicName>
+          <depthImageTopicName>/camera/depth/image_raw</depthImageTopicName>
+          <depthImageInfoTopicName>/camera/depth/camera_info</depthImageInfoTopicName>
+          <pointCloudTopicName>/camera/depth/points</pointCloudTopicName>
+          <frameName>camera_link</frameName>
+          <pointCloudCutoff>0.05</pointCloudCutoff>
+          <distortionK1>0</distortionK1>
+          <distortionK2>0</distortionK2>
+          <distortionK3>0</distortionK3>
+          <distortionT1>0</distortionT1>
+          <distortionT2>0</distortionT2>
+          <CxPrime>0</CxPrime>
+          <Cx>0</Cx>
+          <Cy>0</Cy>
+          <focalLength>0</focalLength>
+          <hackBaseline>0</hackBaseline>
         </plugin>
       </sensor>
     </gazebo>
-  </xacro:macro> -->
+  </xacro:macro>
 </robot>
