@@ -1,68 +1,68 @@
 <?xml version="1.0"?>
 
 <robot name="quadrotor" xmlns:xacro="http://www.ros.org/wiki/xacro">
-    <xacro:macro name="range1ray_14align_macro" params="rate:=10 min:=0.01 max:=10.0 ray_fov:=3 step_x1:=0.05 step_x2:=0.05 step_y1:=0.05 step_y2:=0.05 step_z1=0.05 step_z2=0.05 parent_link:=${namespace}/base_link">
+    <xacro:macro name="range1ray_14align_macro" params="rate:=10 min:=0.01 max:=10.0 ray_fov:=3 offX_front:=0.05 offX_back:=-0.05 offY_left:=0.05 offY_right:=-0.05 offZ_up:=0.05 offZ_horizon1:=0.05 offZ_horizon2:=0.05 offZ_down:=-0.05 parent_link:=${namespace}/base_link">
       <xacro:property name="M_PI" value="3.1415926535897932" />
 
       <!-- ray sensors -->
       <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/range/range1ray.urdf.xacro" />
       <!-- front -->
       <xacro:sonar_sensor name="ray_front" parent="${parent_link}" ros_topic="range_front" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${step_x1} 0.0 ${step_z1}" rpy="0 0 0" />
+        <origin xyz="${offX_front} 0.0 ${offZ_horizon1}" rpy="0 0 0" />
       </xacro:sonar_sensor>
       <!-- right front -->
       <xacro:sonar_sensor name="ray_rfront" parent="${parent_link}" ros_topic="range_rfront" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${step_x1} ${-step_y2} ${step_z1}" rpy="0 0 ${-45*M_PI/180}" />
+        <origin xyz="${offX_front} ${offY_right} ${offZ_horizon1}" rpy="0 0 ${-45*M_PI/180}" />
       </xacro:sonar_sensor>
       <!-- left front -->
       <xacro:sonar_sensor name="ray_lfront" parent="${parent_link}" ros_topic="range_lfront" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${step_x1} ${step_y1} ${step_z1}" rpy="0 0 ${45*M_PI/180}" />
+        <origin xyz="${offX_front} ${offY_left} ${offZ_horizon1}" rpy="0 0 ${45*M_PI/180}" />
       </xacro:sonar_sensor>
       <!-- right -->
       <xacro:sonar_sensor name="ray_right" parent="${parent_link}" ros_topic="range_right" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="0 ${-step_y2} ${step_z1}" rpy="0 0 ${-90*M_PI/180}" />
+        <origin xyz="0 ${offY_right} ${offZ_horizon2}" rpy="0 0 ${-90*M_PI/180}" />
       </xacro:sonar_sensor>
       <!-- left -->
       <xacro:sonar_sensor name="ray_left" parent="${parent_link}" ros_topic="range_left" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="0 ${step_y1} ${step_z1}" rpy="0 0 ${90*M_PI/180}" />
+        <origin xyz="0 ${offY_left} ${offZ_horizon2}" rpy="0 0 ${90*M_PI/180}" />
       </xacro:sonar_sensor>
       <!-- right rear -->
       <xacro:sonar_sensor name="ray_rrear" parent="${parent_link}" ros_topic="range_rrear" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${-step_x2} ${-step_y2} ${step_z1}" rpy="0 0 ${-135*M_PI/180}" />
+        <origin xyz="${offX_back} ${offY_right} ${offZ_horizon1}" rpy="0 0 ${-135*M_PI/180}" />
       </xacro:sonar_sensor>
       <!-- left rear -->
       <xacro:sonar_sensor name="ray_lrear" parent="${parent_link}" ros_topic="range_lrear" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${-step_x2} ${step_y1} ${step_z1}" rpy="0 0 ${135*M_PI/180}" />
+        <origin xyz="${offX_back} ${offY_left} ${offZ_horizon1}" rpy="0 0 ${135*M_PI/180}" />
       </xacro:sonar_sensor>
       <!-- rear -->
       <xacro:sonar_sensor name="ray_rear" parent="${parent_link}" ros_topic="range_rear" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${-step_x2} 0 ${step_z1}" rpy="0 0 ${-180*M_PI/180}" />
+        <origin xyz="${offX_back} 0 ${offZ_horizon1}" rpy="0 0 ${-180*M_PI/180}" />
       </xacro:sonar_sensor>
 
       <!-- upward -->
       <xacro:sonar_sensor name="ray_up" parent="${parent_link}" ros_topic="range_up" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="0 0 ${step_z1}" rpy="0 ${-90*M_PI/180} 0" />
+        <origin xyz="0 0 ${offZ_up}" rpy="0 ${-90*M_PI/180} 0" />
       </xacro:sonar_sensor>
       <!-- up front -->
       <xacro:sonar_sensor name="ray_ufront" parent="${parent_link}" ros_topic="range_ufront" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${step_x1/3} 0 ${step_z1}" rpy="0 ${-45*M_PI/180} 0" />
+        <origin xyz="${offX_front/3} 0 ${offZ_up}" rpy="0 ${-45*M_PI/180} 0" />
       </xacro:sonar_sensor>
       <!-- up rear -->
       <xacro:sonar_sensor name="ray_urear" parent="${parent_link}" ros_topic="range_urear" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${-step_x2/3} 0 ${step_z1}" rpy="0 ${-45*M_PI/180} ${180*M_PI/180}" />
+        <origin xyz="${offX_back/3} 0 ${offZ_up}" rpy="0 ${-45*M_PI/180} ${180*M_PI/180}" />
       </xacro:sonar_sensor>
 
       <!-- downward -->
       <xacro:sonar_sensor name="ray_down" parent="${parent_link}" ros_topic="range_down" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="0 0 ${-step_z2}" rpy="0 ${90*M_PI/180} 0" />
+        <origin xyz="0 0 ${offZ_down}" rpy="0 ${90*M_PI/180} 0" />
       </xacro:sonar_sensor>
       <!-- down front -->
       <xacro:sonar_sensor name="ray_dfront" parent="${parent_link}" ros_topic="range_dfront" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${step_x1/3} 0 ${-step_z2}" rpy="0 ${45*M_PI/180} 0" />
+        <origin xyz="${offX_front/3} 0 ${offZ_down}" rpy="0 ${45*M_PI/180} 0" />
       </xacro:sonar_sensor>
       <!-- down rear -->
       <xacro:sonar_sensor name="ray_drear" parent="${parent_link}" ros_topic="range_drear" update_rate="${rate}" min_range="${min}" max_range="${max}" field_of_view="${ray_fov*M_PI/180}" ray_count="1">
-        <origin xyz="${-step_x2/3} 0 ${-step_z2}" rpy="0 ${45*M_PI/180} ${180*M_PI/180}" />
+        <origin xyz="${offX_back/3} 0 ${offZ_down}" rpy="0 ${45*M_PI/180} ${180*M_PI/180}" />
       </xacro:sonar_sensor>
 
     </xacro:macro>
