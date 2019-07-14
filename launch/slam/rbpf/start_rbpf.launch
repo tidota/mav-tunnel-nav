@@ -15,20 +15,21 @@
     <param name="base_frame_id" value="base_link"/>
     <!--for multiple sensors, place comma eg "r1/front_laser/scan,/beacon" -->
     <param name="sensor_source"
-      value="/robot/range_front,
-             /robot/range_rfront,
-             /robot/range_lfront,
-             /robot/range_right,
-             /robot/range_left,
-             /robot/range_rrear,
-             /robot/range_lrear,
-             /robot/range_rear,
-             /robot/range_up,
-             /robot/range_ufront,
-             /robot/range_urear,
-             /robot/range_down,
-             /robot/range_dfront,
-             /robot/range_drear"/>
+      value="/iris/depth/points,
+             /iris/range_front,
+             /iris/range_rfront,
+             /iris/range_lfront,
+             /iris/range_right,
+             /iris/range_left,
+             /iris/range_rrear,
+             /iris/range_lrear,
+             /iris/range_rear,
+             /iris/range_up,
+             /iris/range_ufront,
+             /iris/range_urear,
+             /iris/range_down,
+             /iris/range_dfront,
+             /iris/range_drear"/>
     <rosparam command="load" file="$(find quadrotor_tunnel_nav)/config/rbpf/rbpf_default.yaml" />
   </node>
 </launch>

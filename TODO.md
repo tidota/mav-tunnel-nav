@@ -31,11 +31,18 @@
 
   - the world plugin `librotors_gazebo_ros_interface_plugin.so` is necessary in a world file.
 
-- [ ] Try to use only IMU for position estimation
+- [x] Try to use only IMU for position estimation
 
   - the controller subscribes the odometry data, but only reads the orientation and angular velocity parts.
   - IMU provides those items.
   - make a publisher for `/iris/odometry_sensor1/odometry` based on IMU?
+
+- [ ] MRPT
+
+  - added point cloud topic from the depth camera
+  - setup the sensor subscribers
+  - check how to take the data into the SLAM (should be called by point cloud)
+
 
 - [ ] Update the installation+setup instructions
 - [ ] Add a manual control(?)
