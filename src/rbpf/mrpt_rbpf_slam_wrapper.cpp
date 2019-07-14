@@ -2,7 +2,7 @@
 
 #include "rbpf/options.h"
 
-#include "rbpf/CustomOctoMap.h"
+//#include "rbpf/CustomOctoMap.h"
 
 namespace
 {
@@ -88,21 +88,22 @@ bool PFslamWrapper::init(ros::NodeHandle& nh)
 
   mapBuilder_ = mrpt::slam::CMetricMapBuilderRBPF(options_.rbpfMappingOptions_);
 
+  // TODO: remove this
   // replace the map with the customized octomap
-  for (auto& particle: mapBuilder_.mapPDF.m_particles)
-  {
-    auto map = mrpt::maps::CustomOctoMap::Create();
-    auto org
-      = mrpt::maps::COctoMap::Ptr(particle.d->mapTillNow.maps[0].get_ptr());
-
-    // TODO: copy settings
-    map->insertionOptions = org->insertionOptions;
-    map->renderingOptions = org->renderingOptions;
-    map->likelihoodOptions = org->likelihoodOptions;
-    map->setResolution(org->getResolution());
-
-    particle.d->mapTillNow.maps[0] = map;
-  }
+  // for (auto& particle: mapBuilder_.mapPDF.m_particles)
+  // {
+  //   auto map = mrpt::maps::CustomOctoMap::Create();
+  //   auto org
+  //     = mrpt::maps::COctoMap::Ptr(particle.d->mapTillNow.maps[0].get_ptr());
+  //
+  //   // TODO: copy settings
+  //   map->insertionOptions = org->insertionOptions;
+  //   map->renderingOptions = org->renderingOptions;
+  //   map->likelihoodOptions = org->likelihoodOptions;
+  //   map->setResolution(org->getResolution());
+  //
+  //   particle.d->mapTillNow.maps[0] = map;
+  // }
 
 
   // map visualization

@@ -169,6 +169,22 @@ catkin_package(
 add_executable(imu_odom src/imu_odom.cpp)
 target_link_libraries(imu_odom ${catkin_LIBRARIES})
 
+# RBPF
+#add_library(custom_octomap src/rbpf/CustomOctoMap.cpp)
+#add_library(slam_core src/rbpf/mrpt_rbpf_slam.cpp)
+add_executable(mrpt_rbpf_slam
+    src/rbpf/mrpt_rbpf_slam.cpp
+    src/rbpf/mrpt_rbpf_slam_wrapper.cpp
+    src/rbpf/mrpt_rbpf_slam_node.cpp
+    src/rbpf/options.cpp
+)
+target_link_libraries(mrpt_rbpf_slam
+    ${MRPT_LIBRARIES}
+    ${catkin_LIBRARIES}
+#    slam_core
+#    custom_octomap
+)
+
 ## Declare a C++ library
 # add_library(quadrotor_tunnel_nav
 #   src/${PROJECT_NAME}/quadrotor_tunnel_nav.cpp
