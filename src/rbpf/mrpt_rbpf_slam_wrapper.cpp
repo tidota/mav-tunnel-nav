@@ -71,19 +71,30 @@ bool PFslamWrapper::init(ros::NodeHandle& nh)
   // publish grid map
   pub_map_ = nh.advertise<octomap_msgs::Octomap>("map", 1, true);
   // robot pose
-  pub_particles_ = nh.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
+  pub_particles_
+    = nh.advertise<geometry_msgs::PoseArray>("particlecloud", 1, true);
 
   // read sensor topics
   std::vector<std::string> lstSources;
   mrpt::system::tokenize(sensor_source_, " ,\t\n", lstSources);
-  ROS_ASSERT_MSG(!lstSources.empty(), "*Fatal*: At least one sensor source must be provided in ~sensor_sources (e.g. "
-                                      "\"scan\" or \"beacon\")");
+  ROS_ASSERT_MSG(!lstSources.empty(),
+    "*Fatal*: At least one sensor source must be provided in ~sensor_sources "
+    "(e.g. \"scan\" or \"beacon\")");
 
   /// Create subscribers///
-  sensorSub_.resize(lstSources.size());
+  rangeSub_.clear();
   for (size_t i = 0; i < lstSources.size(); i++)
   {
-    sensorSub_[i] = nh.subscribe(lstSources[i], 1, &PFslamWrapper::rangeCallback, this);
+    if (lstSources[i].find("points") != std::string::npos) // depth camera
+    {
+      pointsSub_
+        = nh.subscribe(lstSources[i], 1, &PFslamWrapper::pointsCallback, this);
+    }
+    else // ranging sensors
+    {
+      rangeSub_.push_back(
+        nh.subscribe(lstSources[i], 1, &PFslamWrapper::rangeCallback, this));
+    }
   }
 
   mapBuilder_ = mrpt::slam::CMetricMapBuilderRBPF(options_.rbpfMappingOptions_);
@@ -144,6 +155,12 @@ bool PFslamWrapper::waitForTransform(mrpt::poses::CPose3D& des, const std::strin
 }
 
 // ========================================================
+void PFslamWrapper::pointsCallback(const sensor_msgs::PointCloud2& msg)
+{
+  // TODO
+}
+
+// ========================================================
 void PFslamWrapper::rangeCallback(const sensor_msgs::Range& msg)
 {
   std::lock_guard<std::mutex> lk(sensor_mutex);
@@ -157,7 +174,8 @@ void PFslamWrapper::rangeCallback(const sensor_msgs::Range& msg)
   {
     sensor_buffer[msg.header.frame_id] = std::shared_ptr<sensor_msgs::Range>();
   }
-  sensor_buffer[msg.header.frame_id] = std::make_shared<sensor_msgs::Range>(msg);
+  sensor_buffer[msg.header.frame_id]
+    = std::make_shared<sensor_msgs::Range>(msg);
 }
 
 // ========================================================
@@ -174,7 +192,7 @@ void PFslamWrapper::procSensoryData()
   {
     std::lock_guard<std::mutex> lk(sensor_mutex);
 
-    if (sensor_buffer.size() < sensorSub_.size())
+    if (sensor_buffer.size() < rangeSub_.size())
       return;
 
     // CObservationPointCloud::Ptr pc = CObservationPointCloud::Create();

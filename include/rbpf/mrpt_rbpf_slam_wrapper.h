@@ -25,6 +25,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <sensor_msgs/Range.h>
+#include <sensor_msgs/PointCloud2.h>
 
 // mrpt bridge libs
 #include <mrpt_bridge/pose.h>
@@ -78,12 +79,21 @@ public:
   void publishMapPose();
 
   /**
-   * @brief Callback function for the ranging sensors
+   * @brief Callback function for the depth camera
    *
-   * Given the ranging data  wait for odometry,
+   * Given the point cloude, wait for odometry,
    * create the pair of action and observation,
    * implement one SLAM update,
    * publish map and pose.
+   *
+   * @param msg  the point cloud message
+   */
+  void pointsCallback(const sensor_msgs::PointCloud2& msg);
+
+  /**
+   * @brief Callback function for the ranging sensors
+   *
+   * Given the ranging data, generate a next action.
    *
    * @param msg  the range message
    */
@@ -148,7 +158,8 @@ private:
   std::map<std::string, std::shared_ptr<sensor_msgs::Range> > sensor_buffer;
 
   // Subscribers
-  std::vector<ros::Subscriber> sensorSub_;  ///< list of sensors topics
+  std::vector<ros::Subscriber> rangeSub_;  ///< list of sensors topics
+  ros::Subscriber pointsSub_; ///< point cloud topic
 
   ros::Publisher pub_map_, /*pub_metadata_,*/ pub_particles_;
 
