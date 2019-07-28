@@ -15,7 +15,7 @@
     <param name="base_frame_id" value="base_link"/>
     <!--for multiple sensors, place comma eg "r1/front_laser/scan,/beacon" -->
     <param name="sensor_source"
-      value="/iris/depth/points,
+      value="/iris/camera_ir/camera/depth/points,
              /iris/range_front,
              /iris/range_rfront,
              /iris/range_lfront,
