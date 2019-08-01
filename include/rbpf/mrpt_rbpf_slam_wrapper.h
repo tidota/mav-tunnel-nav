@@ -154,8 +154,11 @@ private:
   std::string sensor_source_;
   std::map<std::string, mrpt::poses::CPose3D> range_poses_;   ///< range poses with respect to the map
 
-  // buffer of sensor messages
-  std::map<std::string, std::shared_ptr<sensor_msgs::Range> > sensor_buffer;
+  // buffer of range sensor messages
+  std::map<std::string, std::shared_ptr<sensor_msgs::Range> > range_buffer;
+
+  // buffer of point cloud
+  sensor_msgs::PointCloud2 pc_buffer;
 
   // Subscribers
   std::vector<ros::Subscriber> rangeSub_;  ///< list of sensors topics
@@ -177,7 +180,8 @@ private:
   ros::Publisher marker_occupied_pub;
   int marker_counter;
 
-  std::mutex sensor_mutex; /// mutex for sensor acquisition
+  std::mutex range_mutex; /// mutex for range sensory data acquisition
+  std::mutex pc_mutex; /// mutex for point cloud
 
 // for evaluation
 private:

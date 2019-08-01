@@ -157,24 +157,25 @@ bool PFslamWrapper::waitForTransform(mrpt::poses::CPose3D& des, const std::strin
 // ========================================================
 void PFslamWrapper::pointsCallback(const sensor_msgs::PointCloud2& msg)
 {
-  // TODO
+  std::lock_guard<std::mutex> lk(pc_mutex);
+  pc_buffer = msg;
 }
 
 // ========================================================
 void PFslamWrapper::rangeCallback(const sensor_msgs::Range& msg)
 {
-  std::lock_guard<std::mutex> lk(sensor_mutex);
+  std::lock_guard<std::mutex> lk(range_mutex);
 
   if (range_poses_.find(msg.header.frame_id) == range_poses_.end())
   {
     updateSensorPose(msg.header.frame_id);
   }
 
-  if (sensor_buffer.count(msg.header.frame_id) == 0)
+  if (range_buffer.count(msg.header.frame_id) == 0)
   {
-    sensor_buffer[msg.header.frame_id] = std::shared_ptr<sensor_msgs::Range>();
+    range_buffer[msg.header.frame_id] = std::shared_ptr<sensor_msgs::Range>();
   }
-  sensor_buffer[msg.header.frame_id]
+  range_buffer[msg.header.frame_id]
     = std::make_shared<sensor_msgs::Range>(msg);
 }
 
@@ -190,13 +191,13 @@ void PFslamWrapper::procSensoryData()
   CObservation3DRangeScan::Ptr pc = CObservation3DRangeScan::Create();
 
   {
-    std::lock_guard<std::mutex> lk(sensor_mutex);
+    std::lock_guard<std::mutex> lk(range_mutex);
 
-    if (sensor_buffer.size() < rangeSub_.size())
+    if (range_buffer.size() < rangeSub_.size())
       return;
 
     // CObservationPointCloud::Ptr pc = CObservationPointCloud::Create();
-    for (auto& pair: sensor_buffer)
+    for (auto& pair: range_buffer)
     {
       auto p_msg = pair.second;
 
@@ -214,7 +215,7 @@ void PFslamWrapper::procSensoryData()
       pc->hasPoints3D = true;
       // pc->pointcloud->insertPointFast(dtpoint.x(), dtpoint.y(), dtpoint.z());
     }
-    sensor_buffer.clear();
+    range_buffer.clear();
   }
 
   sensory_frame_ = CSensoryFrame::Create();
