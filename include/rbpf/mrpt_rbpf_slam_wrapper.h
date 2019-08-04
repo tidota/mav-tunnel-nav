@@ -36,12 +36,21 @@
 
 #include <mrpt_bridge/time.h>
 
+// pcl
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
 // map visualization
 #include <octomap_msgs/conversions.h>
 #include <octomap_msgs/Octomap.h>
 #include <std_msgs/ColorRGBA.h>
 #include <visualization_msgs/MarkerArray.h>
 #define PI 3.14159265
+
+// type definitions of point cloud
+typedef pcl::PointXYZI PointT;
+typedef pcl::PointCloud<PointT> PointCloudT;
 
 namespace mrpt_rbpf_slam
 {
@@ -152,7 +161,7 @@ private:
 
   // Sensor source
   std::string sensor_source_;
-  std::map<std::string, mrpt::poses::CPose3D> range_poses_;   ///< range poses with respect to the map
+  std::map<std::string, mrpt::poses::CPose3D> sensor_poses_;   ///< sensor poses with respect to the map
 
   // buffer of range sensor messages
   std::map<std::string, std::shared_ptr<sensor_msgs::Range> > range_buffer;

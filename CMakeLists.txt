@@ -40,6 +40,9 @@ if(MRPT_VERSION VERSION_LESS "1.9.9")
   set (CMAKE_CXX_STANDARD 14)
 endif()
 
+# PCL
+find_package(PCL 1.7 REQUIRED)
+
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
 
@@ -151,6 +154,7 @@ include_directories(
   ${GAZEBO_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   ${OCTOMAP_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
 )
 
 link_directories(
@@ -181,6 +185,7 @@ add_executable(mrpt_rbpf_slam
 target_link_libraries(mrpt_rbpf_slam
     ${MRPT_LIBRARIES}
     ${catkin_LIBRARIES}
+    ${PCL_LIBRARIES}
 #    slam_core
 #    custom_octomap
 )

@@ -158,6 +158,10 @@ bool PFslamWrapper::waitForTransform(mrpt::poses::CPose3D& des, const std::strin
 void PFslamWrapper::pointsCallback(const sensor_msgs::PointCloud2& msg)
 {
   std::lock_guard<std::mutex> lk(pc_mutex);
+  if (sensor_poses_.find(msg.header.frame_id) == sensor_poses_.end())
+  {
+    updateSensorPose(msg.header.frame_id);
+  }
   pc_buffer = msg;
 }
 
@@ -166,7 +170,7 @@ void PFslamWrapper::rangeCallback(const sensor_msgs::Range& msg)
 {
   std::lock_guard<std::mutex> lk(range_mutex);
 
-  if (range_poses_.find(msg.header.frame_id) == range_poses_.end())
+  if (sensor_poses_.find(msg.header.frame_id) == sensor_poses_.end())
   {
     updateSensorPose(msg.header.frame_id);
   }
@@ -188,38 +192,36 @@ void PFslamWrapper::procSensoryData()
   // create a local point cloud observation w.r.t. the robot's ref frame.
   // as of 4/21, 2019, the version of MRPT for ROS is 1.5 and CObservationPointCloud is not available.
   // Temporarily, CObservation3DRangeScan is used.
-  CObservation3DRangeScan::Ptr pc = CObservation3DRangeScan::Create();
+  CObservation3DRangeScan::Ptr scan_pc = CObservation3DRangeScan::Create();
 
   {
-    std::lock_guard<std::mutex> lk(range_mutex);
-
-    if (range_buffer.size() < rangeSub_.size())
+    std::lock_guard<std::mutex> lk(pc_mutex);
+    PointCloudT::Ptr pc(new PointCloudT());
+    pcl::fromROSMsg(pc_buffer, *pc);
+    if (pc->points.size() == 0)
       return;
 
     // CObservationPointCloud::Ptr pc = CObservationPointCloud::Create();
-    for (auto& pair: range_buffer)
+    mrpt_bridge::convert(pc_buffer.header.stamp, scan_pc->timestamp);
+    currentTime_ = pc_buffer.header.stamp;
+
+
+    for (auto& point: pc->points)
     {
-      auto p_msg = pair.second;
-
-      currentTime_ = p_msg->header.stamp;
-
-      mrpt_bridge::convert(p_msg->header.stamp, pc->timestamp);
-
       mrpt::poses::CPoint3D dtpoint
-        = range_poses_[p_msg->header.frame_id]
-        + mrpt::poses::CPoint3D(p_msg->range, 0, 0);
+        = sensor_poses_[pc->header.frame_id]
+        + mrpt::poses::CPoint3D(point.x, point.y, point.z);
 
-      pc->points3D_x.push_back(dtpoint.x());
-      pc->points3D_y.push_back(dtpoint.y());
-      pc->points3D_z.push_back(dtpoint.z());
-      pc->hasPoints3D = true;
+      scan_pc->points3D_x.push_back(dtpoint.x());
+      scan_pc->points3D_y.push_back(dtpoint.y());
+      scan_pc->points3D_z.push_back(dtpoint.z());
+      scan_pc->hasPoints3D = true;
       // pc->pointcloud->insertPointFast(dtpoint.x(), dtpoint.y(), dtpoint.z());
     }
-    range_buffer.clear();
   }
 
   sensory_frame_ = CSensoryFrame::Create();
-  CObservation::Ptr obs = CObservation::Ptr(pc);
+  CObservation::Ptr obs = CObservation::Ptr(scan_pc);
   sensory_frame_->insert(obs);
 
   if (this->waitForTransform(odometry_, odom_frame_id_, base_frame_id_, currentTime_, ros::Duration(1)))
@@ -311,7 +313,7 @@ void PFslamWrapper::updateSensorPose(const std::string& frame_id)
       for (int r = 0; r < 3; r++)
         Rdes(r, c) = Rsrc.getRow(r)[c];
     pose.setRotationMatrix(Rdes);
-    range_poses_[frame_id] = pose;
+    sensor_poses_[frame_id] = pose;
   }
   catch (tf::TransformException ex)
   {
