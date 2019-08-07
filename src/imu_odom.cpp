@@ -8,6 +8,7 @@
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
+#include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
 std::string imu_topic;
@@ -18,6 +19,9 @@ std::string child_frame_id;
 double x, y, z;
 double vx, vy, vz;
 ros::Time last_time;
+
+tf::Vector3 pos;
+tf::Quaternion rot;
 
 ////////////////////////////////////////////////////////////////////////////////
 void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
@@ -49,6 +53,9 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   odom.twist.twist.angular = imu->angular_velocity;
 
   odom_pub.publish(odom);
+
+  pos = tf::Vector3(x, y, z);
+  rot = tf::Quaternion(imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,7 +77,21 @@ int main(int argc, char** argv)
 
   ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
 
-  ros::spin();
+  tf::TransformBroadcaster tf_broadcaster;
+  ros::Time checkpoint = ros::Time::now();
+  const ros::Duration duration(0.01);
+  while(ros::ok())
+  {
+    if (ros::Time::now() - checkpoint >= duration)
+    {
+      tf::Transform t(rot, pos);
+      tf::StampedTransform tf_stamped(t, checkpoint, "odom", ros::this_node::getNamespace()+"/"+child_frame_id);
+      checkpoint = ros::Time::now();
+      tf_broadcaster.sendTransform(tf_stamped);
+    }
+
+    ros::spinOnce();
+  }
 
   return(0);
 }
