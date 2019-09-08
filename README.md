@@ -28,7 +28,7 @@ Then, run the following commands.
 wget https://raw.githubusercontent.com/tidota/mav-tunnel-nav/master/mav_tunnel_nav.rosinstall
 wstool init . mav_tunnel_nav.rosinstall
 wstool update
-rosdep install --from-paths src --ignore-src --rosdistro=melodic --skip-keys "octomap_ros" -y
+rosdep install --from-paths . --ignore-src --rosdistro=melodic --skip-keys "octomap_ros" -y
 sudo apt install ros-melodic-octomap-ros
 sudo apt install ros-melodic-rotors-*
 ```
