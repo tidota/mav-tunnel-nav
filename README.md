@@ -33,6 +33,16 @@ sudo apt install ros-melodic-octomap-ros
 sudo apt install ros-melodic-rotors-*
 ```
 
+## libmav_msgs.so
+There is a problem related to libmav_msgs.so. The library file is not included if rotorS was installed by apt.
+https://github.com/ethz-asl/rotors_simulator/pull/506
+
+download [libmav_msgs.so](https://drive.google.com/open?id=1VtutTPUiwGTCpCeF32B7m4G2noUGp75N) and copy it to
+
+```
+/opt/ros/melodic/lib/
+```
+
 # Setup of the Simulation Environments
 
 To run a simulation, you need world models.
