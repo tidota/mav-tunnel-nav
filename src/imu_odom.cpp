@@ -18,23 +18,34 @@ std::string child_frame_id;
 double x, y, z;
 double vx, vy, vz;
 ros::Time last_time;
+bool initial_imu = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 {
   ROS_INFO("got imu");
 
-
   ros::Time cur_time = ros::Time::now();
   double dt = (cur_time - last_time).toSec();
   last_time = cur_time;
 
+  if (initial_imu)
+  {
+    initial_imu = false;
+    return;
+  }
+
+  double grav = 9.81;
+
   x += vx * dt;
   y += vy * dt;
   z += vz * dt;
-  vx += imu->linear_acceleration.x * dt;
-  vy += imu->linear_acceleration.y * dt;
-  vz += imu->linear_acceleration.z * dt;
+  //if (std::fabs(imu->linear_acceleration.x) >= 1.0)
+    vx += imu->linear_acceleration.x * dt;
+  //if (std::fabs(imu->linear_acceleration.y) >= 1.0)
+    vy += imu->linear_acceleration.y * dt;
+  //if (std::fabs(imu->linear_acceleration.z - grav) >= 1.0)
+    vz += (imu->linear_acceleration.z - grav) * dt;
 
   nav_msgs::Odometry odom;
   odom.header = imu->header;
