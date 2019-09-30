@@ -3,7 +3,7 @@
   <arg name="mav_name" default="iris" />
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
-  <arg name="z" default="0.1"/>
+  <arg name="z" default="0.21"/>
 
   <!-- Start Gazebo -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">

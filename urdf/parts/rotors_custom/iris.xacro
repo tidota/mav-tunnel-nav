@@ -92,6 +92,37 @@
     <xacro:insert_block name="collision_geometry" />
   </xacro:multirotor_base_macro>
 
+  <!-- Standoffs -->
+  <xacro:macro name="standoff" params="name parent x y z">
+    <link name="${name}_leg">
+      <inertial>
+        <origin xyz="${x} ${y} ${z}" rpy="0 0 0" />
+        <mass value="0.001" />  <!-- [kg] -->
+        <inertia ixx="0.000000017" ixy="0" ixz="0" iyy="0.000000017" iyz="0" izz="0.000000017" />
+      </inertial>
+      <visual>
+        <origin xyz="${x} ${y} ${z}" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.005" length="0.17" />
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="${x} ${y} ${z}" rpy="0 0 0" />
+        <geometry>
+          <cylinder radius="0.005" length="0.17" />
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${name}_leg_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${name}_leg" />
+    </joint>
+  </xacro:macro>
+  <xacro:standoff name="${namespace}/front_left" parent="${namespace}/base_link" x="0.123" y="0.22" z="-0.11" />
+  <xacro:standoff name="${namespace}/front_right" parent="${namespace}/base_link" x="0.123" y="-0.22" z="-0.11" />
+  <xacro:standoff name="${namespace}/rear_left" parent="${namespace}/base_link" x="-0.140" y="0.21" z="-0.11" />
+  <xacro:standoff name="${namespace}/rear_right" parent="${namespace}/base_link" x="-0.140" y="-0.21" z="-0.11" />
+
   <!-- Instantiate rotors -->
   <xacro:vertical_rotor
     robot_namespace="${namespace}"
