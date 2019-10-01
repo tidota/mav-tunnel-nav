@@ -61,7 +61,7 @@ http://gazebosim.org/tutorials?tut=ros_depth_camera&cat=connect_ros
           <cameraName>${name}_ir</cameraName>
           <imageTopicName>${name}/depth/image_raw</imageTopicName>
           <cameraInfoTopicName>${name}/depth/camera_info</cameraInfoTopicName>
-          <depthImageTopicName>${name}/depth/image_raw</depthImageTopicName>
+          <depthImageTopicName>${name}/depth/image_depth</depthImageTopicName>
           <depthImageInfoTopicName>${name}/depth/camera_info</depthImageInfoTopicName>
           <pointCloudTopicName>${name}/depth/points</pointCloudTopicName>
           <frameName>${name}_link</frameName>
