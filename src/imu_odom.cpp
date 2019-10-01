@@ -15,10 +15,16 @@ std::string odom_topic;
 ros::Publisher odom_pub;
 std::string child_frame_id;
 
+const double grav = 9.81;
 double x, y, z;
 double vx, vy, vz;
 ros::Time last_time;
 bool initial_imu = true;
+bool calibration = true;
+tf::Pose current_pose;
+
+tf::Vector3 init_grav_dir;
+int sample_num;
 
 ////////////////////////////////////////////////////////////////////////////////
 void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
@@ -26,16 +32,45 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   ROS_INFO("got imu");
 
   ros::Time cur_time = ros::Time::now();
-  double dt = (cur_time - last_time).toSec();
-  last_time = cur_time;
 
   if (initial_imu)
   {
+    init_grav_dir = tf::Vector3(
+                      imu->linear_acceleration.x,
+                      imu->linear_acceleration.y,
+                      imu->linear_acceleration.z);
+    sample_num = 1;
+    last_time = cur_time;
     initial_imu = false;
     return;
   }
 
-  double grav = 9.81;
+  double dt = (cur_time - last_time).toSec();
+
+  if (calibration)
+  {
+    init_grav_dir += tf::Vector3(
+                      imu->linear_acceleration.x,
+                      imu->linear_acceleration.y,
+                      imu->linear_acceleration.z);
+    sample_num++;
+    if (dt > 3.0)
+    {
+      init_grav_dir /= sample_num;
+
+      tf::Vector3 z_axis(0.0, 0.0, 1.0);
+      tf::Vector3 half = init_grav_dir + z_axis;
+      tf::Vector3 rot_axis = z_axis.cross(half);
+      tf::Quaternion q(
+        rot_axis.x(), rot_axis.y(), rot_axis.z(), z_axis.dot(half));
+      q.normalize();
+      current_pose = tf::Pose(q, tf::Vector3(0, 0, 0));
+
+      calibration = false;
+      return;
+    }
+  }
+
 
   x += vx * dt;
   y += vy * dt;
