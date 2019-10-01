@@ -63,4 +63,7 @@
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
   </group>
+
+  <node name="cam_relay" type="relay" pkg="topic_tools" args="/iris/camera_ir/camera/depth/image_raw /cam0/image_raw" />
+  <node name="imu_relay" type="relay" pkg="topic_tools" args="/iris/imu /imu0" />
 </launch>
