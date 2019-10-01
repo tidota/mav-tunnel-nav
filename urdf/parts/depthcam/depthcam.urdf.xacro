@@ -3,7 +3,7 @@
 http://gazebosim.org/tutorials?tut=ros_depth_camera&cat=connect_ros
 -->
 <robot xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:macro name="depth_camera" params="name parent_link *origin update_rate:=20 min_range:=0.05 max_range:=3.0 field_of_view:=1.047198">
+  <xacro:macro name="depth_camera" params="name parent_link *origin update_rate:=20 min_range:=0.05 max_range:=3.0 field_of_view:=1.3671">
     <joint name="${name}_joint" type="fixed">
       <xacro:insert_block name="origin" />
       <parent link="${parent_link}"/>
@@ -12,7 +12,7 @@ http://gazebosim.org/tutorials?tut=ros_depth_camera&cat=connect_ros
 
     <link name="${namespace}/${name}_link">
       <inertial>
-        <mass value="0.1" />
+        <mass value="0.01" />
         <origin xyz="0 0 0" rpy="0 0 0" />
         <inertia ixx="0.000000017" ixy="0" ixz="0" iyy="0.000000017" iyz="0" izz="0.000000017" />
       </inertial>
@@ -42,7 +42,7 @@ http://gazebosim.org/tutorials?tut=ros_depth_camera&cat=connect_ros
         <camera>
           <horizontal_fov>${field_of_view}</horizontal_fov>
           <image>
-            <width>640</width>
+            <width>752</width>
             <height>480</height>
             <format>R8G8B8</format>
           </image>
