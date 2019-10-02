@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<!-- references
+http://gazebosim.org/tutorials?tut=ros_depth_camera&cat=connect_ros
+-->
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="fisheye_camera" params="name parent_link *origin update_rate:=20 min_range:=0.05 max_range:=30.0 field_of_view:=2.84489">
+    <joint name="${name}_fisheye_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent_link}"/>
+      <child link="${namespace}/${name}_fisheye_link"/>
+    </joint>
+
+    <link name="${namespace}/${name}_fisheye_link">
+      <inertial>
+        <mass value="0.001" />
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <inertia ixx="0.000000017" ixy="0" ixz="0" iyy="0.000000017" iyz="0" izz="0.000000017" />
+      </inertial>
+      <visual>
+        <!--
+        <origin xyz="0 0 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="model://kinect/meshes/kinect.dae" />
+        </geometry>
+        -->
+        <origin xyz="-0.005 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.01 0.01 0.01" />
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="-0.005 0 0" rpy="0 0 0" />
+        <geometry>
+          <box size="0.01 0.01 0.01" />
+        </geometry>
+      </collision>
+    </link>
+
+    <gazebo reference="${namespace}/${name}_fisheye_link">
+      <sensor name="camera" type="camera">
+        <update_rate>${update_rate}</update_rate>
+        <camera>
+          <horizontal_fov>${field_of_view}</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>${min_range}</near>
+            <far>${max_range}</far>
+          </clip>
+        </camera>
+
+        <plugin name="camera_fisheye_controller" filename="libgazebo_ros_camera.so">
+          <alwaysOn>true</alwaysOn>
+          <updateRate>0.0</updateRate>
+          <cameraName>${name}_fisheye</cameraName>
+          <imageTopicName>image_raw</imageTopicName>
+          <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+          <frameName>${name}_fisheye_link</frameName>
+          <hackBaseline>0.07</hackBaseline>
+          <distortionK1>0.0</distortionK1>
+          <distortionK2>0.0</distortionK2>
+          <distortionK3>0.0</distortionK3>
+          <distortionT1>0.0</distortionT1>
+          <distortionT2>0.0</distortionT2>
+        </plugin>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>
