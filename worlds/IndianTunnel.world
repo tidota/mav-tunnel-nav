@@ -56,7 +56,7 @@
     </light> -->
 
     <include>
-      <uri>model://indian_tunnel</uri>
+      <uri>model://indian_tunnel_textured</uri>
     </include>
 
     <!-- support of rotors -->
