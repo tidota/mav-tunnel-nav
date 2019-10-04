@@ -7,8 +7,8 @@
   <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/depthcam/depthcam.urdf.xacro" />
   <xacro:depth_camera
     name="camera" parent_link="${namespace}/base_link"
-    update_rate="20" min_range="0.05" max_range="10" field_of_view="1.047198">
-    <origin xyz="0.00 0 -0.06" rpy="0 0 0" />
+    update_rate="20" min_range="0.05" max_range="30" field_of_view="1.3671">
+    <origin xyz="0.03 0 -0.06" rpy="0 0 0" />
   </xacro:depth_camera>
 
   <!-- fisheye cam -->
@@ -33,4 +33,60 @@
     offZ_horizon2="0.01"
     offZ_down="-0.085"
   />
+
+  <!-- flashlight -->
+  <gazebo>
+    <model name='flashlight'>
+      <pose>0.1 0 0.05 0 -1.57 0</pose>
+      <link name='light_source'>
+        <inertial>
+          <mass>0.00001</mass>
+          <inertia>
+            <ixx>1.0e-05</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>1.0e-05</iyy>
+            <iyz>0</iyz>
+            <izz>1.0e-05</izz>
+          </inertia>
+        </inertial>
+
+        <light name='lamp_light' type='spot'>
+          <attenuation>
+            <range>50</range>
+            <linear>0.05</linear>
+          </attenuation>
+          <diffuse>1 1 1 1</diffuse>
+          <specular>1 1 1 1</specular>
+          <spot>
+            <inner_angle>1.1</inner_angle>
+            <outer_angle>1.2</outer_angle>
+            <falloff>1</falloff>
+          </spot>
+          <direction>0 0 -1</direction>
+        </light>
+
+        <visual name='lamp'>
+          <geometry>
+            <sphere>
+              <radius>0.010</radius>
+            </sphere>
+          </geometry>
+          <transparency>0</transparency>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+            <specular>1 1 1 1</specular>
+            <emissive>1 1 1 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </gazebo>
+  <gazebo>
+    <joint name='flashlight_joint' type='fixed'>
+      <parent>${namespace}/base_link</parent>
+      <child>flashlight::light_source</child>
+    </joint>
+  </gazebo>
 </robot>

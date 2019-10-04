@@ -44,7 +44,7 @@
       <gravity>0 0 -9.81</gravity>
     </physics>
 
-    <light type="directional" name="directional_light_1">
+    <!-- <light type="directional" name="directional_light_1">
       <pose>0 20 20 0.1 0.1 0</pose>
       <diffuse>1 1 1 1</diffuse>
       <specular>1 1 1 1</specular>
@@ -53,10 +53,10 @@
       </attenuation>
       <direction>0.1 0.1 -1</direction>
       <cast_shadows>false</cast_shadows>
-    </light>
+    </light> -->
 
     <include>
-      <uri>model://indian_tunnel</uri>
+      <uri>model://indian_tunnel_textured</uri>
     </include>
 
     <!-- support of rotors -->
