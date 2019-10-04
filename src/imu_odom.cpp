@@ -3,6 +3,8 @@
 // Odometry only by IMU
 //
 
+#include <cmath>
+
 #include <string>
 
 #include <nav_msgs/Odometry.h>
@@ -35,6 +37,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   if (initial_imu)
   {
+    ROS_INFO("imuCallback: initial step");
     init_grav_dir = tf::Vector3(
                       imu->linear_acceleration.x,
                       imu->linear_acceleration.y,
@@ -49,6 +52,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   if (calibration)
   {
+    ROS_INFO("imuCallback: calibration step");
     init_grav_dir += tf::Vector3(
                       imu->linear_acceleration.x,
                       imu->linear_acceleration.y,
@@ -58,32 +62,79 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
     {
       init_grav_dir /= sample_num;
 
-      tf::Vector3 z_axis(0.0, 0.0, 1.0);
-      tf::Vector3 half = init_grav_dir + z_axis;
-      tf::Vector3 rot_axis = z_axis.cross(half);
-      tf::Quaternion q(
-        rot_axis.x(), rot_axis.y(), rot_axis.z(), z_axis.dot(half));
-      q.normalize();
+      double phi;
+      if (init_grav_dir.z() != 0)
+      {
+        phi = std::atan(init_grav_dir.x()/init_grav_dir.z());
+      }
+      else if (init_grav_dir.x() > 0)
+      {
+        phi = M_PI/2;
+      }
+      else
+      {
+        phi = -M_PI/2;
+      }
+
+      tf::Quaternion rot_y;
+      rot_y.setRotation(tf::Vector3(0, 1, 0), -phi);
+      init_grav_dir = tf::Transform(rot_y, tf::Vector3(0, 0, 0)) * init_grav_dir;
+
+      double theta;
+      if (init_grav_dir.z() != 0)
+      {
+        theta = -std::atan(init_grav_dir.y()/init_grav_dir.z());
+      }
+      else if (init_grav_dir.y() > 0)
+      {
+        theta = -M_PI/2;
+      }
+      else
+      {
+        theta = M_PI/2;
+      }
+
+      tf::Quaternion q;
+      q.setEuler(0, phi, theta);
       current_pose = tf::Pose(q, tf::Vector3(0, 0, 0));
 
+      last_time = cur_time;
       calibration = false;
       return;
     }
   }
 
-
+  // velocities
   x += vx * dt;
   y += vy * dt;
   z += vz * dt;
+
+  // gravity vector
+  tf::Vector3 grav_dir
+    = tf::Transform(current_pose.getRotation(), tf::Vector3(0, 0, 0))
+      * tf::Vector3(0, 0, grav);
+
+  // acceleration
   //if (std::fabs(imu->linear_acceleration.x) >= 1.0)
-    vx += imu->linear_acceleration.x * dt;
+    vx += (imu->linear_acceleration.x - grav_dir.x()) * dt;
   //if (std::fabs(imu->linear_acceleration.y) >= 1.0)
-    vy += imu->linear_acceleration.y * dt;
+    vy += (imu->linear_acceleration.y - grav_dir.y()) * dt;
   //if (std::fabs(imu->linear_acceleration.z - grav) >= 1.0)
-    vz += (imu->linear_acceleration.z - grav) * dt;
+    vz += (imu->linear_acceleration.z - grav_dir.z()) * dt;
+
+  // update the current pose
+  tf::Quaternion new_rot;
+  new_rot.setEuler(
+    imu->angular_velocity.z * dt,
+    imu->angular_velocity.x * dt,
+    imu->angular_velocity.y * dt);
+  new_rot = new_rot * current_pose.getRotation();
+  new_rot.normalize();
+  current_pose = tf::Pose(new_rot, tf::Vector3(0, 0, 0));
 
   nav_msgs::Odometry odom;
   odom.header = imu->header;
+  odom.header.frame_id = "world";
   odom.child_frame_id = child_frame_id;
   odom.pose.pose.position.x = x;
   odom.pose.pose.position.y = y;
