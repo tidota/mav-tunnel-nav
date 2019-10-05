@@ -27,7 +27,6 @@ double vx, vy, vz;
 ros::Time last_time;
 bool initial_imu = true;
 bool calibration = true;
-tf::Pose current_pose;
 
 tf::Vector3 init_grav_dir;
 int sample_num;
@@ -63,42 +62,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
       init_grav_dir /= sample_num;
       grav = init_grav_dir.length();
 
-      double phi;
-      if (init_grav_dir.z() != 0)
-      {
-        phi = std::atan(init_grav_dir.x()/init_grav_dir.z());
-      }
-      else if (init_grav_dir.x() > 0)
-      {
-        phi = M_PI/2;
-      }
-      else
-      {
-        phi = -M_PI/2;
-      }
-
-      tf::Quaternion rot_y;
-      rot_y.setRotation(tf::Vector3(0, 1, 0), -phi);
-      init_grav_dir = tf::Transform(rot_y, tf::Vector3(0, 0, 0)) * init_grav_dir;
-
-      double theta;
-      if (init_grav_dir.z() != 0)
-      {
-        theta = -std::atan(init_grav_dir.y()/init_grav_dir.z());
-      }
-      else if (init_grav_dir.y() > 0)
-      {
-        theta = -M_PI/2;
-      }
-      else
-      {
-        theta = M_PI/2;
-      }
-
-      tf::Quaternion q;
-      q.setEuler(0, phi, theta);
-      current_pose = tf::Pose(q, tf::Vector3(0, 0, 0)).inverse();
-
       // double roll, pitch, yaw;
       // tf::Matrix3x3 mat(q);
       // mat.getRPY(roll, pitch, yaw);
@@ -117,7 +80,11 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   // gravity vector
   tf::Vector3 grav_dir
-    = tf::Transform(current_pose.getRotation().inverse(), tf::Vector3(0, 0, 0))
+    = tf::Transform(
+        tf::Quaternion(
+          imu->orientation.x, imu->orientation.y,
+          imu->orientation.z, imu->orientation.w).inverse(),
+          tf::Vector3(0, 0, 0))
       * tf::Vector3(0, 0, grav);
 
   //ROS_INFO_STREAM("grav_x: " << grav_dir.x() << ", grav_y: " << grav_dir.y() << ", grav_z: " << grav_dir.z());
@@ -145,27 +112,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   ROS_INFO_STREAM("ax: " << ax << ", ay: " << ay << ", az: " << az);
 
-  // angular velocity
-  double wx = imu->angular_velocity.x;
-  double wy = imu->angular_velocity.y;
-  double wz = imu->angular_velocity.z;
-
-  double l = std::sqrt(wx*wx + wy*wy + wz*wz);
-  double dtlo2 = dt * l / 2;
-
-  tf::Quaternion new_rot;
-  if (l != 0)
-  {
-    new_rot = tf::Quaternion(
-      std::sin(dtlo2) * wx / l, std::sin(dtlo2) * wy / l,
-      std::sin(dtlo2) * wz / l, std::cos(dtlo2));
-  }
-
-  // update the current pose
-  new_rot = new_rot * current_pose.getRotation() * new_rot.inverse();
-  new_rot.normalize();
-  current_pose = tf::Pose(new_rot, tf::Vector3(0, 0, 0));
-
   nav_msgs::Odometry odom;
   odom.header = imu->header;
   odom.header.frame_id = "world";
@@ -173,11 +119,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   odom.pose.pose.position.x = x;
   odom.pose.pose.position.y = y;
   odom.pose.pose.position.z = z;
-  //odom.pose.pose.orientation = imu->orientation;
-  odom.pose.pose.orientation.x = new_rot.x();
-  odom.pose.pose.orientation.y = new_rot.y();
-  odom.pose.pose.orientation.z = new_rot.z();
-  odom.pose.pose.orientation.w = new_rot.w();
+  odom.pose.pose.orientation = imu->orientation;
   odom.twist.twist.linear.x = vx;
   odom.twist.twist.linear.y = vy;
   odom.twist.twist.linear.z = vz;
