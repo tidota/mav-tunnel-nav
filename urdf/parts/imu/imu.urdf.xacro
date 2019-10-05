@@ -16,7 +16,7 @@ http://gazebosim.org/tutorials?cat=sensors&tut=sensor_noise&ver=7.0%2B
         <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
           <topicName>imu</topicName>
           <bodyName>${link_name}</bodyName>
-          <updateRateHZ>10</updateRateHZ>
+          <updateRateHZ>${update_rate}</updateRateHZ>
           <gaussianNoise>0.0</gaussianNoise>
           <xyzOffset>0 0 0</xyzOffset>
           <rpyOffset>0 0 0</rpyOffset>
