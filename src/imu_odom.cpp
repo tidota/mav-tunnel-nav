@@ -2,6 +2,10 @@
 // 190604
 // Odometry only by IMU
 //
+//
+// reference about Quaternion
+// https://folk.uio.no/jeanra/Informatics/QuaternionsAndIMUs.html
+//
 
 #include <cmath>
 
@@ -31,13 +35,10 @@ int sample_num;
 ////////////////////////////////////////////////////////////////////////////////
 void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 {
-  ROS_INFO("got imu");
-
   ros::Time cur_time = ros::Time::now();
 
   if (initial_imu)
   {
-    ROS_INFO("imuCallback: initial step");
     init_grav_dir = tf::Vector3(
                       imu->linear_acceleration.x,
                       imu->linear_acceleration.y,
@@ -52,7 +53,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   if (calibration)
   {
-    ROS_INFO("imuCallback: calibration step");
     init_grav_dir += tf::Vector3(
                       imu->linear_acceleration.x,
                       imu->linear_acceleration.y,
@@ -96,12 +96,17 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
       tf::Quaternion q;
       q.setEuler(0, phi, theta);
-      current_pose = tf::Pose(q, tf::Vector3(0, 0, 0));
+      current_pose = tf::Pose(q, tf::Vector3(0, 0, 0)).inverse();
+
+      // double roll, pitch, yaw;
+      // tf::Matrix3x3 mat(q);
+      // mat.getRPY(roll, pitch, yaw);
+      // ROS_INFO_STREAM("roll: " << (roll/M_PI*180) << ", pitch: " << (pitch/M_PI*180) << ", yaw: " << (yaw/M_PI*180));
 
       last_time = cur_time;
       calibration = false;
-      return;
     }
+    return;
   }
 
   // velocities
@@ -111,24 +116,52 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   // gravity vector
   tf::Vector3 grav_dir
-    = tf::Transform(current_pose.getRotation(), tf::Vector3(0, 0, 0))
+    = tf::Transform(current_pose.getRotation().inverse(), tf::Vector3(0, 0, 0))
       * tf::Vector3(0, 0, grav);
 
+  //ROS_INFO_STREAM("grav_x: " << grav_dir.x() << ", grav_y: " << grav_dir.y() << ", grav_z: " << grav_dir.z());
+
+  // ROS_INFO_STREAM(
+  //   "imu_x: " << imu->linear_acceleration.x << ", " <<
+  //   "imu_y: " << imu->linear_acceleration.y << ", " <<
+  //   "imu_z: " << imu->linear_acceleration.z);
+
   // acceleration
-  //if (std::fabs(imu->linear_acceleration.x) >= 1.0)
-    vx += (imu->linear_acceleration.x - grav_dir.x()) * dt;
-  //if (std::fabs(imu->linear_acceleration.y) >= 1.0)
-    vy += (imu->linear_acceleration.y - grav_dir.y()) * dt;
-  //if (std::fabs(imu->linear_acceleration.z - grav) >= 1.0)
-    vz += (imu->linear_acceleration.z - grav_dir.z()) * dt;
+  double ax = imu->linear_acceleration.x - grav_dir.x();
+  double ay = imu->linear_acceleration.y - grav_dir.y();
+  double az = imu->linear_acceleration.z - grav_dir.z();
+  //if (std::fabs(ax) >= 1.0)
+    vx += ax * dt;
+  //if (std::fabs(ay) >= 1.0)
+    vy += ay * dt;
+  //if (std::fabs(az) >= 1.0)
+    vz += az * dt;
+
+  // double roll, pitch, yaw;
+  // tf::Matrix3x3 mat(current_pose.getRotation());
+  // mat.getRPY(roll, pitch, yaw);
+  // ROS_INFO_STREAM("roll: " << (roll/M_PI*180) << ", pitch: " << (pitch/M_PI*180) << ", yaw: " << (yaw/M_PI*180));
+
+  ROS_INFO_STREAM("ax: " << ax << ", ay: " << ay << ", az: " << az);
+
+  // angular velocity
+  double wx = imu->angular_velocity.x;
+  double wy = imu->angular_velocity.y;
+  double wz = imu->angular_velocity.z;
+
+  double l = std::sqrt(wx*wx + wy*wy + wz*wz);
+  double dtlo2 = dt * l / 2;
+
+  tf::Quaternion new_rot;
+  if (l != 0)
+  {
+    new_rot = tf::Quaternion(
+      std::sin(dtlo2) * wx / l, std::sin(dtlo2) * wy / l,
+      std::sin(dtlo2) * wz / l, std::cos(dtlo2));
+  }
 
   // update the current pose
-  tf::Quaternion new_rot;
-  new_rot.setEuler(
-    imu->angular_velocity.z * dt,
-    imu->angular_velocity.x * dt,
-    imu->angular_velocity.y * dt);
-  new_rot = new_rot * current_pose.getRotation();
+  new_rot = new_rot * current_pose.getRotation() * new_rot.inverse();
   new_rot.normalize();
   current_pose = tf::Pose(new_rot, tf::Vector3(0, 0, 0));
 
@@ -139,7 +172,11 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   odom.pose.pose.position.x = x;
   odom.pose.pose.position.y = y;
   odom.pose.pose.position.z = z;
-  odom.pose.pose.orientation = imu->orientation;
+  //odom.pose.pose.orientation = imu->orientation;
+  odom.pose.pose.orientation.x = new_rot.x();
+  odom.pose.pose.orientation.y = new_rot.y();
+  odom.pose.pose.orientation.z = new_rot.z();
+  odom.pose.pose.orientation.w = new_rot.w();
   odom.twist.twist.linear.x = vx;
   odom.twist.twist.linear.y = vy;
   odom.twist.twist.linear.z = vz;
