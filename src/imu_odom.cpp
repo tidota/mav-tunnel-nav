@@ -21,7 +21,7 @@ std::string odom_topic;
 ros::Publisher odom_pub;
 std::string child_frame_id;
 
-const double grav = 9.81;
+double grav = 9.81;
 double x, y, z;
 double vx, vy, vz;
 ros::Time last_time;
@@ -58,9 +58,10 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
                       imu->linear_acceleration.y,
                       imu->linear_acceleration.z);
     sample_num++;
-    if (dt > 3.0)
+    if (dt > 3.0 && sample_num >= 100)
     {
       init_grav_dir /= sample_num;
+      grav = init_grav_dir.length();
 
       double phi;
       if (init_grav_dir.z() != 0)
