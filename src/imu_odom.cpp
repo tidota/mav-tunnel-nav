@@ -78,37 +78,23 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   y += vy * dt;
   z += vz * dt;
 
-  // gravity vector
-  tf::Vector3 grav_dir
-    = tf::Transform(
-        tf::Quaternion(
-          imu->orientation.x, imu->orientation.y,
-          imu->orientation.z, imu->orientation.w).inverse(),
-          tf::Vector3(0, 0, 0))
-      * tf::Vector3(0, 0, grav);
-
-  //ROS_INFO_STREAM("grav_x: " << grav_dir.x() << ", grav_y: " << grav_dir.y() << ", grav_z: " << grav_dir.z());
-
-  // ROS_INFO_STREAM(
-  //   "imu_x: " << imu->linear_acceleration.x << ", " <<
-  //   "imu_y: " << imu->linear_acceleration.y << ", " <<
-  //   "imu_z: " << imu->linear_acceleration.z);
-
   // acceleration
-  double ax = imu->linear_acceleration.x - grav_dir.x();
-  double ay = imu->linear_acceleration.y - grav_dir.y();
-  double az = imu->linear_acceleration.z - grav_dir.z();
+  tf::Vector3 acc_vec(
+    imu->linear_acceleration.x, imu->linear_acceleration.y, imu->linear_acceleration.z
+  );
+  tf::Transform transform(
+    tf::Quaternion(imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w),
+    tf::Vector3(0,0,0));
+  acc_vec = transform * acc_vec;
+  double ax = acc_vec.x();
+  double ay = acc_vec.y();
+  double az = acc_vec.z() - grav;
   //if (std::fabs(ax) >= 1.0)
     vx += ax * dt;
   //if (std::fabs(ay) >= 1.0)
     vy += ay * dt;
   //if (std::fabs(az) >= 1.0)
     vz += az * dt;
-
-  // double roll, pitch, yaw;
-  // tf::Matrix3x3 mat(current_pose.getRotation());
-  // mat.getRPY(roll, pitch, yaw);
-  // ROS_INFO_STREAM("roll: " << (roll/M_PI*180) << ", pitch: " << (pitch/M_PI*180) << ", yaw: " << (yaw/M_PI*180));
 
   ROS_INFO_STREAM("ax: " << ax << ", ay: " << ay << ", az: " << az);
 
