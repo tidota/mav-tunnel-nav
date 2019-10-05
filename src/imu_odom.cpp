@@ -2,6 +2,13 @@
 // 190604
 // Odometry only by IMU
 //
+//
+// How to calculate 3D pose from 3D accelerations.
+// https://arxiv.org/pdf/1704.06053.pdf
+//
+// If it is necessary to calculate the orientations from angular velocities.
+// https://folk.uio.no/jeanra/Informatics/QuaternionsAndIMUs.html
+//
 
 #include <cmath>
 
@@ -17,13 +24,12 @@ std::string odom_topic;
 ros::Publisher odom_pub;
 std::string child_frame_id;
 
-const double grav = 9.81;
+double grav = 9.81;
 double x, y, z;
 double vx, vy, vz;
 ros::Time last_time;
 bool initial_imu = true;
 bool calibration = true;
-tf::Pose current_pose;
 
 tf::Vector3 init_grav_dir;
 int sample_num;
@@ -31,13 +37,10 @@ int sample_num;
 ////////////////////////////////////////////////////////////////////////////////
 void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 {
-  ROS_INFO("got imu");
-
   ros::Time cur_time = ros::Time::now();
 
   if (initial_imu)
   {
-    ROS_INFO("imuCallback: initial step");
     init_grav_dir = tf::Vector3(
                       imu->linear_acceleration.x,
                       imu->linear_acceleration.y,
@@ -52,85 +55,53 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   if (calibration)
   {
-    ROS_INFO("imuCallback: calibration step");
     init_grav_dir += tf::Vector3(
                       imu->linear_acceleration.x,
                       imu->linear_acceleration.y,
                       imu->linear_acceleration.z);
     sample_num++;
-    if (dt > 3.0)
+    if (dt > 3.0 && sample_num >= 100)
     {
       init_grav_dir /= sample_num;
+      grav = init_grav_dir.length();
 
-      double phi;
-      if (init_grav_dir.z() != 0)
-      {
-        phi = std::atan(init_grav_dir.x()/init_grav_dir.z());
-      }
-      else if (init_grav_dir.x() > 0)
-      {
-        phi = M_PI/2;
-      }
-      else
-      {
-        phi = -M_PI/2;
-      }
-
-      tf::Quaternion rot_y;
-      rot_y.setRotation(tf::Vector3(0, 1, 0), -phi);
-      init_grav_dir = tf::Transform(rot_y, tf::Vector3(0, 0, 0)) * init_grav_dir;
-
-      double theta;
-      if (init_grav_dir.z() != 0)
-      {
-        theta = -std::atan(init_grav_dir.y()/init_grav_dir.z());
-      }
-      else if (init_grav_dir.y() > 0)
-      {
-        theta = -M_PI/2;
-      }
-      else
-      {
-        theta = M_PI/2;
-      }
-
-      tf::Quaternion q;
-      q.setEuler(0, phi, theta);
-      current_pose = tf::Pose(q, tf::Vector3(0, 0, 0));
+      // double roll, pitch, yaw;
+      // tf::Matrix3x3 mat(q);
+      // mat.getRPY(roll, pitch, yaw);
+      // ROS_INFO_STREAM("roll: " << (roll/M_PI*180) << ", pitch: " << (pitch/M_PI*180) << ", yaw: " << (yaw/M_PI*180));
 
       last_time = cur_time;
       calibration = false;
-      return;
     }
+    return;
   }
+
+  last_time = cur_time;
 
   // velocities
   x += vx * dt;
   y += vy * dt;
   z += vz * dt;
 
-  // gravity vector
-  tf::Vector3 grav_dir
-    = tf::Transform(current_pose.getRotation(), tf::Vector3(0, 0, 0))
-      * tf::Vector3(0, 0, grav);
-
   // acceleration
-  //if (std::fabs(imu->linear_acceleration.x) >= 1.0)
-    vx += (imu->linear_acceleration.x - grav_dir.x()) * dt;
-  //if (std::fabs(imu->linear_acceleration.y) >= 1.0)
-    vy += (imu->linear_acceleration.y - grav_dir.y()) * dt;
-  //if (std::fabs(imu->linear_acceleration.z - grav) >= 1.0)
-    vz += (imu->linear_acceleration.z - grav_dir.z()) * dt;
+  tf::Vector3 acc_vec(
+    imu->linear_acceleration.x, imu->linear_acceleration.y, imu->linear_acceleration.z
+  );
+  tf::Transform transform(
+    tf::Quaternion(imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w),
+    tf::Vector3(0,0,0));
+  acc_vec = transform * acc_vec;
+  double ax = acc_vec.x();
+  double ay = acc_vec.y();
+  double az = acc_vec.z() - grav;
+  //if (std::fabs(ax) >= 1.0)
+    vx += ax * dt;
+  //if (std::fabs(ay) >= 1.0)
+    vy += ay * dt;
+  //if (std::fabs(az) >= 1.0)
+    vz += az * dt;
 
-  // update the current pose
-  tf::Quaternion new_rot;
-  new_rot.setEuler(
-    imu->angular_velocity.z * dt,
-    imu->angular_velocity.x * dt,
-    imu->angular_velocity.y * dt);
-  new_rot = new_rot * current_pose.getRotation();
-  new_rot.normalize();
-  current_pose = tf::Pose(new_rot, tf::Vector3(0, 0, 0));
+  ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
 
   nav_msgs::Odometry odom;
   odom.header = imu->header;
