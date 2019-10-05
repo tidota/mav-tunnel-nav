@@ -3,7 +3,10 @@
 // Odometry only by IMU
 //
 //
-// reference about Quaternion
+// How to calculate 3D pose from 3D accelerations.
+// https://arxiv.org/pdf/1704.06053.pdf
+//
+// If it is necessary to calculate the orientations from angular velocities.
 // https://folk.uio.no/jeanra/Informatics/QuaternionsAndIMUs.html
 //
 
@@ -73,6 +76,8 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
     return;
   }
 
+  last_time = cur_time;
+
   // velocities
   x += vx * dt;
   y += vy * dt;
@@ -96,7 +101,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   //if (std::fabs(az) >= 1.0)
     vz += az * dt;
 
-  ROS_INFO_STREAM("ax: " << ax << ", ay: " << ay << ", az: " << az);
+  ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
 
   nav_msgs::Odometry odom;
   odom.header = imu->header;
