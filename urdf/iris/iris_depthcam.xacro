@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+
+<robot name="iris_with_sensors" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/rotors_custom/iris_base.xacro" />
+
+  <!-- depth camera -->
+  <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/depthcam/depthcam.urdf.xacro" />
+  <xacro:depth_camera
+    name="camera" parent_link="${namespace}/base_link"
+    update_rate="20" min_range="0.05" max_range="30" field_of_view="1.047198">
+    <origin xyz="0.03 0 -0.06" rpy="0 0 0" />
+  </xacro:depth_camera>
+
+  <!-- ray sensors -->
+  <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/range/range1ray_14align.urdf.xacro" />
+  <xacro:range1ray_14align_macro
+    max="1.5"
+    min="0.01"
+    offX_front="0.11"
+    offX_back="-0.12"
+    offY_left="0.06"
+    offY_right="-0.06"
+    offZ_up="0.055"
+    offZ_horizon1="-0.01"
+    offZ_horizon2="0.01"
+    offZ_down="-0.085"
+  />
+</robot>

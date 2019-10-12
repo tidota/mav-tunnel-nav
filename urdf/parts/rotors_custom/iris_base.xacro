@@ -14,7 +14,10 @@
   </xacro:if>
 
   <!-- Mount an ADIS16448 IMU. -->
-  <xacro:default_imu namespace="${namespace}" parent_link="${namespace}/base_link" />
+  <!--<xacro:default_imu namespace="${namespace}" parent_link="${namespace}/base_link" />-->
+  <!-- Mount a generic IMU simulated by Gazebo. -->
+  <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/imu/imu.urdf.xacro" />
+  <xacro:imu_sensor link_name="${namespace}/base_link"/>
 
   <xacro:if value="$(arg enable_ground_truth)">
     <xacro:ground_truth_imu_and_odometry namespace="${namespace}" parent_link="${namespace}/base_link" />
@@ -30,4 +33,3 @@
   </xacro:if>
 
 </robot>
-

@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!-- references
+http://gazebosim.org/tutorials?tut=ros_gzplugins#IMUsensor(GazeboRosImuSensor)
+http://gazebosim.org/tutorials?cat=sensors&tut=sensor_noise&ver=1.9-6.0#IMUnoise
+http://gazebosim.org/tutorials?cat=sensors&tut=sensor_noise&ver=7.0%2B
+-->
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:macro name="imu_sensor" params="link_name topic:=imu update_rate:=100">
+    <gazebo reference="${link_name}">
+      <gravity>true</gravity>
+      <sensor name="imu_sensor" type="imu">
+        <always_on>true</always_on>
+        <update_rate>${update_rate}</update_rate>
+        <visualize>true</visualize>
+        <topic>${topic}</topic>
+        <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+          <topicName>imu</topicName>
+          <bodyName>${link_name}</bodyName>
+          <updateRateHZ>${update_rate}</updateRateHZ>
+          <gaussianNoise>0.0</gaussianNoise>
+          <xyzOffset>0 0 0</xyzOffset>
+          <rpyOffset>0 0 0</rpyOffset>
+          <frameName>${link_name}</frameName>
+        </plugin>
+        <pose>0 0 0 0 0 0</pose>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+</robot>

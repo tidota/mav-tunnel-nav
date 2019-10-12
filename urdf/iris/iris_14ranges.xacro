@@ -8,9 +8,10 @@
   <xacro:range1ray_14align_macro
     max="6.0"
     min="0.01"
-    step_x1="0.10"
-    step_x2="0.09"
-    step_z1="0.05"
-    step_z2="0.04"
+    offX_front="0.10"
+    offX_back="-0.09"
+    offZ_up="0.05"
+    offZ_horizon1="0.05"
+    offZ_down="-0.04"
   />
 </robot>
