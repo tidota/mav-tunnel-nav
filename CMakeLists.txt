@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(mav_tunnel_nav)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -Wno-unused-parameter")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -167,7 +167,12 @@ catkin_package(
 )
 
 add_executable(imu_odom src/imu_odom.cpp)
+add_dependencies(imu_odom ${catkin_EXPORTED_TARGETS})
 target_link_libraries(imu_odom ${catkin_LIBRARIES})
+
+add_executable(octomap_test src/octomap_test.cpp)
+add_dependencies(octomap_test ${catkin_EXPORTED_TARGETS})
+target_link_libraries(octomap_test ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(quadrotor_tunnel_nav

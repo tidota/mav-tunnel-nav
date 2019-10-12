@@ -20,6 +20,8 @@
 #include <std_msgs/ColorRGBA.h>
 #include <visualization_msgs/MarkerArray.h>
 
+#define PI 3.14159265
+
 ros::Publisher map_pub;
 octomap::OcTree *m_octree = NULL;
 
