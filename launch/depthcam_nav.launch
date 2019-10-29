@@ -59,6 +59,12 @@
       <param name="child_frame_id" value="base_link"/>
     </node>
 
+    <!-- rbpf -->
+    <node name="rbpf" pkg="mav_tunnel_nav" type="rbpf">
+      <param name="odom_topic" value="imu_odom/odometry"/>
+      <param name="child_frame_id" value="base_link"/>
+    </node>
+
     <!-- Given robot_description parameter and joint states, publish TF frames -->
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />

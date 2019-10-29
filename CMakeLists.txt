@@ -170,9 +170,13 @@ add_executable(imu_odom src/imu_odom.cpp)
 add_dependencies(imu_odom ${catkin_EXPORTED_TARGETS})
 target_link_libraries(imu_odom ${catkin_LIBRARIES})
 
-add_executable(octomap_test src/octomap_test.cpp)
-add_dependencies(octomap_test ${catkin_EXPORTED_TARGETS})
-target_link_libraries(octomap_test ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
+add_executable(rbpf src/rbpf.cpp)
+add_dependencies(rbpf ${catkin_EXPORTED_TARGETS})
+target_link_libraries(rbpf ${catkin_LIBRARIES})
+
+#add_executable(octomap_test src/octomap_test.cpp)
+#add_dependencies(octomap_test ${catkin_EXPORTED_TARGETS})
+#target_link_libraries(octomap_test ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(quadrotor_tunnel_nav
