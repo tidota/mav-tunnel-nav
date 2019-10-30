@@ -2,6 +2,33 @@
 // 191028
 // Rao-Blackwellized Particle Filter
 
+#include <cmath>
+
+#include <string>
+
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
+
+#include <octomap/octomap.h>
+#include <octomap/math/Pose6D.h>
+#include <octomap_msgs/conversions.h>
+#include <octomap_msgs/Octomap.h>
+
+#include <ros/ros.h>
+
+// #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/Range.h>
+
+#include <std_msgs/Bool.h>
+#include <std_msgs/ColorRGBA.h>
+
+#include <tf/transform_datatypes.h>
+
+#include <visualization_msgs/MarkerArray.h>
+
+#define PI 3.14159265
+
 #include "rbpf.h"
 
 ros::Publisher map_pub;
@@ -247,6 +274,27 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr& odom)
 // }
 
 ////////////////////////////////////////////////////////////////////////////////
+Particle::Particle(const double &resol,
+  const double &probHit, const double &probMiss,
+  const double &threshMin, const double &threshMax)
+{
+  this->map = new octomap::OcTree(resol);
+  this->map->setProbHit(probHit);
+  this->map->setProbMiss(probMiss);
+  this->map->setClampingThresMin(threshMin);
+  this->map->setClampingThresMax(threshMax);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Particle::Particle(): Particle(0.25, 0.7, 0.4, 0.12, 0.97){}
+
+////////////////////////////////////////////////////////////////////////////////
+Particle::~Particle()
+{
+  delete this->map;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "rbpf");
@@ -254,12 +302,6 @@ int main(int argc, char** argv)
   ros::NodeHandle pnh("~");
 
   map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
-
-  // m_octree = new octomap::OcTree(0.25);
-  // m_octree->setProbHit(0.7);
-  // m_octree->setProbMiss(0.4);
-  // m_octree->setClampingThresMin(0.12);
-  // m_octree->setClampingThresMax(0.97);
 
   // occupiedNodesVis.markers.resize(m_octree->getTreeDepth()+1);
   // m_color_occupied.r = 1;
@@ -293,6 +335,7 @@ int main(int argc, char** argv)
   //
   // ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
 
+  Particle p;
   ros::spin();
 
   return(0);
