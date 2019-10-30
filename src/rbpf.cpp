@@ -2,14 +2,21 @@
 // 191028
 // Rao-Blackwellized Particle Filter
 
-#include <cmath>
+#include "rbpf.h"
 
-#include <string>
+ros::Publisher map_pub;
+// octomap::OcTree *m_octree = NULL;
 
-#include <nav_msgs/Odometry.h>
-#include <ros/ros.h>
-// #include <sensor_msgs/Imu.h>
-#include <tf/transform_datatypes.h>
+// int marker_counter = 0;
+// visualization_msgs::MarkerArray occupiedNodesVis;
+// std_msgs::ColorRGBA m_color_occupied;
+// visualization_msgs::MarkerArray freeNodesVis;
+// std_msgs::ColorRGBA m_color_free;
+ros::Publisher marker_occupied_pub;
+ros::Publisher marker_free_pub;
+
+// ros::Subscriber r_pose_sub;
+// geometry_msgs::PoseStamped r_pose;
 
 // std::string imu_topic;
 std::string odom_topic;
@@ -115,12 +122,163 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr& odom)
 //   odom_pub.publish(odom);
 // }
 
+// void foo()
+// {
+//
+//   // octomath::Vector3 point_sensor(rng_u[i].range, 0, 0);
+//   //
+//   // octomath::Vector3 sensor_global = pose_robot.transform(pose_u[i].trans());
+//   // octomath::Vector3 point_global
+//   //   = pose_robot.transform(pose_u[i].transform(point_sensor));
+//   //
+//   // m_octree->insertRay(sensor_global, point_global, 9.0);
+//
+//   auto rostime = ros::Time::now();
+//
+//   octomath::Vector3 r_position(
+//     r_pose.pose.position.x, r_pose.pose.position.y, r_pose.pose.position.z);
+//   octomath::Quaternion r_rotation(
+//     r_pose.pose.orientation.w, r_pose.pose.orientation.x,
+//     r_pose.pose.orientation.y, r_pose.pose.orientation.z);
+//   octomath::Pose6D pose_robot(r_position, r_rotation);
+//
+//
+//   octomap_msgs::Octomap map;
+//   map.header.frame_id = "world";
+//   map.header.stamp = rostime;
+//   if (octomap_msgs::fullMapToMsg(*m_octree, map))
+//     map_pub.publish(map);
+//   else
+//     ROS_ERROR("Error serializing OctoMap");
+//
+//   if (marker_counter >= 5)
+//   {
+//     m_octree->toMaxLikelihood();
+//     m_octree->prune();
+//
+//     for (
+//       octomap::OcTree::iterator it = m_octree->begin(m_octree->getTreeDepth()),
+//       end = m_octree->end(); it != end; ++it)
+//     {
+//       if (m_octree->isNodeAtThreshold(*it))
+//       {
+//         double x = it.getX();
+//         double z = it.getZ();
+//         double y = it.getY();
+//
+//         unsigned idx = it.getDepth();
+//         geometry_msgs::Point cubeCenter;
+//         cubeCenter.x = x;
+//         cubeCenter.y = y;
+//         cubeCenter.z = z;
+//
+//         if (m_octree->isNodeOccupied(*it))
+//         {
+//           occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
+//
+//           double cosR = std::cos(PI*z/10.0)*0.8+0.2;
+//           double cosG = std::cos(PI*(2.0/3.0+z/10.0))*0.8+0.2;
+//           double cosB = std::cos(PI*(4.0/3.0+z/10.0))*0.8+0.2;
+//           std_msgs::ColorRGBA clr;
+//           clr.r = (cosR > 0)? cosR: 0;
+//           clr.g = (cosG > 0)? cosG: 0;
+//           clr.b = (cosB > 0)? cosB: 0;
+//           clr.a = 0.5;
+//           occupiedNodesVis.markers[idx].colors.push_back(clr);
+//         }
+//         else
+//         {
+//           freeNodesVis.markers[idx].points.push_back(cubeCenter);
+//         }
+//       }
+//     }
+//
+//     for (unsigned i= 0; i < occupiedNodesVis.markers.size(); ++i)
+//     {
+//       double size = m_octree->getNodeSize(i);
+//
+//       occupiedNodesVis.markers[i].header.frame_id = "world";
+//       occupiedNodesVis.markers[i].header.stamp = rostime;
+//       occupiedNodesVis.markers[i].ns = "robot";
+//       occupiedNodesVis.markers[i].id = i;
+//       occupiedNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
+//       occupiedNodesVis.markers[i].scale.x = size;
+//       occupiedNodesVis.markers[i].scale.y = size;
+//       occupiedNodesVis.markers[i].scale.z = size;
+//
+//       //occupiedNodesVis.markers[i].color = m_color_occupied;
+//
+//       if (occupiedNodesVis.markers[i].points.size() > 0)
+//         occupiedNodesVis.markers[i].action = visualization_msgs::Marker::ADD;
+//       else
+//         occupiedNodesVis.markers[i].action = visualization_msgs::Marker::DELETE;
+//     }
+//     marker_occupied_pub.publish(occupiedNodesVis);
+//
+//     for (unsigned i= 0; i < freeNodesVis.markers.size(); ++i)
+//     {
+//       double size = m_octree->getNodeSize(i);
+//
+//       freeNodesVis.markers[i].header.frame_id = "world";
+//       freeNodesVis.markers[i].header.stamp = rostime;
+//       freeNodesVis.markers[i].ns = "robot";
+//       freeNodesVis.markers[i].id = i;
+//       freeNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
+//       freeNodesVis.markers[i].scale.x = size;
+//       freeNodesVis.markers[i].scale.y = size;
+//       freeNodesVis.markers[i].scale.z = size;
+//
+//       freeNodesVis.markers[i].color = m_color_free;
+//
+//       if (freeNodesVis.markers[i].points.size() > 0)
+//         freeNodesVis.markers[i].action = visualization_msgs::Marker::ADD;
+//       else
+//         freeNodesVis.markers[i].action = visualization_msgs::Marker::DELETE;
+//     }
+//     marker_free_pub.publish(freeNodesVis);
+//
+//     marker_counter = 0;
+//   }
+//   else
+//   {
+//     marker_counter++;
+//   }
+//
+// }
+
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "rbpf");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
+
+  map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
+
+  // m_octree = new octomap::OcTree(0.25);
+  // m_octree->setProbHit(0.7);
+  // m_octree->setProbMiss(0.4);
+  // m_octree->setClampingThresMin(0.12);
+  // m_octree->setClampingThresMax(0.97);
+
+  // occupiedNodesVis.markers.resize(m_octree->getTreeDepth()+1);
+  // m_color_occupied.r = 1;
+  // m_color_occupied.g = 1;
+  // m_color_occupied.b = 0.3;
+  // m_color_occupied.a = 0.5;
+  // freeNodesVis.markers.resize(m_octree->getTreeDepth()+1);
+  // m_color_free.r = 1;
+  // m_color_free.g = 1;
+  // m_color_free.b = 1;
+  // m_color_free.a = 0.05;
+
+  // r_pose_sub = n.subscribe("pose", 1, updateRobotPose);
+  marker_occupied_pub
+    = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
+  marker_free_pub
+    = nh.advertise<visualization_msgs::MarkerArray>("map_marker_free", 1);
+
+  // marker_counter = 0;
 
   // x = y = z = 0;
   // vx = vy = vz = 0;
