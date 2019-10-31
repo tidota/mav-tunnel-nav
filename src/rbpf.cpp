@@ -5,6 +5,8 @@
 #include <cmath>
 
 #include <string>
+#include <memory>
+#include <vector>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
@@ -335,8 +337,62 @@ int main(int argc, char** argv)
   //
   // ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
 
-  Particle p;
-  ros::spin();
+  // === Initialize PF ===
+  const int n_particles = 100;
+  const double resol = 0.25;
+  const double probHit = 0.7;
+  const double probMiss = 0.4;
+  const double threshMin = 0.12;
+  const double threshMax = 0.97;
+  const double update_freq = 100;
+  const ros::Duration update_phase(1.0/update_freq);
+
+  std::vector< std::shared_ptr<Particle> > particles;
+  for (int i = 0; i < n_particles; ++i)
+  {
+    particles.push_back(
+      std::make_shared<Particle>(
+        resol, probHit, probMiss, threshMin, threshMax));
+  }
+  std::vector<double> weights(n_particles);
+  std::vector<double> errors(n_particles);
+  ros::Time last_update = ros::Time::now();
+
+  while (ros::ok())
+  {
+    // === Update PF ===
+    ros::Time now = ros::Time::now();
+    if (now > last_update + update_phase)
+    {
+      double deltaT = (now - last_update).toSec();
+      last_update = now;
+      ROS_INFO_STREAM("PF update: " << now);
+      // Get sensory data (IMU, sonar, depth cam)
+      // TODO
+
+      // init weights and errors
+      for (int i = 0; i < n_particles; ++i)
+      {
+        weights[i] = 0;
+        errors[i] = 0;
+      }
+
+      // predict PF
+      // TODO
+
+      // weight PF
+      // TODO
+
+      // resample PF (and update map)
+      // TODO
+
+      // initialize the time step
+      // TODO
+
+    }
+
+    ros::spinOnce();
+  }
 
   return(0);
 }
