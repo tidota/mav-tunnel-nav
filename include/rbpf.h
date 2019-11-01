@@ -10,6 +10,10 @@ class Particle
 {
   // pose
   private: tf::Pose pose;
+  // velocities
+  private: tf::Vector3 vel_linear;
+  // angular rate
+  private: tf::Vector3 vel_angle;
   // map
   private: octomap::OcTree *map;
 

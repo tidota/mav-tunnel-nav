@@ -30,19 +30,21 @@ file(MAKE_DIRECTORY ${CATKIN_DEVEL_PREFIX}/include)
 find_package(gazebo REQUIRED)
 find_package(ignition-transport4 REQUIRED)
 
+# PCL
+find_package(PCL 1.7 REQUIRED)
+
 # Octomap
 find_package(octomap REQUIRED)
 
 # MRPT packages
-find_package(MRPT 1.5 REQUIRED gui obs slam)
-message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-if(MRPT_VERSION VERSION_LESS "1.9.9")
-  set (CMAKE_CXX_STANDARD 14)
-endif()
+# find_package(MRPT 1.5 REQUIRED gui obs slam)
+# message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
+# if(MRPT_VERSION VERSION_LESS "1.9.9")
+#   set (CMAKE_CXX_STANDARD 14)
+# endif()
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
-
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -150,6 +152,7 @@ include_directories(
   include
   ${GAZEBO_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
   ${OCTOMAP_INCLUDE_DIRS}
 )
 
@@ -172,7 +175,11 @@ target_link_libraries(imu_odom ${catkin_LIBRARIES})
 
 add_executable(rbpf src/rbpf.cpp)
 add_dependencies(rbpf ${catkin_EXPORTED_TARGETS})
-target_link_libraries(rbpf ${catkin_LIBRARIES})
+target_link_libraries(rbpf
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${OCTOMAP_LIBRARIES}
+)
 
 #add_executable(octomap_test src/octomap_test.cpp)
 #add_dependencies(octomap_test ${catkin_EXPORTED_TARGETS})

@@ -6,6 +6,7 @@
 
 #include <string>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 #include <geometry_msgs/PoseStamped.h>
@@ -17,9 +18,14 @@
 #include <octomap_msgs/conversions.h>
 #include <octomap_msgs/Octomap.h>
 
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
 #include <ros/ros.h>
 
 // #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/Range.h>
 
 #include <std_msgs/Bool.h>
@@ -47,8 +53,8 @@ ros::Publisher marker_free_pub;
 // ros::Subscriber r_pose_sub;
 // geometry_msgs::PoseStamped r_pose;
 
-// std::string imu_topic;
 std::string odom_topic;
+std::string pc_topic;
 // ros::Publisher odom_pub;
 std::string child_frame_id;
 
@@ -62,11 +68,29 @@ std::string child_frame_id;
 // tf::Vector3 init_grav_dir;
 // int sample_num;
 
+
+nav_msgs::Odometry odom_buff;
+std::mutex odom_mutex;
+
+typedef pcl::PointXYZRGB PointT;
+typedef pcl::PointCloud<PointT> PointCloudT;
+sensor_msgs::PointCloud2 pc_buff;
+std::mutex pc_mutex;
+
 ////////////////////////////////////////////////////////////////////////////////
-void odomCallback(const nav_msgs::Odometry::ConstPtr& odom)
+void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-  ROS_INFO("odomCallback!!!");
+  std::lock_guard<std::mutex> lk(odom_mutex);
+  odom_buff = *msg;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+void pcCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
+{
+  std::lock_guard<std::mutex> lk(pc_mutex);
+  pc_buff = *msg;
+}
+
 // void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 // {
 //   ros::Time cur_time = ros::Time::now();
@@ -328,11 +352,12 @@ int main(int argc, char** argv)
   // vx = vy = vz = 0;
   // last_time = ros::Time::now();
 
-  // pnh.getParam("imu_topic", imu_topic);
   pnh.getParam("odom_topic", odom_topic);
+  pnh.getParam("pc_topic", pc_topic);
   pnh.getParam("child_frame_id", child_frame_id);
 
   ros::Subscriber odom_sub = nh.subscribe(odom_topic, 1000, odomCallback);
+  ros::Subscriber pc_sub = nh.subscribe(pc_topic, 1000, pcCallback);
   // odom_pub = nh.advertise<nav_msgs::Odometry>(odom_topic, 1000);
   //
   // ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
@@ -366,6 +391,12 @@ int main(int argc, char** argv)
   std::vector<double> errors(n_particles);
   ros::Time last_update = ros::Time::now();
 
+  tf::Pose pose_prev;
+  tf::Pose pose_curr;
+  tf::Transform vel;
+
+  PointCloudT::Ptr depth_cam_pc(new PointCloudT());
+
   while (ros::ok())
   {
     // === Update PF ===
@@ -374,9 +405,45 @@ int main(int argc, char** argv)
     {
       double deltaT = (now - last_update).toSec();
       last_update = now;
-      ROS_INFO_STREAM("PF update: " << now);
-      // Get sensory data (IMU, sonar, depth cam)
-      // TODO
+
+      // Get sensory data (odom, depth cam)
+      {
+        std::lock_guard<std::mutex> lk(odom_mutex);
+        pose_prev = pose_curr;
+        tf::Vector3 pos(
+          odom_buff.pose.pose.position.x,
+          odom_buff.pose.pose.position.y,
+          odom_buff.pose.pose.position.z);
+        tf::Quaternion dir(
+          odom_buff.pose.pose.orientation.x,
+          odom_buff.pose.pose.orientation.y,
+          odom_buff.pose.pose.orientation.z,
+          odom_buff.pose.pose.orientation.w);
+        pose_curr.setOrigin(pos);
+        pose_curr.setRotation(dir);
+        tf::Vector3 vel_lin(
+          odom_buff.twist.twist.linear.x,
+          odom_buff.twist.twist.linear.y,
+          odom_buff.twist.twist.linear.z);
+        tf::Quaternion vel_ang;
+        vel_ang.setRPY(
+          odom_buff.twist.twist.angular.x,
+          odom_buff.twist.twist.angular.y,
+          odom_buff.twist.twist.angular.z);
+        vel.setOrigin(vel_lin);
+        vel.setRotation(vel_ang);
+      }
+      {
+        std::lock_guard<std::mutex> lk(pc_mutex);
+        if (pc_buff.height * pc_buff.width > 1)
+        {
+          pcl::fromROSMsg(pc_buff, *depth_cam_pc);
+        }
+        else
+        {
+          continue;
+        }
+      }
 
       // init weights and errors
       for (int i = 0; i < n_particles; ++i)
@@ -385,10 +452,10 @@ int main(int argc, char** argv)
         errors[i] = 0;
       }
 
-      // predict PF
+      // predict PF (use odometory)
       // TODO
 
-      // weight PF
+      // weight PF (use depth cam)
       // TODO
 
       // resample PF (and update map)
