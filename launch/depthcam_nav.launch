@@ -63,6 +63,15 @@
     <node name="rbpf" pkg="mav_tunnel_nav" type="rbpf">
       <param name="odom_topic" value="imu_odom/odometry"/>
       <param name="child_frame_id" value="base_link"/>
+
+      <param name="n_particles" value="100"/>
+      <param name="update_freq" value="100"/>
+
+      <param name="map_resol" value="0.25"/>
+      <param name="map_probHit" value="0.7"/>
+      <param name="map_probMiss" value="0.4"/>
+      <param name="map_threshMin" value="0.12"/>
+      <param name="map_threshMax" value="0.97"/>
     </node>
 
     <!-- Given robot_description parameter and joint states, publish TF frames -->

@@ -338,14 +338,22 @@ int main(int argc, char** argv)
   // ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
 
   // === Initialize PF ===
-  const int n_particles = 100;
-  const double resol = 0.25;
-  const double probHit = 0.7;
-  const double probMiss = 0.4;
-  const double threshMin = 0.12;
-  const double threshMax = 0.97;
-  const double update_freq = 100;
+  int n_particles;
+  double update_freq;
+  pnh.getParam("n_particles", n_particles);
+  pnh.getParam("update_freq", update_freq);
   const ros::Duration update_phase(1.0/update_freq);
+
+  double resol;
+  double probHit;
+  double probMiss;
+  double threshMin;
+  double threshMax;
+  pnh.getParam("map_resol", resol);
+  pnh.getParam("map_probHit", probHit);
+  pnh.getParam("map_probMiss", probMiss);
+  pnh.getParam("map_threshMin", threshMin);
+  pnh.getParam("map_threshMax", threshMax);
 
   std::vector< std::shared_ptr<Particle> > particles;
   for (int i = 0; i < n_particles; ++i)
