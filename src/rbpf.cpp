@@ -7,6 +7,7 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <random>
 #include <vector>
 
 #include <geometry_msgs/PoseStamped.h>
@@ -327,6 +328,11 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
+  // random numbers
+  std::random_device rd{};
+  std::mt19937 gen{rd()};
+  std::uniform_real_distribution<> dis(0, 1.0);
+
   map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
 
   // occupiedNodesVis.markers.resize(m_octree->getTreeDepth()+1);
@@ -403,8 +409,11 @@ int main(int argc, char** argv)
     ros::Time now = ros::Time::now();
     if (now > last_update + update_phase)
     {
-      double deltaT = (now - last_update).toSec();
+      // initialize the time step
       last_update = now;
+
+      // calculate the delta T
+      double deltaT = (now - last_update).toSec();
 
       // Get sensory data (odom, depth cam)
       {
@@ -453,17 +462,49 @@ int main(int argc, char** argv)
       }
 
       // predict PF (use odometory)
-      // TODO
+      for (auto p: particles)
+      {
+        // TODO
+        // move the particle
+        // odom => vel * deltaT => distance => add it to the pose
+      }
 
       // weight PF (use depth cam)
-      // TODO
+      double weight_sum = 0;
+      for (int i = 0; i < n_particles; ++i)
+      {
+        // TODO
+        // depth Cam + map => eval
+        weights[i] = 0;
+
+        weight_sum += weights[i];
+      }
+
 
       // resample PF (and update map)
-      // TODO
+      if (weight_sum != 0)
+      {
+        // create children population
+        // TODO
 
-      // initialize the time step
-      // TODO
+        for (int i = 0; i < n_particles; ++i)
+        {
+          double rval = dis(gen);
+          double weight_buff = 0;
+          int index;
+          for (index = 0; index < n_particles; ++index)
+          {
+            weight_buff += weights[index]/weight_sum;
+            if (rval <= weight_buff)
+              break;
+          }
+          // copy a particle specified by the index to the population
+          // TODO
+        }
 
+        // Copy the children to the parents.
+        // TODO
+      }
     }
 
     ros::spinOnce();
