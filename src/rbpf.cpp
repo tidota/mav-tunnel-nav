@@ -313,6 +313,12 @@ Particle::Particle(const double &resol,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+Particle::Particle(const Particle &src)
+{
+  // TODO
+}
+
+////////////////////////////////////////////////////////////////////////////////
 Particle::Particle(): Particle(0.25, 0.7, 0.4, 0.12, 0.97){}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -485,25 +491,26 @@ int main(int argc, char** argv)
       if (weight_sum != 0)
       {
         // create children population
-        // TODO
+        std::vector< std::shared_ptr<Particle> > new_generation;
 
         for (int i = 0; i < n_particles; ++i)
         {
           double rval = dis(gen);
           double weight_buff = 0;
-          int index;
-          for (index = 0; index < n_particles; ++index)
+          int index = 0;
+          for (; index < n_particles - 1; ++index)
           {
             weight_buff += weights[index]/weight_sum;
             if (rval <= weight_buff)
               break;
           }
           // copy a particle specified by the index to the population
-          // TODO
+          new_generation.push_back(std::make_shared<Particle>(*particles[index]));
         }
 
         // Copy the children to the parents.
-        // TODO
+        particles.clear();
+        particles = new_generation;
       }
     }
 

@@ -20,6 +20,7 @@ class Particle
   public: Particle(const double &resol,
     const double &probHit, const double &probMiss,
     const double &threshMin, const double &threshMax);
+  public: Particle(const Particle &src);
   public: Particle();
   public: ~Particle();
 };
