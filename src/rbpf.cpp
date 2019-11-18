@@ -315,7 +315,13 @@ Particle::Particle(const double &resol,
 ////////////////////////////////////////////////////////////////////////////////
 Particle::Particle(const Particle &src)
 {
-  // TODO
+  // copy the localization data
+  this->pose = src.pose;
+  this->vel_linear = src.vel_linear;
+  this->vel_angle = src.vel_angle;
+
+  // copy the mapping data
+  this->map = new octomap::OcTree(*src.map);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
