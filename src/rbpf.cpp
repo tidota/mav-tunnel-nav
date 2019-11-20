@@ -334,6 +334,27 @@ Particle::~Particle()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void Particle::predict(
+  const tf::Vector3 &lin, const tf::Vector3 &ang,
+  const double &deltaT, std::mt19937 &gen)
+{
+  this->vel_linear = lin;
+  this->vel_angle = ang;
+  std::normal_distribution<> motion_noise_lin(0, 0.3);
+  std::normal_distribution<> motion_noise_ang(0, 0.05);
+  tf::Vector3 mov_lin(
+    lin.x() * deltaT + motion_noise_lin(gen),
+    lin.y() * deltaT + motion_noise_lin(gen),
+    lin.z() * deltaT + motion_noise_lin(gen));
+  tf::Quaternion mov_ang;
+  mov_ang.setRPY(
+    ang.x() * deltaT + motion_noise_ang(gen),
+    ang.y() * deltaT + motion_noise_ang(gen),
+    ang.z() * deltaT + motion_noise_ang(gen));
+  this->pose = this->pose * tf::Transform(mov_ang, mov_lin);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "rbpf");
@@ -476,9 +497,17 @@ int main(int argc, char** argv)
       // predict PF (use odometory)
       for (auto p: particles)
       {
-        // TODO
         // move the particle
-        // odom => vel * deltaT => distance => add it to the pose
+        p->predict(
+          tf::Vector3(
+            odom_buff.twist.twist.linear.x,
+            odom_buff.twist.twist.linear.y,
+            odom_buff.twist.twist.linear.z),
+          tf::Vector3(
+            odom_buff.twist.twist.angular.x,
+            odom_buff.twist.twist.angular.y,
+            odom_buff.twist.twist.angular.z),
+          deltaT, gen);
       }
 
       // weight PF (use depth cam)
