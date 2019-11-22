@@ -73,8 +73,6 @@ std::string child_frame_id;
 nav_msgs::Odometry odom_buff;
 std::mutex odom_mutex;
 
-typedef pcl::PointXYZRGB PointT;
-typedef pcl::PointCloud<PointT> PointCloudT;
 sensor_msgs::PointCloud2 pc_buff;
 std::mutex pc_mutex;
 
@@ -355,6 +353,36 @@ void Particle::predict(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+double Particle::evaluate(const PointCloudT::Ptr &scan)
+{
+  double log_lik = 0;
+
+  // for all point in the point cloud
+  octomap::OcTreeKey key;
+  octomap::OcTreeNode *node;
+  for (unsigned int ip = 0; ip < scan->points.size(); ++ip)
+  {
+    if (this->map->coordToKeyChecked(
+          scan->points[ip].x, scan->points[ip].y, scan->points[ip].z, key)
+        && (node = this->map->search(key,0)))
+    {
+      log_lik += std::log(node->getOccupancy());
+    }
+  }
+
+  return std::exp(log_lik);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Particle::update_map(const PointCloudT::Ptr &scan)
+{
+  // TODO
+  // particles[i]->map->insertPointCloud(
+  //   depth_cam_pc, particles[i]->pose
+  // )
+}
+
+////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "rbpf");
@@ -514,13 +542,10 @@ int main(int argc, char** argv)
       double weight_sum = 0;
       for (int i = 0; i < n_particles; ++i)
       {
-        // TODO
-        // depth Cam + map => eval
-        weights[i] = 0;
-
+        // Calculate a probability ranging from 0 to 1.
+        weights[i] = particles[i]->evaluate(depth_cam_pc);
         weight_sum += weights[i];
       }
-
 
       // resample PF (and update map)
       if (weight_sum != 0)
@@ -540,12 +565,19 @@ int main(int argc, char** argv)
               break;
           }
           // copy a particle specified by the index to the population
-          new_generation.push_back(std::make_shared<Particle>(*particles[index]));
+          new_generation.push_back(
+            std::make_shared<Particle>(*particles[index]));
         }
 
         // Copy the children to the parents.
         particles.clear();
         particles = new_generation;
+
+        // update the map
+        for (auto p: particles)
+        {
+          p->update_map(depth_cam_pc);
+        }
       }
     }
 

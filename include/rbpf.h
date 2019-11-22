@@ -7,6 +7,9 @@
 #include <octomap/octomap.h>
 #include <tf/transform_datatypes.h>
 
+typedef pcl::PointXYZRGB PointT;
+typedef pcl::PointCloud<PointT> PointCloudT;
+
 class Particle
 {
   // pose
@@ -27,6 +30,8 @@ class Particle
   public: void predict(
     const tf::Vector3 &lin, const tf::Vector3 &ang,
     const double &deltaT, std::mt19937 &gen);
+  public: double evaluate(const PointCloudT::Ptr &scan);
+  public: void update_map(const PointCloudT::Ptr &scan);
 };
 
 #endif
