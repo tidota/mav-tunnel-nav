@@ -332,6 +332,12 @@ Particle::~Particle()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+const octomap::OcTree* Particle::getMap()
+{
+  return this->map;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Particle::predict(
   const tf::Vector3 &lin, const tf::Vector3 &ang,
   const double &deltaT, std::mt19937 &gen)
@@ -411,12 +417,13 @@ int main(int argc, char** argv)
   // m_color_free.g = 1;
   // m_color_free.b = 1;
   // m_color_free.a = 0.05;
+  visualization_msgs::MarkerArray occupiedNodesVis;
 
   // r_pose_sub = n.subscribe("pose", 1, updateRobotPose);
   marker_occupied_pub
     = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
-  marker_free_pub
-    = nh.advertise<visualization_msgs::MarkerArray>("map_marker_free", 1);
+  // marker_free_pub
+  //   = nh.advertise<visualization_msgs::MarkerArray>("map_marker_free", 1);
 
   // marker_counter = 0;
 
@@ -469,6 +476,9 @@ int main(int argc, char** argv)
 
   PointCloudT::Ptr depth_cam_pc(new PointCloudT());
 
+  int counts_publish = 0;
+  int counts_visualize = 0;
+
   while (ros::ok())
   {
     // === Update PF ===
@@ -508,7 +518,7 @@ int main(int argc, char** argv)
         vel.setOrigin(vel_lin);
         vel.setRotation(vel_ang);
       }
-      
+
       octomap::Pointcloud octocloud;
       {
         std::lock_guard<std::mutex> lk(pc_mutex);
@@ -530,7 +540,7 @@ int main(int argc, char** argv)
         }
       }
 
-      // init weights and errors
+      // initialize weights and errors
       for (int i = 0; i < n_particles; ++i)
       {
         weights[i] = 0;
@@ -554,12 +564,19 @@ int main(int argc, char** argv)
       }
 
       // weight PF (use depth cam)
+      double max_weight = 0;
+      int index_max = 0;
       double weight_sum = 0;
       for (int i = 0; i < n_particles; ++i)
       {
         // Calculate a probability ranging from 0 to 1.
         weights[i] = particles[i]->evaluate(octocloud);
         weight_sum += weights[i];
+        if (weights[i] > max_weight)
+        {
+          max_weight = weights[i];
+          index_max = i;
+        }
       }
 
       // resample PF (and update map)
@@ -593,6 +610,92 @@ int main(int argc, char** argv)
         {
           p->update_map(octocloud);
         }
+      }
+
+      // publish data
+      if (counts_publish >= 5)
+      {
+        octomap_msgs::Octomap map;
+        map.header.frame_id = "world";
+        map.header.stamp = now;
+        if (octomap_msgs::fullMapToMsg(*particles[index_max]->getMap(), map))
+          map_pub.publish(map);
+        else
+          ROS_ERROR("Error serializing OctoMap");
+        counts_publish = 0;
+      }
+      else
+      {
+        ++counts_publish;
+      }
+
+      // visualization
+      if (counts_visualize >= 10)
+      {
+        const octomap::OcTree* m = particles[index_max]->getMap();
+        for (
+          octomap::OcTree::iterator it = m->begin(m->getTreeDepth()),
+          end = m->end(); it != end; ++it)
+        {
+          if (m->isNodeAtThreshold(*it))
+          {
+            double x = it.getX();
+            double z = it.getZ();
+            double y = it.getY();
+
+            unsigned idx = it.getDepth();
+            geometry_msgs::Point cubeCenter;
+            cubeCenter.x = x;
+            cubeCenter.y = y;
+            cubeCenter.z = z;
+
+            if (m->isNodeOccupied(*it))
+            {
+              occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
+
+              double cosR = std::cos(PI*z/10.0)*0.8+0.2;
+              double cosG = std::cos(PI*(2.0/3.0+z/10.0))*0.8+0.2;
+              double cosB = std::cos(PI*(4.0/3.0+z/10.0))*0.8+0.2;
+              std_msgs::ColorRGBA clr;
+              clr.r = (cosR > 0)? cosR: 0;
+              clr.g = (cosG > 0)? cosG: 0;
+              clr.b = (cosB > 0)? cosB: 0;
+              clr.a = 0.5;
+              occupiedNodesVis.markers[idx].colors.push_back(clr);
+            }
+          }
+        }
+
+        for (unsigned i= 0; i < occupiedNodesVis.markers.size(); ++i)
+        {
+          double size = m->getNodeSize(i);
+
+          occupiedNodesVis.markers[i].header.frame_id = "world";
+          occupiedNodesVis.markers[i].header.stamp = now;
+          occupiedNodesVis.markers[i].ns = "robot";
+          occupiedNodesVis.markers[i].id = i;
+          occupiedNodesVis.markers[i].type
+            = visualization_msgs::Marker::CUBE_LIST;
+          occupiedNodesVis.markers[i].scale.x = size;
+          occupiedNodesVis.markers[i].scale.y = size;
+          occupiedNodesVis.markers[i].scale.z = size;
+
+          //occupiedNodesVis.markers[i].color = m_color_occupied;
+
+          if (occupiedNodesVis.markers[i].points.size() > 0)
+            occupiedNodesVis.markers[i].action
+              = visualization_msgs::Marker::ADD;
+          else
+            occupiedNodesVis.markers[i].action
+              = visualization_msgs::Marker::DELETE;
+        }
+        marker_occupied_pub.publish(occupiedNodesVis);
+
+        counts_visualize = 0;
+      }
+      else
+      {
+        ++counts_visualize;
       }
     }
 

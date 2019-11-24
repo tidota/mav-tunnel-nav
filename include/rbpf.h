@@ -20,6 +20,7 @@ class Particle
   private: tf::Vector3 vel_angle;
   // map
   private: octomap::OcTree *map;
+  public: const octomap::OcTree* getMap();
 
   public: Particle(const double &resol,
     const double &probHit, const double &probMiss,
