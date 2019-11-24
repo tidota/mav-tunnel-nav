@@ -30,8 +30,8 @@ class Particle
   public: void predict(
     const tf::Vector3 &lin, const tf::Vector3 &ang,
     const double &deltaT, std::mt19937 &gen);
-  public: double evaluate(const PointCloudT::Ptr &scan);
-  public: void update_map(const PointCloudT::Ptr &scan);
+  public: double evaluate(const octomap::Pointcloud &scan);
+  public: void update_map(const octomap::Pointcloud &scan);
 };
 
 #endif

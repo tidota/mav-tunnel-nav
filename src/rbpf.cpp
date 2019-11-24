@@ -353,17 +353,17 @@ void Particle::predict(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-double Particle::evaluate(const PointCloudT::Ptr &scan)
+double Particle::evaluate(const octomap::Pointcloud &scan)
 {
   double log_lik = 0;
 
   // for all point in the point cloud
   octomap::OcTreeKey key;
   octomap::OcTreeNode *node;
-  for (unsigned int ip = 0; ip < scan->points.size(); ++ip)
+  for (unsigned int ip = 0; ip < scan.size(); ++ip)
   {
     if (this->map->coordToKeyChecked(
-          scan->points[ip].x, scan->points[ip].y, scan->points[ip].z, key)
+          scan[ip].x(), scan[ip].y(), scan[ip].z(), key)
         && (node = this->map->search(key,0)))
     {
       log_lik += std::log(node->getOccupancy());
@@ -374,12 +374,17 @@ double Particle::evaluate(const PointCloudT::Ptr &scan)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Particle::update_map(const PointCloudT::Ptr &scan)
+void Particle::update_map(const octomap::Pointcloud &scan)
 {
-  // TODO
-  // particles[i]->map->insertPointCloud(
-  //   depth_cam_pc, particles[i]->pose
-  // )
+  octomath::Vector3 sensor_org;
+  tf::Vector3 pose_org = this->pose.getOrigin();
+  tf::Quaternion pose_rot = this->pose.getRotation();
+  octomath::Pose6D frame_org(
+    octomath::Vector3(pose_org.x(), pose_org.y(), pose_org.z()),
+    octomath::Quaternion(
+      pose_rot.w(), pose_rot.x(), pose_rot.y(), pose_rot.z())
+  );
+  this->map->insertPointCloud(scan, sensor_org, frame_org);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,11 +508,21 @@ int main(int argc, char** argv)
         vel.setOrigin(vel_lin);
         vel.setRotation(vel_ang);
       }
+      
+      octomap::Pointcloud octocloud;
       {
         std::lock_guard<std::mutex> lk(pc_mutex);
         if (pc_buff.height * pc_buff.width > 1)
         {
           pcl::fromROSMsg(pc_buff, *depth_cam_pc);
+          for (unsigned int i = 0; i < depth_cam_pc->points.size(); ++i)
+          {
+            octocloud.push_back(octomap::point3d(
+                depth_cam_pc->points[i].x,
+                depth_cam_pc->points[i].y,
+                depth_cam_pc->points[i].z
+            ));
+          }
         }
         else
         {
@@ -543,7 +558,7 @@ int main(int argc, char** argv)
       for (int i = 0; i < n_particles; ++i)
       {
         // Calculate a probability ranging from 0 to 1.
-        weights[i] = particles[i]->evaluate(depth_cam_pc);
+        weights[i] = particles[i]->evaluate(octocloud);
         weight_sum += weights[i];
       }
 
@@ -576,7 +591,7 @@ int main(int argc, char** argv)
         // update the map
         for (auto p: particles)
         {
-          p->update_map(depth_cam_pc);
+          p->update_map(octocloud);
         }
       }
     }
