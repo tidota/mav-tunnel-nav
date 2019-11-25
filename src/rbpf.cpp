@@ -20,6 +20,7 @@
 #include <octomap_msgs/Octomap.h>
 
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/filters/filter.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -278,12 +279,14 @@ int main(int argc, char** argv)
         if (pc_buff.height * pc_buff.width > 1)
         {
           pcl::fromROSMsg(pc_buff, *depth_cam_pc);
-          for (unsigned int i = 0; i < depth_cam_pc->points.size(); ++i)
+          std::vector<int> indx_map;
+          pcl::removeNaNFromPointCloud(*depth_cam_pc, *depth_cam_pc, indx_map);
+          for (unsigned int i = 0; i < indx_map.size(); ++i)
           {
             octocloud.push_back(octomap::point3d(
-                depth_cam_pc->points[i].x,
-                depth_cam_pc->points[i].y,
-                depth_cam_pc->points[i].z
+                depth_cam_pc->points[indx_map[i]].x,
+                depth_cam_pc->points[indx_map[i]].y,
+                depth_cam_pc->points[indx_map[i]].z
             ));
           }
         }
@@ -432,7 +435,7 @@ int main(int argc, char** argv)
 
           occupiedNodesVis.markers[i].header.frame_id = "world";
           occupiedNodesVis.markers[i].header.stamp = now;
-          occupiedNodesVis.markers[i].ns = "robot";
+          occupiedNodesVis.markers[i].ns = "iris";
           occupiedNodesVis.markers[i].id = i;
           occupiedNodesVis.markers[i].type
             = visualization_msgs::Marker::CUBE_LIST;
