@@ -41,15 +41,7 @@
 #include "rbpf.h"
 
 ros::Publisher map_pub;
-// octomap::OcTree *m_octree = NULL;
-
-// int marker_counter = 0;
-// visualization_msgs::MarkerArray occupiedNodesVis;
-// std_msgs::ColorRGBA m_color_occupied;
-// visualization_msgs::MarkerArray freeNodesVis;
-// std_msgs::ColorRGBA m_color_free;
 ros::Publisher marker_occupied_pub;
-ros::Publisher marker_free_pub;
 
 // ros::Subscriber r_pose_sub;
 // geometry_msgs::PoseStamped r_pose;
@@ -58,17 +50,6 @@ std::string odom_topic;
 std::string pc_topic;
 // ros::Publisher odom_pub;
 std::string child_frame_id;
-
-// double grav = 9.81;
-// double x, y, z;
-// double vx, vy, vz;
-// ros::Time last_time;
-// bool initial_imu = true;
-// bool calibration = true;
-//
-// tf::Vector3 init_grav_dir;
-// int sample_num;
-
 
 nav_msgs::Odometry odom_buff;
 std::mutex odom_mutex;
@@ -89,214 +70,6 @@ void pcCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
   std::lock_guard<std::mutex> lk(pc_mutex);
   pc_buff = *msg;
 }
-
-// void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
-// {
-//   ros::Time cur_time = ros::Time::now();
-//
-//   if (initial_imu)
-//   {
-//     init_grav_dir = tf::Vector3(
-//                       imu->linear_acceleration.x,
-//                       imu->linear_acceleration.y,
-//                       imu->linear_acceleration.z);
-//     sample_num = 1;
-//     last_time = cur_time;
-//     initial_imu = false;
-//     return;
-//   }
-//
-//   double dt = (cur_time - last_time).toSec();
-//
-//   if (calibration)
-//   {
-//     init_grav_dir += tf::Vector3(
-//                       imu->linear_acceleration.x,
-//                       imu->linear_acceleration.y,
-//                       imu->linear_acceleration.z);
-//     sample_num++;
-//     if (dt > 3.0 && sample_num >= 100)
-//     {
-//       init_grav_dir /= sample_num;
-//       grav = init_grav_dir.length();
-//
-//       // double roll, pitch, yaw;
-//       // tf::Matrix3x3 mat(q);
-//       // mat.getRPY(roll, pitch, yaw);
-//       // ROS_INFO_STREAM("roll: " << (roll/M_PI*180) << ", pitch: " << (pitch/M_PI*180) << ", yaw: " << (yaw/M_PI*180));
-//
-//       last_time = cur_time;
-//       calibration = false;
-//     }
-//     return;
-//   }
-//
-//   last_time = cur_time;
-//
-//   // velocities
-//   x += vx * dt;
-//   y += vy * dt;
-//   z += vz * dt;
-//
-//   // acceleration
-//   tf::Vector3 acc_vec(
-//     imu->linear_acceleration.x, imu->linear_acceleration.y, imu->linear_acceleration.z
-//   );
-//   tf::Transform transform(
-//     tf::Quaternion(imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w),
-//     tf::Vector3(0,0,0));
-//   acc_vec = transform * acc_vec;
-//   double ax = acc_vec.x();
-//   double ay = acc_vec.y();
-//   double az = acc_vec.z() - grav;
-//   //if (std::fabs(ax) >= 1.0)
-//     vx += ax * dt;
-//   //if (std::fabs(ay) >= 1.0)
-//     vy += ay * dt;
-//   //if (std::fabs(az) >= 1.0)
-//     vz += az * dt;
-//
-//   ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
-//
-//   nav_msgs::Odometry odom;
-//   odom.header = imu->header;
-//   odom.header.frame_id = "world";
-//   odom.child_frame_id = child_frame_id;
-//   odom.pose.pose.position.x = x;
-//   odom.pose.pose.position.y = y;
-//   odom.pose.pose.position.z = z;
-//   odom.pose.pose.orientation = imu->orientation;
-//   odom.twist.twist.linear.x = vx;
-//   odom.twist.twist.linear.y = vy;
-//   odom.twist.twist.linear.z = vz;
-//   odom.twist.twist.angular = imu->angular_velocity;
-//
-//   odom_pub.publish(odom);
-// }
-
-// void foo()
-// {
-//
-//   // octomath::Vector3 point_sensor(rng_u[i].range, 0, 0);
-//   //
-//   // octomath::Vector3 sensor_global = pose_robot.transform(pose_u[i].trans());
-//   // octomath::Vector3 point_global
-//   //   = pose_robot.transform(pose_u[i].transform(point_sensor));
-//   //
-//   // m_octree->insertRay(sensor_global, point_global, 9.0);
-//
-//   auto rostime = ros::Time::now();
-//
-//   octomath::Vector3 r_position(
-//     r_pose.pose.position.x, r_pose.pose.position.y, r_pose.pose.position.z);
-//   octomath::Quaternion r_rotation(
-//     r_pose.pose.orientation.w, r_pose.pose.orientation.x,
-//     r_pose.pose.orientation.y, r_pose.pose.orientation.z);
-//   octomath::Pose6D pose_robot(r_position, r_rotation);
-//
-//
-//   octomap_msgs::Octomap map;
-//   map.header.frame_id = "world";
-//   map.header.stamp = rostime;
-//   if (octomap_msgs::fullMapToMsg(*m_octree, map))
-//     map_pub.publish(map);
-//   else
-//     ROS_ERROR("Error serializing OctoMap");
-//
-//   if (marker_counter >= 5)
-//   {
-//     m_octree->toMaxLikelihood();
-//     m_octree->prune();
-//
-//     for (
-//       octomap::OcTree::iterator it = m_octree->begin(m_octree->getTreeDepth()),
-//       end = m_octree->end(); it != end; ++it)
-//     {
-//       if (m_octree->isNodeAtThreshold(*it))
-//       {
-//         double x = it.getX();
-//         double z = it.getZ();
-//         double y = it.getY();
-//
-//         unsigned idx = it.getDepth();
-//         geometry_msgs::Point cubeCenter;
-//         cubeCenter.x = x;
-//         cubeCenter.y = y;
-//         cubeCenter.z = z;
-//
-//         if (m_octree->isNodeOccupied(*it))
-//         {
-//           occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
-//
-//           double cosR = std::cos(PI*z/10.0)*0.8+0.2;
-//           double cosG = std::cos(PI*(2.0/3.0+z/10.0))*0.8+0.2;
-//           double cosB = std::cos(PI*(4.0/3.0+z/10.0))*0.8+0.2;
-//           std_msgs::ColorRGBA clr;
-//           clr.r = (cosR > 0)? cosR: 0;
-//           clr.g = (cosG > 0)? cosG: 0;
-//           clr.b = (cosB > 0)? cosB: 0;
-//           clr.a = 0.5;
-//           occupiedNodesVis.markers[idx].colors.push_back(clr);
-//         }
-//         else
-//         {
-//           freeNodesVis.markers[idx].points.push_back(cubeCenter);
-//         }
-//       }
-//     }
-//
-//     for (unsigned i= 0; i < occupiedNodesVis.markers.size(); ++i)
-//     {
-//       double size = m_octree->getNodeSize(i);
-//
-//       occupiedNodesVis.markers[i].header.frame_id = "world";
-//       occupiedNodesVis.markers[i].header.stamp = rostime;
-//       occupiedNodesVis.markers[i].ns = "robot";
-//       occupiedNodesVis.markers[i].id = i;
-//       occupiedNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
-//       occupiedNodesVis.markers[i].scale.x = size;
-//       occupiedNodesVis.markers[i].scale.y = size;
-//       occupiedNodesVis.markers[i].scale.z = size;
-//
-//       //occupiedNodesVis.markers[i].color = m_color_occupied;
-//
-//       if (occupiedNodesVis.markers[i].points.size() > 0)
-//         occupiedNodesVis.markers[i].action = visualization_msgs::Marker::ADD;
-//       else
-//         occupiedNodesVis.markers[i].action = visualization_msgs::Marker::DELETE;
-//     }
-//     marker_occupied_pub.publish(occupiedNodesVis);
-//
-//     for (unsigned i= 0; i < freeNodesVis.markers.size(); ++i)
-//     {
-//       double size = m_octree->getNodeSize(i);
-//
-//       freeNodesVis.markers[i].header.frame_id = "world";
-//       freeNodesVis.markers[i].header.stamp = rostime;
-//       freeNodesVis.markers[i].ns = "robot";
-//       freeNodesVis.markers[i].id = i;
-//       freeNodesVis.markers[i].type = visualization_msgs::Marker::CUBE_LIST;
-//       freeNodesVis.markers[i].scale.x = size;
-//       freeNodesVis.markers[i].scale.y = size;
-//       freeNodesVis.markers[i].scale.z = size;
-//
-//       freeNodesVis.markers[i].color = m_color_free;
-//
-//       if (freeNodesVis.markers[i].points.size() > 0)
-//         freeNodesVis.markers[i].action = visualization_msgs::Marker::ADD;
-//       else
-//         freeNodesVis.markers[i].action = visualization_msgs::Marker::DELETE;
-//     }
-//     marker_free_pub.publish(freeNodesVis);
-//
-//     marker_counter = 0;
-//   }
-//   else
-//   {
-//     marker_counter++;
-//   }
-//
-// }
 
 ////////////////////////////////////////////////////////////////////////////////
 Particle::Particle(const double &resol,
@@ -407,29 +180,9 @@ int main(int argc, char** argv)
 
   map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
 
-  // occupiedNodesVis.markers.resize(m_octree->getTreeDepth()+1);
-  // m_color_occupied.r = 1;
-  // m_color_occupied.g = 1;
-  // m_color_occupied.b = 0.3;
-  // m_color_occupied.a = 0.5;
-  // freeNodesVis.markers.resize(m_octree->getTreeDepth()+1);
-  // m_color_free.r = 1;
-  // m_color_free.g = 1;
-  // m_color_free.b = 1;
-  // m_color_free.a = 0.05;
-  visualization_msgs::MarkerArray occupiedNodesVis;
-
   // r_pose_sub = n.subscribe("pose", 1, updateRobotPose);
   marker_occupied_pub
     = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
-  // marker_free_pub
-  //   = nh.advertise<visualization_msgs::MarkerArray>("map_marker_free", 1);
-
-  // marker_counter = 0;
-
-  // x = y = z = 0;
-  // vx = vy = vz = 0;
-  // last_time = ros::Time::now();
 
   pnh.getParam("odom_topic", odom_topic);
   pnh.getParam("pc_topic", pc_topic);
@@ -633,6 +386,8 @@ int main(int argc, char** argv)
       if (counts_visualize >= 10)
       {
         const octomap::OcTree* m = particles[index_max]->getMap();
+        visualization_msgs::MarkerArray occupiedNodesVis;
+        occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
         for (
           octomap::OcTree::iterator it = m->begin(m->getTreeDepth()),
           end = m->end(); it != end; ++it)
@@ -666,6 +421,11 @@ int main(int argc, char** argv)
           }
         }
 
+        // std_msgs::ColorRGBA m_color_occupied;
+        // m_color_occupied.r = 1;
+        // m_color_occupied.g = 1;
+        // m_color_occupied.b = 0.3;
+        // m_color_occupied.a = 0.5;
         for (unsigned i= 0; i < occupiedNodesVis.markers.size(); ++i)
         {
           double size = m->getNodeSize(i);
