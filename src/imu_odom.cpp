@@ -101,7 +101,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   //if (std::fabs(az) >= 1.0)
     vz += az * dt;
 
-  ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
+  //ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
 
   nav_msgs::Odometry odom;
   odom.header = imu->header;

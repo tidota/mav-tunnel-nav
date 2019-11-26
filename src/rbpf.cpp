@@ -283,11 +283,14 @@ int main(int argc, char** argv)
           pcl::removeNaNFromPointCloud(*depth_cam_pc, *depth_cam_pc, indx_map);
           for (unsigned int i = 0; i < indx_map.size(); ++i)
           {
-            octocloud.push_back(octomap::point3d(
-                depth_cam_pc->points[indx_map[i]].x,
-                depth_cam_pc->points[indx_map[i]].y,
-                depth_cam_pc->points[indx_map[i]].z
-            ));
+            if (i % 100 == 0)
+            {
+              octocloud.push_back(octomap::point3d(
+                  depth_cam_pc->points[indx_map[i]].x,
+                  depth_cam_pc->points[indx_map[i]].y,
+                  depth_cam_pc->points[indx_map[i]].z
+              ));
+            }
           }
         }
         else
