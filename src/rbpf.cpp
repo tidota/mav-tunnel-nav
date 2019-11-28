@@ -202,6 +202,9 @@ int main(int argc, char** argv)
   pnh.getParam("update_freq", update_freq);
   const ros::Duration update_phase(1.0/update_freq);
 
+  int depth_cam_pc_downsample;
+  pnh.getParam("depth_cam_pc_downsample", depth_cam_pc_downsample);
+
   double resol;
   double probHit;
   double probMiss;
@@ -283,7 +286,7 @@ int main(int argc, char** argv)
           pcl::removeNaNFromPointCloud(*depth_cam_pc, *depth_cam_pc, indx_map);
           for (unsigned int i = 0; i < indx_map.size(); ++i)
           {
-            if (i % 100 == 0)
+            if (i % depth_cam_pc_downsample == 0)
             {
               octocloud.push_back(octomap::point3d(
                   depth_cam_pc->points[indx_map[i]].x,
