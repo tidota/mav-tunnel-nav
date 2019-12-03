@@ -242,6 +242,7 @@ int main(int argc, char** argv)
     ros::Time now = ros::Time::now();
     if (now > last_update + update_phase)
     {
+      ROS_INFO("rbpf: new iteration");
       // initialize the time step
       last_update = now;
 
@@ -295,10 +296,8 @@ int main(int argc, char** argv)
               ));
             }
           }
-        }
-        else
-        {
-          continue;
+          pc_buff.height = 0;
+          pc_buff.width = 0;
         }
       }
 
@@ -368,9 +367,12 @@ int main(int argc, char** argv)
         particles = new_generation;
 
         // update the map
-        for (auto p: particles)
+        if (octocloud.size() > 0)
         {
-          p->update_map(octocloud);
+          for (auto p: particles)
+          {
+            p->update_map(octocloud);
+          }
         }
       }
 
@@ -449,6 +451,9 @@ int main(int argc, char** argv)
           occupiedNodesVis.markers[i].scale.y = size;
           occupiedNodesVis.markers[i].scale.z = size;
 
+          // without this line, rviz complains orientation is uninitialized.
+          occupiedNodesVis.markers[i].pose.orientation.w = 1;
+
           //occupiedNodesVis.markers[i].color = m_color_occupied;
 
           if (occupiedNodesVis.markers[i].points.size() > 0)
@@ -458,6 +463,7 @@ int main(int argc, char** argv)
             occupiedNodesVis.markers[i].action
               = visualization_msgs::Marker::DELETE;
         }
+        ROS_INFO("publishing markers");
         marker_occupied_pub.publish(occupiedNodesVis);
 
         counts_visualize = 0;
