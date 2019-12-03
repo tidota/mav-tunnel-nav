@@ -142,8 +142,10 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
   octomap::OcTreeNode *node;
   for (unsigned int ip = 0; ip < scan.size(); ++ip)
   {
+    tf::Vector3 point
+          = this->pose * tf::Vector3(scan[ip].x(), scan[ip].y(), scan[ip].z());
     if (this->map->coordToKeyChecked(
-          scan[ip].x(), scan[ip].y(), scan[ip].z(), key)
+          point.x(), point.y(), point.z(), key)
         && (node = this->map->search(key,0)))
     {
       log_lik += std::log(node->getOccupancy());
@@ -156,7 +158,7 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
 ////////////////////////////////////////////////////////////////////////////////
 void Particle::update_map(const octomap::Pointcloud &scan)
 {
-  octomath::Vector3 sensor_org;
+  octomath::Vector3 sensor_org(0,0,0);
   tf::Vector3 pose_org = this->pose.getOrigin();
   tf::Quaternion pose_rot = this->pose.getRotation();
   octomath::Pose6D frame_org(
@@ -165,6 +167,8 @@ void Particle::update_map(const octomap::Pointcloud &scan)
       pose_rot.w(), pose_rot.x(), pose_rot.y(), pose_rot.z())
   );
   this->map->insertPointCloud(scan, sensor_org, frame_org);
+  this->map->toMaxLikelihood();
+  this->map->prune();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,6 +236,9 @@ int main(int argc, char** argv)
   tf::Transform vel;
 
   PointCloudT::Ptr depth_cam_pc(new PointCloudT());
+  tf::Quaternion rotation;
+  rotation.setRPY(-PI/2.0, 0, -PI/2.0);
+  const tf::Pose camera_pose(rotation, tf::Vector3(0, 0, 0));
 
   int counts_publish = 0;
   int counts_visualize = 0;
@@ -289,11 +296,13 @@ int main(int argc, char** argv)
           {
             if (i % depth_cam_pc_downsample == 0)
             {
-              octocloud.push_back(octomap::point3d(
-                  depth_cam_pc->points[indx_map[i]].x,
-                  depth_cam_pc->points[indx_map[i]].y,
-                  depth_cam_pc->points[indx_map[i]].z
-              ));
+              tf::Vector3 point = camera_pose * tf::Vector3(
+                                          depth_cam_pc->points[indx_map[i]].x,
+                                          depth_cam_pc->points[indx_map[i]].y,
+                                          depth_cam_pc->points[indx_map[i]].z);
+              octocloud.push_back(
+                octomap::point3d(point.x(), point.y(), point.z()));
+              ROS_INFO("%7.2f, %7.2f, %7.2f", point.x(), point.y(), point.z());
             }
           }
           pc_buff.height = 0;
