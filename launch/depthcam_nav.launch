@@ -56,7 +56,8 @@
     <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom">
       <param name="imu_topic" value="imu"/>
       <param name="odom_topic" value="imu_odom/odometry"/>
-      <param name="child_frame_id" value="base_link"/>
+      <param name="world_frame_id" value="world"/>
+      <param name="odom_frame_id" value="odom"/>
     </node>
 
     <!-- rbpf -->

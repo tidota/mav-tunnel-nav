@@ -6,10 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Odometry1
-        - /Odometry1/Status1
         - /MarkerArray1
-        - /MarkerArray1/Status1
         - /MarkerArray1/Namespaces1
       Splitter Ratio: 0.5
     Tree Height: 694
@@ -74,7 +71,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Keep: 100
       Name: Odometry
       Position Tolerance: 0.10000000149011612
@@ -90,7 +87,7 @@ Visualization Manager:
         Value: Arrow
       Topic: /iris/imu_odom/odometry
       Unreliable: false
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /iris/map_marker_occupied
@@ -98,6 +95,76 @@ Visualization Manager:
       Namespaces:
         iris: true
       Queue Size: 100
+      Value: true
+    - Class: rviz/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        iris/base_link:
+          Value: true
+        iris/base_link_inertia:
+          Value: true
+        iris/camera_link:
+          Value: true
+        iris/front_left_leg:
+          Value: true
+        iris/front_right_leg:
+          Value: true
+        iris/rear_left_leg:
+          Value: true
+        iris/rear_right_leg:
+          Value: true
+        iris/rotor_0:
+          Value: true
+        iris/rotor_1:
+          Value: true
+        iris/rotor_2:
+          Value: true
+        iris/rotor_3:
+          Value: true
+        odom:
+          Value: true
+        ray_dfront_link:
+          Value: true
+        ray_down_link:
+          Value: true
+        ray_drear_link:
+          Value: true
+        ray_front_link:
+          Value: true
+        ray_left_link:
+          Value: true
+        ray_lfront_link:
+          Value: true
+        ray_lrear_link:
+          Value: true
+        ray_rear_link:
+          Value: true
+        ray_rfront_link:
+          Value: true
+        ray_right_link:
+          Value: true
+        ray_rrear_link:
+          Value: true
+        ray_ufront_link:
+          Value: true
+        ray_up_link:
+          Value: true
+        ray_urear_link:
+          Value: true
+        world:
+          Value: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        world:
+          odom:
+            {}
+      Update Interval: 0
       Value: true
   Enabled: true
   Global Options:
@@ -127,25 +194,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 27.331462860107422
+      Distance: 5.403301239013672
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.09766289591789246
-        Y: -0.19258788228034973
-        Z: 5.937054634094238
+        X: -0.39525464177131653
+        Y: -1.6741206645965576
+        Z: 0.8482699990272522
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3103986978530884
+      Pitch: 0.37039878964424133
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.9185850620269775
+      Yaw: 4.128586769104004
     Saved: ~
 Window Geometry:
   Displays:

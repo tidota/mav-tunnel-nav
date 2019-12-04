@@ -13,16 +13,19 @@
 #include <cmath>
 
 #include <string>
+#include <mutex>
 
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
+#include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
 std::string imu_topic;
 std::string odom_topic;
 ros::Publisher odom_pub;
-std::string child_frame_id;
+std::string world_frame_id;
+std::string odom_frame_id;
 
 double grav = 9.81;
 double x, y, z;
@@ -33,6 +36,9 @@ bool calibration = true;
 
 tf::Vector3 init_grav_dir;
 int sample_num;
+
+tf::Transform t;
+std::mutex t_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
@@ -87,9 +93,8 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   tf::Vector3 acc_vec(
     imu->linear_acceleration.x, imu->linear_acceleration.y, imu->linear_acceleration.z
   );
-  tf::Transform transform(
-    tf::Quaternion(imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w),
-    tf::Vector3(0,0,0));
+  tf::Quaternion imu_orientation(imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w);
+  tf::Transform transform(imu_orientation, tf::Vector3(0,0,0));
   acc_vec = transform * acc_vec;
   double ax = acc_vec.x();
   double ay = acc_vec.y();
@@ -103,10 +108,15 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   //ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
 
+  {
+    std::lock_guard<std::mutex> lk(t_mutex);
+    t = tf::Transform(imu_orientation, tf::Vector3(x, y, z));
+  }
+
   nav_msgs::Odometry odom;
   odom.header = imu->header;
-  odom.header.frame_id = "world";
-  odom.child_frame_id = child_frame_id;
+  odom.header.frame_id = world_frame_id;
+  odom.child_frame_id = odom_frame_id;
   odom.pose.pose.position.x = x;
   odom.pose.pose.position.y = y;
   odom.pose.pose.position.z = z;
@@ -125,6 +135,7 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "imu_odom");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
+  tf::TransformBroadcaster tf_broadcaster;
 
   x = y = z = 0;
   vx = vy = vz = 0;
@@ -132,13 +143,26 @@ int main(int argc, char** argv)
 
   pnh.getParam("imu_topic", imu_topic);
   pnh.getParam("odom_topic", odom_topic);
-  pnh.getParam("child_frame_id", child_frame_id);
+  pnh.getParam("world_frame_id", world_frame_id);
+  pnh.getParam("odom_frame_id", odom_frame_id);
 
   odom_pub = nh.advertise<nav_msgs::Odometry>(odom_topic, 1000);
-
   ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
 
-  ros::spin();
+  ros::Time checkpoint = ros::Time::now();
+  const ros::Duration duration(0.01);
+  while(ros::ok())
+  {
+    if (ros::Time::now() - checkpoint >= duration)
+    {
+      std::lock_guard<std::mutex> lk(t_mutex);
+      checkpoint = ros::Time::now();
+      tf::StampedTransform tf_stamped(t, checkpoint, world_frame_id, odom_frame_id);
+      tf_broadcaster.sendTransform(tf_stamped);
+    }
+
+    ros::spinOnce();
+  }
 
   return(0);
 }
