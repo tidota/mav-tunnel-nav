@@ -82,6 +82,10 @@ Particle::Particle(const double &resol,
   this->map->setProbMiss(probMiss);
   this->map->setClampingThresMin(threshMin);
   this->map->setClampingThresMax(threshMax);
+
+  this->pose = tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, 0));
+  this->vel_linear = tf::Vector3(0, 0, 0);
+  this->vel_angle = tf::Vector3(0, 0, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,6 +171,12 @@ void Particle::update_map(const octomap::Pointcloud &scan)
       pose_rot.w(), pose_rot.x(), pose_rot.y(), pose_rot.z())
   );
   this->map->insertPointCloud(scan, sensor_org, frame_org);
+  ROS_INFO("%7.3f, %7.3f, %7.3f, %7.3f", pose_rot.x(), pose_rot.y(), pose_rot.z(), pose_rot.w());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Particle::compress_map()
+{
   this->map->toMaxLikelihood();
   this->map->prune();
 }
@@ -220,6 +230,10 @@ int main(int argc, char** argv)
   pnh.getParam("map_threshMin", threshMin);
   pnh.getParam("map_threshMax", threshMax);
 
+  double t_only_mapping;
+  pnh.getParam("t_only_mapping", t_only_mapping);
+  const ros::Duration phase_only_mapping(t_only_mapping);
+
   std::vector< std::shared_ptr<Particle> > particles;
   for (int i = 0; i < n_particles; ++i)
   {
@@ -229,7 +243,8 @@ int main(int argc, char** argv)
   }
   std::vector<double> weights(n_particles);
   std::vector<double> errors(n_particles);
-  ros::Time last_update = ros::Time::now();
+  const ros::Time initial_update = ros::Time::now();
+  ros::Time last_update = initial_update;
 
   tf::Pose pose_prev;
   tf::Pose pose_curr;
@@ -242,6 +257,7 @@ int main(int argc, char** argv)
 
   int counts_publish = 0;
   int counts_visualize = 0;
+  int counts_compress = 0;
 
   while (ros::ok())
   {
@@ -252,37 +268,6 @@ int main(int argc, char** argv)
       ROS_INFO("rbpf: new iteration");
       // initialize the time step
       last_update = now;
-
-      // calculate the delta T
-      double deltaT = (now - last_update).toSec();
-
-      // Get sensory data (odom, depth cam)
-      {
-        std::lock_guard<std::mutex> lk(odom_mutex);
-        pose_prev = pose_curr;
-        tf::Vector3 pos(
-          odom_buff.pose.pose.position.x,
-          odom_buff.pose.pose.position.y,
-          odom_buff.pose.pose.position.z);
-        tf::Quaternion dir(
-          odom_buff.pose.pose.orientation.x,
-          odom_buff.pose.pose.orientation.y,
-          odom_buff.pose.pose.orientation.z,
-          odom_buff.pose.pose.orientation.w);
-        pose_curr.setOrigin(pos);
-        pose_curr.setRotation(dir);
-        tf::Vector3 vel_lin(
-          odom_buff.twist.twist.linear.x,
-          odom_buff.twist.twist.linear.y,
-          odom_buff.twist.twist.linear.z);
-        tf::Quaternion vel_ang;
-        vel_ang.setRPY(
-          odom_buff.twist.twist.angular.x,
-          odom_buff.twist.twist.angular.y,
-          odom_buff.twist.twist.angular.z);
-        vel.setOrigin(vel_lin);
-        vel.setRotation(vel_ang);
-      }
 
       octomap::Pointcloud octocloud;
       {
@@ -302,7 +287,7 @@ int main(int argc, char** argv)
                                           depth_cam_pc->points[indx_map[i]].z);
               octocloud.push_back(
                 octomap::point3d(point.x(), point.y(), point.z()));
-              ROS_INFO("%7.2f, %7.2f, %7.2f", point.x(), point.y(), point.z());
+              //ROS_INFO("%7.2f, %7.2f, %7.2f", point.x(), point.y(), point.z());
             }
           }
           pc_buff.height = 0;
@@ -310,79 +295,126 @@ int main(int argc, char** argv)
         }
       }
 
-      // initialize weights and errors
-      for (int i = 0; i < n_particles; ++i)
+      int index_best = 0;
+      if (now > initial_update + phase_only_mapping)
       {
-        weights[i] = 0;
-        errors[i] = 0;
-      }
+        // calculate the delta T
+        double deltaT = (now - last_update).toSec();
 
-      // predict PF (use odometory)
-      for (auto p: particles)
-      {
-        // move the particle
-        p->predict(
-          tf::Vector3(
+        // Get sensory data (odom, depth cam)
+        {
+          std::lock_guard<std::mutex> lk(odom_mutex);
+          pose_prev = pose_curr;
+          tf::Vector3 pos(
+            odom_buff.pose.pose.position.x,
+            odom_buff.pose.pose.position.y,
+            odom_buff.pose.pose.position.z);
+          tf::Quaternion dir(
+            odom_buff.pose.pose.orientation.x,
+            odom_buff.pose.pose.orientation.y,
+            odom_buff.pose.pose.orientation.z,
+            odom_buff.pose.pose.orientation.w);
+          pose_curr.setOrigin(pos);
+          pose_curr.setRotation(dir);
+          tf::Vector3 vel_lin(
             odom_buff.twist.twist.linear.x,
             odom_buff.twist.twist.linear.y,
-            odom_buff.twist.twist.linear.z),
-          tf::Vector3(
+            odom_buff.twist.twist.linear.z);
+          tf::Quaternion vel_ang;
+          vel_ang.setRPY(
             odom_buff.twist.twist.angular.x,
             odom_buff.twist.twist.angular.y,
-            odom_buff.twist.twist.angular.z),
-          deltaT, gen);
-      }
-
-      // weight PF (use depth cam)
-      double max_weight = 0;
-      int index_max = 0;
-      double weight_sum = 0;
-      for (int i = 0; i < n_particles; ++i)
-      {
-        // Calculate a probability ranging from 0 to 1.
-        weights[i] = particles[i]->evaluate(octocloud);
-        weight_sum += weights[i];
-        if (weights[i] > max_weight)
-        {
-          max_weight = weights[i];
-          index_max = i;
+            odom_buff.twist.twist.angular.z);
+          vel.setOrigin(vel_lin);
+          vel.setRotation(vel_ang);
         }
-      }
 
-      // resample PF (and update map)
-      if (weight_sum != 0)
-      {
-        // create children population
-        std::vector< std::shared_ptr<Particle> > new_generation;
-
+        // initialize weights and errors
         for (int i = 0; i < n_particles; ++i)
         {
-          double rval = dis(gen);
-          double weight_buff = 0;
-          int index = 0;
-          for (; index < n_particles - 1; ++index)
-          {
-            weight_buff += weights[index]/weight_sum;
-            if (rval <= weight_buff)
-              break;
-          }
-          // copy a particle specified by the index to the population
-          new_generation.push_back(
-            std::make_shared<Particle>(*particles[index]));
+          weights[i] = 0;
+          errors[i] = 0;
         }
 
-        // Copy the children to the parents.
-        particles.clear();
-        particles = new_generation;
-
-        // update the map
-        if (octocloud.size() > 0)
+        // predict PF (use odometory)
+        for (auto p: particles)
         {
-          for (auto p: particles)
+          // move the particle
+          p->predict(
+            tf::Vector3(
+              odom_buff.twist.twist.linear.x,
+              odom_buff.twist.twist.linear.y,
+              odom_buff.twist.twist.linear.z),
+            tf::Vector3(
+              odom_buff.twist.twist.angular.x,
+              odom_buff.twist.twist.angular.y,
+              odom_buff.twist.twist.angular.z),
+            deltaT, gen);
+        }
+
+        // weight PF (use depth cam)
+        double max_weight = 0;
+        double weight_sum = 0;
+        for (int i = 0; i < n_particles; ++i)
+        {
+          // Calculate a probability ranging from 0 to 1.
+          weights[i] = particles[i]->evaluate(octocloud);
+          weight_sum += weights[i];
+          if (weights[i] > max_weight)
           {
-            p->update_map(octocloud);
+            max_weight = weights[i];
+            index_best = i;
           }
         }
+
+        // resample PF (and update map)
+        if (weight_sum != 0)
+        {
+          // create children population
+          std::vector< std::shared_ptr<Particle> > new_generation;
+
+          for (int i = 0; i < n_particles; ++i)
+          {
+            double rval = dis(gen);
+            double weight_buff = 0;
+            int index = 0;
+            for (; index < n_particles - 1; ++index)
+            {
+              weight_buff += weights[index]/weight_sum;
+              if (rval <= weight_buff)
+                break;
+            }
+            // copy a particle specified by the index to the population
+            new_generation.push_back(
+              std::make_shared<Particle>(*particles[index]));
+          }
+
+          // Copy the children to the parents.
+          particles.clear();
+          particles = new_generation;
+        }
+      }
+      // update the map
+      if (octocloud.size() > 0)
+      {
+        for (auto p: particles)
+        {
+          p->update_map(octocloud);
+        }
+      }
+
+      // compress maps
+      if (counts_compress >= 7)
+      {
+        for (auto p: particles)
+        {
+          p->compress_map();
+        }
+        counts_compress = 0;
+      }
+      else
+      {
+        ++counts_compress;
       }
 
       // publish data
@@ -391,7 +423,7 @@ int main(int argc, char** argv)
         octomap_msgs::Octomap map;
         map.header.frame_id = "world";
         map.header.stamp = now;
-        if (octomap_msgs::fullMapToMsg(*particles[index_max]->getMap(), map))
+        if (octomap_msgs::fullMapToMsg(*particles[index_best]->getMap(), map))
           map_pub.publish(map);
         else
           ROS_ERROR("Error serializing OctoMap");
@@ -405,7 +437,7 @@ int main(int argc, char** argv)
       // visualization
       if (counts_visualize >= 10)
       {
-        const octomap::OcTree* m = particles[index_max]->getMap();
+        const octomap::OcTree* m = particles[index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
         occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
         for (

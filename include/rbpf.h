@@ -33,6 +33,7 @@ class Particle
     const double &deltaT, std::mt19937 &gen);
   public: double evaluate(const octomap::Pointcloud &scan);
   public: void update_map(const octomap::Pointcloud &scan);
+  public: void compress_map();
 };
 
 #endif
