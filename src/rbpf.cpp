@@ -33,6 +33,7 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/ColorRGBA.h>
 
+#include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
 #include <visualization_msgs/MarkerArray.h>
@@ -50,7 +51,8 @@ ros::Publisher marker_occupied_pub;
 std::string odom_topic;
 std::string pc_topic;
 // ros::Publisher odom_pub;
-std::string child_frame_id;
+std::string world_frame_id;
+std::string robot_frame_id;
 
 nav_msgs::Odometry odom_buff;
 std::mutex odom_mutex;
@@ -107,6 +109,12 @@ Particle::Particle(): Particle(0.25, 0.7, 0.4, 0.12, 0.97){}
 Particle::~Particle()
 {
   delete this->map;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+const tf::Pose Particle::getPose()
+{
+  return this->pose;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,15 +201,17 @@ int main(int argc, char** argv)
   std::mt19937 gen{rd()};
   std::uniform_real_distribution<> dis(0, 1.0);
 
+  tf::TransformBroadcaster tf_broadcaster;
+
   map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
 
-  // r_pose_sub = n.subscribe("pose", 1, updateRobotPose);
   marker_occupied_pub
     = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
 
   pnh.getParam("odom_topic", odom_topic);
   pnh.getParam("pc_topic", pc_topic);
-  pnh.getParam("child_frame_id", child_frame_id);
+  pnh.getParam("world_frame_id", world_frame_id);
+  pnh.getParam("robot_frame_id", robot_frame_id);
 
   ros::Subscriber odom_sub = nh.subscribe(odom_topic, 1000, odomCallback);
   ros::Subscriber pc_sub = nh.subscribe(pc_topic, 1000, pcCallback);
@@ -287,7 +297,6 @@ int main(int argc, char** argv)
                                           depth_cam_pc->points[indx_map[i]].z);
               octocloud.push_back(
                 octomap::point3d(point.x(), point.y(), point.z()));
-              //ROS_INFO("%7.2f, %7.2f, %7.2f", point.x(), point.y(), point.z());
             }
           }
           pc_buff.height = 0;
@@ -427,6 +436,12 @@ int main(int argc, char** argv)
           map_pub.publish(map);
         else
           ROS_ERROR("Error serializing OctoMap");
+
+        tf::StampedTransform tf_stamped(
+          particles[index_best]->getPose(), now,
+          world_frame_id, robot_frame_id);
+        tf_broadcaster.sendTransform(tf_stamped);
+
         counts_publish = 0;
       }
       else

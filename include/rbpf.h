@@ -14,6 +14,7 @@ class Particle
 {
   // pose
   private: tf::Pose pose;
+  public: const tf::Pose getPose();
   // velocities
   private: tf::Vector3 vel_linear;
   // angular rate

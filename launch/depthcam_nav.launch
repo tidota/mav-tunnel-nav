@@ -64,7 +64,8 @@
     <node name="rbpf" pkg="mav_tunnel_nav" type="rbpf">
       <param name="odom_topic" value="imu_odom/odometry"/>
       <param name="pc_topic" value="camera_ir/camera/depth/points"/>
-      <param name="child_frame_id" value="base_link"/>
+      <param name="world_frame_id" value="world"/>
+      <param name="robot_frame_id" value="base_link"/>
 
       <param name="n_particles" value="30"/>
       <param name="update_freq" value="1"/>
