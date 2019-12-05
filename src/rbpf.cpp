@@ -124,8 +124,8 @@ void Particle::predict(
 {
   this->vel_linear = lin;
   this->vel_angle = ang;
-  std::normal_distribution<> motion_noise_lin(0, 0.3);
-  std::normal_distribution<> motion_noise_ang(0, 0.05);
+  std::normal_distribution<> motion_noise_lin(0, 0.1);
+  std::normal_distribution<> motion_noise_ang(0, 0.01);
   tf::Vector3 mov_lin(
     lin.x() * deltaT + motion_noise_lin(gen),
     lin.y() * deltaT + motion_noise_lin(gen),
@@ -173,7 +173,6 @@ void Particle::update_map(const octomap::Pointcloud &scan)
       pose_rot.w(), pose_rot.x(), pose_rot.y(), pose_rot.z())
   );
   this->map->insertPointCloud(scan, sensor_org, frame_org);
-  ROS_INFO("%7.3f, %7.3f, %7.3f, %7.3f", pose_rot.x(), pose_rot.y(), pose_rot.z(), pose_rot.w());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -446,7 +445,7 @@ int main(int argc, char** argv)
       }
 
       // visualization
-      if (counts_visualize_map >= 10)
+      if (counts_visualize_map >= 3)
       {
         const octomap::OcTree* m = particles[index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
@@ -524,7 +523,7 @@ int main(int argc, char** argv)
         ++counts_visualize_map;
       }
 
-      if (counts_visualize_loc >= 2)
+      if (counts_visualize_loc >= 0)
       {
         // publish poses
         geometry_msgs::PoseArray poseArray;

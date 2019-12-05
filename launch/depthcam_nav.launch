@@ -68,7 +68,7 @@
       <param name="robot_frame_id" value="base_link"/>
 
       <param name="n_particles" value="30"/>
-      <param name="update_freq" value="1"/>
+      <param name="update_freq" value="3"/>
 
       <param name="depth_cam_pc_downsample" value="100"/>
 

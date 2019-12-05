@@ -136,6 +136,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
   tf::TransformBroadcaster tf_broadcaster;
+  t = tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, 0));
 
   x = y = z = 0;
   vx = vy = vz = 0;
