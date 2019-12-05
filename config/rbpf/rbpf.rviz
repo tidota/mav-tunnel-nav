@@ -8,6 +8,7 @@ Panels:
         - /Status1
         - /MarkerArray1
         - /MarkerArray1/Namespaces1
+        - /PoseArray1
       Splitter Ratio: 0.5
     Tree Height: 694
   - Class: rviz/Selection
@@ -101,6 +102,8 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        base_link:
+          Value: true
         iris/base_link:
           Value: true
         iris/base_link_inertia:
@@ -162,9 +165,27 @@ Visualization Manager:
       Show Names: true
       Tree:
         world:
+          base_link:
+            {}
           odom:
             {}
       Update Interval: 0
+      Value: true
+    - Alpha: 1
+      Arrow Length: 0.30000001192092896
+      Axes Length: 0.30000001192092896
+      Axes Radius: 0.009999999776482582
+      Class: rviz/PoseArray
+      Color: 255; 25; 0
+      Enabled: true
+      Head Length: 0.07000000029802322
+      Head Radius: 0.029999999329447746
+      Name: PoseArray
+      Shaft Length: 0.23000000417232513
+      Shaft Radius: 0.009999999776482582
+      Shape: Arrow (Flat)
+      Topic: /iris/loc_vis_poses
+      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -194,7 +215,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 5.403301239013672
+      Distance: 5.248806953430176
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1

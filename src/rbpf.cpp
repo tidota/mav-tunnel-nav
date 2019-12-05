@@ -10,6 +10,7 @@
 #include <random>
 #include <vector>
 
+#include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
@@ -42,15 +43,8 @@
 
 #include "rbpf.h"
 
-ros::Publisher map_pub;
-ros::Publisher marker_occupied_pub;
-
-// ros::Subscriber r_pose_sub;
-// geometry_msgs::PoseStamped r_pose;
-
 std::string odom_topic;
 std::string pc_topic;
-// ros::Publisher odom_pub;
 std::string world_frame_id;
 std::string robot_frame_id;
 
@@ -203,10 +197,11 @@ int main(int argc, char** argv)
 
   tf::TransformBroadcaster tf_broadcaster;
 
-  map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
-
-  marker_occupied_pub
+  ros::Publisher map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
+  ros::Publisher marker_occupied_pub
     = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
+  ros::Publisher vis_poses_pub
+    = nh.advertise<geometry_msgs::PoseArray>("loc_vis_poses", 1, true);
 
   pnh.getParam("odom_topic", odom_topic);
   pnh.getParam("pc_topic", pc_topic);
@@ -266,7 +261,8 @@ int main(int argc, char** argv)
   const tf::Pose camera_pose(rotation, tf::Vector3(0, 0, 0));
 
   int counts_publish = 0;
-  int counts_visualize = 0;
+  int counts_visualize_map = 0;
+  int counts_visualize_loc = 0;
   int counts_compress = 0;
 
   while (ros::ok())
@@ -450,7 +446,7 @@ int main(int argc, char** argv)
       }
 
       // visualization
-      if (counts_visualize >= 10)
+      if (counts_visualize_map >= 10)
       {
         const octomap::OcTree* m = particles[index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
@@ -521,12 +517,40 @@ int main(int argc, char** argv)
         }
         ROS_INFO("publishing markers");
         marker_occupied_pub.publish(occupiedNodesVis);
-
-        counts_visualize = 0;
+        counts_visualize_map = 0;
       }
       else
       {
-        ++counts_visualize;
+        ++counts_visualize_map;
+      }
+
+      if (counts_visualize_loc >= 2)
+      {
+        // publish poses
+        geometry_msgs::PoseArray poseArray;
+        poseArray.header.frame_id = world_frame_id;
+        poseArray.header.stamp = now;
+        poseArray.poses.resize(n_particles);
+        for (int i = 0; i < n_particles; ++i)
+        {
+          tf::Pose pose = particles[i]->getPose();
+          tf::Vector3 position = pose.getOrigin();
+          tf::Quaternion orientation = pose.getRotation();
+          poseArray.poses[i].position.x = position.x();
+          poseArray.poses[i].position.y = position.y();
+          poseArray.poses[i].position.z = position.z();
+          poseArray.poses[i].orientation.x = orientation.x();
+          poseArray.poses[i].orientation.y = orientation.y();
+          poseArray.poses[i].orientation.z = orientation.z();
+          poseArray.poses[i].orientation.w = orientation.w();
+        }
+        vis_poses_pub.publish(poseArray);
+
+        counts_visualize_loc = 0;
+      }
+      else
+      {
+        ++counts_visualize_loc;
       }
     }
 
