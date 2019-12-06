@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <random>
+#include <thread>
 #include <vector>
 
 #include <geometry_msgs/PoseArray.h>
@@ -183,9 +184,8 @@ void Particle::compress_map()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-int main(int argc, char** argv)
+void pf_main()
 {
-  ros::init(argc, argv, "rbpf");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
@@ -202,16 +202,8 @@ int main(int argc, char** argv)
   ros::Publisher vis_poses_pub
     = nh.advertise<geometry_msgs::PoseArray>("loc_vis_poses", 1, true);
 
-  pnh.getParam("odom_topic", odom_topic);
-  pnh.getParam("pc_topic", pc_topic);
   pnh.getParam("world_frame_id", world_frame_id);
   pnh.getParam("robot_frame_id", robot_frame_id);
-
-  ros::Subscriber odom_sub = nh.subscribe(odom_topic, 1000, odomCallback);
-  ros::Subscriber pc_sub = nh.subscribe(pc_topic, 1000, pcCallback);
-  // odom_pub = nh.advertise<nav_msgs::Odometry>(odom_topic, 1000);
-  //
-  // ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
 
   // === Initialize PF ===
   int n_particles;
@@ -552,9 +544,26 @@ int main(int argc, char** argv)
         ++counts_visualize_loc;
       }
     }
-
-    ros::spinOnce();
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "rbpf");
+  ros::NodeHandle nh;
+  ros::NodeHandle pnh("~");
+
+  pnh.getParam("odom_topic", odom_topic);
+  pnh.getParam("pc_topic", pc_topic);
+  ros::Subscriber odom_sub = nh.subscribe(odom_topic, 1000, odomCallback);
+  ros::Subscriber pc_sub = nh.subscribe(pc_topic, 1000, pcCallback);
+
+  std::thread t(pf_main);
+
+  ros::spin();
+
+  t.join();
 
   return(0);
 }
