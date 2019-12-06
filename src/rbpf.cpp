@@ -2,8 +2,8 @@
 // 191028
 // Rao-Blackwellized Particle Filter
 
+#include <algorithm>
 #include <cmath>
-
 #include <string>
 #include <memory>
 #include <mutex>
@@ -366,9 +366,8 @@ void pf_main()
         // resample PF (and update map)
         if (weight_sum != 0)
         {
-          // create children population
-          std::vector< std::shared_ptr<Particle> > new_generation;
-
+          // http://mrpt.ual.es/reference/devel/_c_particle_filter_data_8h_source.html#l00109
+          std::vector<int> indx_list(n_particles);
           for (int i = 0; i < n_particles; ++i)
           {
             double rval = dis(gen);
@@ -380,14 +379,28 @@ void pf_main()
               if (rval <= weight_buff)
                 break;
             }
-            // copy a particle specified by the index to the population
-            new_generation.push_back(
-              std::make_shared<Particle>(*particles[index]));
+            indx_list[i] = index;
+          }
+          std::vector<int> indx_unused(n_particles, -1);
+
+          std::vector< std::shared_ptr<Particle> > new_generation;
+          for (int i = 0; i < n_particles; ++i)
+          {
+            const int prev_indx = indx_unused[indx_list[i]];
+            if (prev_indx == -1)
+            {
+              new_generation.push_back(std::move(particles[indx_list[i]]));
+              indx_unused[indx_list[i]] = i;
+            }
+            else
+            {
+              new_generation.push_back(
+                std::make_shared<Particle>(*new_generation[prev_indx]));
+            }
           }
 
           // Copy the children to the parents.
-          particles.clear();
-          particles = new_generation;
+          particles = std::move(new_generation);
         }
       }
       // update the map
