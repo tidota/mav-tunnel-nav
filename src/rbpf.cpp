@@ -161,8 +161,8 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
     }
   }
 
-  // return 0 if the point cloud all lands on unknown cells.
-  return (hits == 0)? 0: std::exp(log_lik/hits);
+  // return 0 if the major part of the point cloud landed on unknown cells.
+  return (hits < scan.size()*0.05)? 0: std::exp(log_lik/hits);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
