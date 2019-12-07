@@ -82,7 +82,6 @@ Particle::Particle(const double &resol,
 
   this->pose = tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, 0));
   this->vel_linear = tf::Vector3(0, 0, 0);
-  this->vel_angle = tf::Vector3(0, 0, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +90,6 @@ Particle::Particle(const Particle &src)
   // copy the localization data
   this->pose = src.pose;
   this->vel_linear = src.vel_linear;
-  this->vel_angle = src.vel_angle;
 
   // copy the mapping data
   this->map = new octomap::OcTree(*src.map);
@@ -120,23 +118,20 @@ const octomap::OcTree* Particle::getMap()
 
 ////////////////////////////////////////////////////////////////////////////////
 void Particle::predict(
-  const tf::Vector3 &lin, const tf::Vector3 &ang,
+  const tf::Vector3 &vel, const tf::Quaternion &ori,
   const double &deltaT, std::mt19937 &gen)
 {
-  this->vel_linear = lin;
-  this->vel_angle = ang;
   std::normal_distribution<> motion_noise_lin(0, 0.1);
-  std::normal_distribution<> motion_noise_ang(0, 0.01);
-  tf::Vector3 mov_lin(
-    lin.x() * deltaT + motion_noise_lin(gen),
-    lin.y() * deltaT + motion_noise_lin(gen),
-    lin.z() * deltaT + motion_noise_lin(gen));
-  tf::Quaternion mov_ang;
-  mov_ang.setRPY(
-    ang.x() * deltaT + motion_noise_ang(gen),
-    ang.y() * deltaT + motion_noise_ang(gen),
-    ang.z() * deltaT + motion_noise_ang(gen));
-  this->pose = this->pose * tf::Transform(mov_ang, mov_lin);
+  this->vel_linear = tf::Vector3(
+    vel.x() + motion_noise_lin(gen),
+    vel.y() + motion_noise_lin(gen),
+    vel.z() + motion_noise_lin(gen));
+  tf::Vector3 new_pos = this->pose.getOrigin()
+                      + tf::Vector3(
+                          this->vel_linear.x() * deltaT,
+                          this->vel_linear.y() * deltaT,
+                          this->vel_linear.z() * deltaT);
+  this->pose = tf::Transform(ori, new_pos);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,6 +266,8 @@ void pf_main()
     if (now > last_update + update_phase)
     {
       ROS_DEBUG("rbpf: new iteration");
+      // calculate the delta T
+      const double deltaT = (now - last_update).toSec();
       // initialize the time step
       last_update = now;
 
@@ -303,9 +300,6 @@ void pf_main()
       int index_best = 0;
       if (now > initial_update + phase_only_mapping)
       {
-        // calculate the delta T
-        double deltaT = (now - last_update).toSec();
-
         // Get sensory data (odom, depth cam)
         {
           std::lock_guard<std::mutex> lk(odom_mutex);
@@ -351,10 +345,11 @@ void pf_main()
               odom_buff.twist.twist.linear.x,
               odom_buff.twist.twist.linear.y,
               odom_buff.twist.twist.linear.z),
-            tf::Vector3(
-              odom_buff.twist.twist.angular.x,
-              odom_buff.twist.twist.angular.y,
-              odom_buff.twist.twist.angular.z),
+            tf::Quaternion(
+              odom_buff.pose.pose.orientation.x,
+              odom_buff.pose.pose.orientation.y,
+              odom_buff.pose.pose.orientation.z,
+              odom_buff.pose.pose.orientation.w),
             deltaT, gen);
         }
 
