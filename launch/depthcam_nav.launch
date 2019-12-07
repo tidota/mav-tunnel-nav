@@ -69,7 +69,7 @@
       <param name="world_frame_id" value="world"/>
       <param name="robot_frame_id" value="base_link"/>
 
-      <param name="n_particles" value="30"/>
+      <param name="n_particles" value="40"/>
       <param name="update_freq" value="3"/>
 
       <param name="depth_cam_pc_downsample" value="1000"/>

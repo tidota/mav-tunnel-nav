@@ -121,7 +121,7 @@ void Particle::predict(
   const tf::Vector3 &vel, const tf::Quaternion &ori,
   const double &deltaT, std::mt19937 &gen)
 {
-  std::normal_distribution<> motion_noise_lin(0, 0.1);
+  std::normal_distribution<> motion_noise_lin(0, 0.2);
   this->vel_linear = tf::Vector3(
     vel.x() + motion_noise_lin(gen),
     vel.y() + motion_noise_lin(gen),
