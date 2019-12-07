@@ -143,6 +143,7 @@ void Particle::predict(
 double Particle::evaluate(const octomap::Pointcloud &scan)
 {
   double log_lik = 0;
+  int hits = 0;
 
   // for all point in the point cloud
   octomap::OcTreeKey key;
@@ -156,10 +157,12 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
         && (node = this->map->search(key,0)))
     {
       log_lik += std::log(node->getOccupancy());
+      ++hits;
     }
   }
 
-  return std::exp(log_lik);
+  // return 0 if the point cloud all lands on unknown cells.
+  return (hits == 0)? 0: std::exp(log_lik/hits);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
