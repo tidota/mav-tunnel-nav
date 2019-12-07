@@ -262,7 +262,7 @@ void pf_main()
     ros::Time now = ros::Time::now();
     if (now > last_update + update_phase)
     {
-      ROS_INFO("rbpf: new iteration");
+      ROS_DEBUG("rbpf: new iteration");
       // initialize the time step
       last_update = now;
 
@@ -332,6 +332,7 @@ void pf_main()
           errors[i] = 0;
         }
 
+        ROS_DEBUG("rbpf: predict");
         // predict PF (use odometory)
         for (auto p: particles)
         {
@@ -348,6 +349,7 @@ void pf_main()
             deltaT, gen);
         }
 
+        ROS_DEBUG("rbpf: evaluate");
         // weight PF (use depth cam)
         double max_weight = 0;
         double weight_sum = 0;
@@ -403,6 +405,8 @@ void pf_main()
           particles = std::move(new_generation);
         }
       }
+
+      ROS_DEBUG("rbpf: update map");
       // update the map
       if (octocloud.size() > 0)
       {
@@ -412,6 +416,7 @@ void pf_main()
         }
       }
 
+      ROS_DEBUG("rbpf: compress");
       // compress maps
       if (counts_compress >= 7)
       {
@@ -488,6 +493,8 @@ void pf_main()
           }
         }
 
+
+        ROS_DEBUG("rbpf: visualize");
         // std_msgs::ColorRGBA m_color_occupied;
         // m_color_occupied.r = 1;
         // m_color_occupied.g = 1;
