@@ -80,7 +80,8 @@
       <param name="map_threshMin" value="0.12"/>
       <param name="map_threshMax" value="0.97"/>
 
-      <param name="t_only_mapping" value="20.0"/>
+      <param name="t_only_mapping" value="10.0"/>
+      <param name="mapping_interval" value="3"/>
     </node>
 
     <!-- Given robot_description parameter and joint states, publish TF frames -->

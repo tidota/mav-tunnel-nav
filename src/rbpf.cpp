@@ -232,6 +232,8 @@ void pf_main()
   double t_only_mapping;
   pnh.getParam("t_only_mapping", t_only_mapping);
   const ros::Duration phase_only_mapping(t_only_mapping);
+  int mapping_interval;
+  pnh.getParam("mapping_interval", mapping_interval);
 
   std::vector< std::shared_ptr<Particle> > particles;
   for (int i = 0; i < n_particles; ++i)
@@ -257,6 +259,7 @@ void pf_main()
   int counts_publish = 0;
   int counts_visualize_map = 0;
   int counts_visualize_loc = 0;
+  int counts_map_update = 0;
   int counts_compress = 0;
 
   std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
@@ -412,20 +415,25 @@ void pf_main()
         }
       }
 
-      ROS_DEBUG("rbpf: update map");
       // update the map
-      if (octocloud.size() > 0)
+      if (counts_map_update >= mapping_interval && octocloud.size() > 0)
       {
+        ROS_DEBUG("rbpf: update map");
         for (auto p: particles)
         {
           p->update_map(octocloud);
         }
+        counts_map_update = 0;
+      }
+      else
+      {
+        ++counts_map_update;
       }
 
-      ROS_DEBUG("rbpf: compress");
       // compress maps
       if (counts_compress >= 7)
       {
+        ROS_DEBUG("rbpf: compress");
         for (auto p: particles)
         {
           p->compress_map();
@@ -440,6 +448,7 @@ void pf_main()
       // publish data
       if (counts_publish >= 5)
       {
+        ROS_DEBUG("rbpf: publish data");
         octomap_msgs::Octomap map;
         map.header.frame_id = "world";
         map.header.stamp = now;
@@ -463,6 +472,7 @@ void pf_main()
       // visualization
       if (counts_visualize_map >= 3)
       {
+        ROS_DEBUG("rbpf: visualize map");
         const octomap::OcTree* m = particles[index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
         occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
@@ -498,9 +508,6 @@ void pf_main()
             }
           }
         }
-
-
-        ROS_DEBUG("rbpf: visualize");
         // std_msgs::ColorRGBA m_color_occupied;
         // m_color_occupied.r = 1;
         // m_color_occupied.g = 1;
@@ -532,7 +539,6 @@ void pf_main()
             occupiedNodesVis.markers[i].action
               = visualization_msgs::Marker::DELETE;
         }
-        ROS_INFO("publishing markers");
         marker_occupied_pub.publish(occupiedNodesVis);
         counts_visualize_map = 0;
       }
@@ -543,6 +549,7 @@ void pf_main()
 
       if (counts_visualize_loc >= 0)
       {
+        ROS_DEBUG("rbpf: visualize loc");
         // publish poses
         geometry_msgs::PoseArray poseArray;
         poseArray.header.frame_id = world_frame_id;
@@ -569,6 +576,7 @@ void pf_main()
       {
         ++counts_visualize_loc;
       }
+      ROS_DEBUG("rbpf: end of iteration");
     }
   }
 }
