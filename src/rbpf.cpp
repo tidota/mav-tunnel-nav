@@ -256,6 +256,8 @@ void pf_main()
   int counts_visualize_loc = 0;
   int counts_compress = 0;
 
+  std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
+
   while (ros::ok())
   {
     // === Update PF ===
@@ -274,17 +276,18 @@ void pf_main()
           pcl::fromROSMsg(pc_buff, *depth_cam_pc);
           std::vector<int> indx_map;
           pcl::removeNaNFromPointCloud(*depth_cam_pc, *depth_cam_pc, indx_map);
-          for (unsigned int i = 0; i < indx_map.size(); ++i)
+          ROS_DEBUG_STREAM(
+            "downsampling point cloud " << indx_map.size()
+            << " -> " << indx_map.size()/depth_cam_pc_downsample);
+          for (unsigned int i = dwnsmp_start(gen); i < indx_map.size();
+            i += depth_cam_pc_downsample)
           {
-            if (i % depth_cam_pc_downsample == 0)
-            {
-              tf::Vector3 point = camera_pose * tf::Vector3(
-                                          depth_cam_pc->points[indx_map[i]].x,
-                                          depth_cam_pc->points[indx_map[i]].y,
-                                          depth_cam_pc->points[indx_map[i]].z);
-              octocloud.push_back(
-                octomap::point3d(point.x(), point.y(), point.z()));
-            }
+            tf::Vector3 point = camera_pose * tf::Vector3(
+                                        depth_cam_pc->points[indx_map[i]].x,
+                                        depth_cam_pc->points[indx_map[i]].y,
+                                        depth_cam_pc->points[indx_map[i]].z);
+            octocloud.push_back(
+              octomap::point3d(point.x(), point.y(), point.z()));
           }
           pc_buff.height = 0;
           pc_buff.width = 0;
