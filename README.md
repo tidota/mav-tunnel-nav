@@ -1,5 +1,8 @@
 # MAV navigation in an enclosed environment
 
+This repository contains ROS nodes for MAV navigation in a tunnel environment
+which is simulated by Gazebo.
+
 MAV models from [rotorS](https://github.com/ethz-asl/rotors_simulator).
 
 # System Requirements
