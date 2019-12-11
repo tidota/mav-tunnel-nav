@@ -21,6 +21,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
+std::string odom_reset_topic;
 std::string imu_topic;
 std::string odom_topic;
 ros::Publisher odom_pub;
@@ -39,6 +40,23 @@ int sample_num;
 
 tf::Transform t;
 std::mutex t_mutex;
+
+std::mutex odom_reset_mutex;
+
+////////////////////////////////////////////////////////////////////////////////
+void locCallback(const nav_msgs::Odometry::ConstPtr& locdata)
+{
+  if (!initial_imu && !calibration)
+  {
+    std::lock_guard<std::mutex> lk(odom_reset_mutex);
+    x = locdata->pose.pose.position.x;
+    y = locdata->pose.pose.position.y;
+    z = locdata->pose.pose.position.z;
+    vx = locdata->twist.twist.linear.x;
+    vy = locdata->twist.twist.linear.y;
+    vz = locdata->twist.twist.linear.z;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
@@ -84,11 +102,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   last_time = cur_time;
 
-  // velocities
-  x += vx * dt;
-  y += vy * dt;
-  z += vz * dt;
-
   // acceleration
   tf::Vector3 acc_vec(
     imu->linear_acceleration.x, imu->linear_acceleration.y, imu->linear_acceleration.z
@@ -99,34 +112,42 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
   double ax = acc_vec.x();
   double ay = acc_vec.y();
   double az = acc_vec.z() - grav;
-  //if (std::fabs(ax) >= 1.0)
-    vx += ax * dt;
-  //if (std::fabs(ay) >= 1.0)
-    vy += ay * dt;
-  //if (std::fabs(az) >= 1.0)
-    vz += az * dt;
+
+  {
+    std::lock_guard<std::mutex> lk(odom_reset_mutex);
+
+    // velocities
+    x += vx * dt;
+    y += vy * dt;
+    z += vz * dt;
+
+    //if (std::fabs(ax) >= 1.0)
+      vx += ax * dt;
+    //if (std::fabs(ay) >= 1.0)
+      vy += ay * dt;
+    //if (std::fabs(az) >= 1.0)
+      vz += az * dt;
 
   //ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
 
-  {
-    std::lock_guard<std::mutex> lk(t_mutex);
+    nav_msgs::Odometry odom;
+    odom.header = imu->header;
+    odom.header.frame_id = world_frame_id;
+    odom.child_frame_id = odom_frame_id;
+    odom.pose.pose.position.x = x;
+    odom.pose.pose.position.y = y;
+    odom.pose.pose.position.z = z;
+    odom.pose.pose.orientation = imu->orientation;
+    odom.twist.twist.linear.x = vx;
+    odom.twist.twist.linear.y = vy;
+    odom.twist.twist.linear.z = vz;
+    odom.twist.twist.angular = imu->angular_velocity;
+
+    odom_pub.publish(odom);
+
+    std::lock_guard<std::mutex> lk2(t_mutex);
     t = tf::Transform(imu_orientation, tf::Vector3(x, y, z));
   }
-
-  nav_msgs::Odometry odom;
-  odom.header = imu->header;
-  odom.header.frame_id = world_frame_id;
-  odom.child_frame_id = odom_frame_id;
-  odom.pose.pose.position.x = x;
-  odom.pose.pose.position.y = y;
-  odom.pose.pose.position.z = z;
-  odom.pose.pose.orientation = imu->orientation;
-  odom.twist.twist.linear.x = vx;
-  odom.twist.twist.linear.y = vy;
-  odom.twist.twist.linear.z = vz;
-  odom.twist.twist.angular = imu->angular_velocity;
-
-  odom_pub.publish(odom);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,6 +163,7 @@ int main(int argc, char** argv)
   vx = vy = vz = 0;
   last_time = ros::Time::now();
 
+  pnh.getParam("odom_reset_topic", odom_reset_topic);
   pnh.getParam("imu_topic", imu_topic);
   pnh.getParam("odom_topic", odom_topic);
   pnh.getParam("world_frame_id", world_frame_id);
@@ -149,6 +171,8 @@ int main(int argc, char** argv)
 
   odom_pub = nh.advertise<nav_msgs::Odometry>(odom_topic, 1000);
   ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
+  ros::Subscriber odom_reset_sub
+    = nh.subscribe(odom_reset_topic, 1000, locCallback);
 
   ros::Time checkpoint = ros::Time::now();
   const ros::Duration duration(0.01);

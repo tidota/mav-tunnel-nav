@@ -45,6 +45,7 @@
 #include "rbpf.h"
 
 std::string odom_topic;
+std::string odom_reset_topic;
 std::string pc_topic;
 std::string world_frame_id;
 std::string robot_frame_id;
@@ -110,6 +111,11 @@ const tf::Pose Particle::getPose()
   return this->pose;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+const tf::Vector3 Particle::getVel()
+{
+  return this->vel_linear;
+}
 ////////////////////////////////////////////////////////////////////////////////
 const octomap::OcTree* Particle::getMap()
 {
@@ -193,6 +199,10 @@ void pf_main()
   std::uniform_real_distribution<> dis(0, 1.0);
 
   tf::TransformBroadcaster tf_broadcaster;
+
+  pnh.getParam("odom_reset_topic", odom_reset_topic);
+  ros::Publisher odom_reset_pub
+    = nh.advertise<nav_msgs::Odometry>(odom_reset_topic, 1);
 
   ros::Publisher map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
   ros::Publisher marker_occupied_pub
@@ -298,6 +308,7 @@ void pf_main()
       }
 
       int index_best = 0;
+      double max_weight = 0;
       if (now > initial_update + phase_only_mapping)
       {
         // Get sensory data (odom, depth cam)
@@ -355,18 +366,12 @@ void pf_main()
 
         ROS_DEBUG("rbpf: evaluate");
         // weight PF (use depth cam)
-        double max_weight = 0;
         double weight_sum = 0;
         for (int i = 0; i < n_particles; ++i)
         {
           // Calculate a probability ranging from 0 to 1.
           weights[i] = particles[i]->evaluate(octocloud);
           weight_sum += weights[i];
-          if (weights[i] > max_weight)
-          {
-            max_weight = weights[i];
-            index_best = i;
-          }
         }
 
         // resample PF (and update map)
@@ -386,6 +391,11 @@ void pf_main()
                 break;
             }
             indx_list[i] = index;
+            if (i == 0 || max_weight < weights[index]/weight_sum)
+            {
+              max_weight = weights[index]/weight_sum;
+              index_best = index;
+            }
           }
           std::vector<int> indx_unused(n_particles, -1);
 
@@ -445,7 +455,7 @@ void pf_main()
       {
         ROS_DEBUG("rbpf: publish data");
         octomap_msgs::Octomap map;
-        map.header.frame_id = "world";
+        map.header.frame_id = world_frame_id;
         map.header.stamp = now;
         if (octomap_msgs::fullMapToMsg(*particles[index_best]->getMap(), map))
           map_pub.publish(map);
@@ -456,6 +466,21 @@ void pf_main()
           particles[index_best]->getPose(), now,
           world_frame_id, robot_frame_id);
         tf_broadcaster.sendTransform(tf_stamped);
+
+        nav_msgs::Odometry locdata;
+        locdata.header.frame_id = world_frame_id;
+        locdata.header.stamp = now;
+        locdata.child_frame_id = robot_frame_id;
+        tf::Vector3 buff = tf_stamped.getOrigin();
+        locdata.pose.pose.position.x = buff.x();
+        locdata.pose.pose.position.y = buff.y();
+        locdata.pose.pose.position.z = buff.z();
+        buff = particles[index_best]->getVel();
+        locdata.twist.twist.linear.x = buff.x();
+        locdata.twist.twist.linear.y = buff.y();
+        locdata.twist.twist.linear.z = buff.z();
+        odom_reset_pub.publish(locdata);
+        ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight);
 
         counts_publish = 0;
       }

@@ -17,6 +17,7 @@ class Particle
   public: const tf::Pose getPose();
   // velocities
   private: tf::Vector3 vel_linear;
+  public: const tf::Vector3 getVel();
   // map
   private: octomap::OcTree *map;
   public: const octomap::OcTree* getMap();
