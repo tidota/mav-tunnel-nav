@@ -423,6 +423,12 @@ void pf_main()
             {
               new_generation.push_back(std::move(particles[indx_list[i]]));
               indx_unused[indx_list[i]] = i;
+
+              // update the map
+              if (counts_map_update >= mapping_interval && octocloud.size() > 0)
+              {
+                new_generation[i]->update_map(octocloud);
+              }
             }
             else
             {
@@ -433,22 +439,34 @@ void pf_main()
 
           // Copy the children to the parents.
           particles = std::move(new_generation);
-        }
-      }
 
-      // update the map
-      if (counts_map_update >= mapping_interval && octocloud.size() > 0)
-      {
-        ROS_DEBUG("rbpf: update map");
-        for (auto p: particles)
-        {
-          p->update_map(octocloud);
+          // update the map
+          if (counts_map_update >= mapping_interval)
+          {
+            counts_map_update = 0;
+          }
+          else
+          {
+            ++counts_map_update;
+          }
         }
-        counts_map_update = 0;
-      }
-      else
-      {
-        ++counts_map_update;
+        else
+        {
+          // update the map
+          if (counts_map_update >= mapping_interval && octocloud.size() > 0)
+          {
+            ROS_DEBUG("rbpf: update map");
+            for (auto p: particles)
+            {
+              p->update_map(octocloud);
+            }
+            counts_map_update = 0;
+          }
+          else
+          {
+            ++counts_map_update;
+          }
+        }
       }
 
       // compress maps
