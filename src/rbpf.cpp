@@ -239,6 +239,16 @@ void pf_main()
   const ros::Duration phase_only_mapping(t_only_mapping);
   int mapping_interval;
   pnh.getParam("mapping_interval", mapping_interval);
+  int publish_interval;
+  pnh.getParam("publish_interval", publish_interval);
+  int vismap_interval;
+  pnh.getParam("vismap_interval", vismap_interval);
+  int visloc_interval;
+  pnh.getParam("visloc_interval", visloc_interval);
+  int compress_interval;
+  pnh.getParam("compress_interval", compress_interval);
+  int locdata_interval;
+  pnh.getParam("locdata_interval", locdata_interval);
 
   std::vector< std::shared_ptr<Particle> > particles;
   for (int i = 0; i < n_particles; ++i)
@@ -395,7 +405,7 @@ void pf_main()
             if (i == 0 || max_weight < weights[index]/weight_sum)
             {
               max_weight = weights[index]/weight_sum;
-              index_best = index;
+              index_best = i;
             }
           }
           std::vector<int> indx_unused(n_particles, -1);
@@ -437,7 +447,7 @@ void pf_main()
       }
 
       // compress maps
-      if (counts_compress >= 7)
+      if (counts_compress >= compress_interval)
       {
         ROS_DEBUG("rbpf: compress");
         for (auto p: particles)
@@ -458,9 +468,9 @@ void pf_main()
       for (int i = 0; i < n_particles; ++i)
       {
         tf::Vector3 buff = particles[i]->getPose().getOrigin();
-        x += buff.x()*weights[i]/weight_sum;
-        y += buff.y()*weights[i]/weight_sum;
-        z += buff.z()*weights[i]/weight_sum;
+        x += buff.x()/n_particles;
+        y += buff.y()/n_particles;
+        z += buff.z()/n_particles;
       }
       tf::Vector3 average_loc(x, y, z);
       x = 0;
@@ -469,14 +479,14 @@ void pf_main()
       for (int i = 0; i < n_particles; ++i)
       {
         tf::Vector3 buff = particles[i]->getVel();
-        x += buff.x()*weights[i]/weight_sum;
-        y += buff.y()*weights[i]/weight_sum;
-        z += buff.z()*weights[i]/weight_sum;
+        x += buff.x()/n_particles;
+        y += buff.y()/n_particles;
+        z += buff.z()/n_particles;
       }
       tf::Vector3 average_vel(x, y, z);
 
       // publish data
-      if (counts_publish >= 0)
+      if (counts_publish >= publish_interval)
       {
         ROS_DEBUG("rbpf: publish data");
         octomap_msgs::Octomap map;
@@ -499,7 +509,7 @@ void pf_main()
         ++counts_publish;
       }
 
-      if (counts_locdata >= 50 && max_weight > 1.0/n_particles * 3.0)
+      if (counts_locdata >= locdata_interval && max_weight > 1.0/n_particles * 3.0)
       {
         nav_msgs::Odometry locdata;
         locdata.header.frame_id = world_frame_id;
@@ -528,7 +538,7 @@ void pf_main()
       }
 
       // visualization
-      if (counts_visualize_map >= 3)
+      if (counts_visualize_map >= vismap_interval)
       {
         ROS_DEBUG("rbpf: visualize map");
         const octomap::OcTree* m = particles[index_best]->getMap();
@@ -605,7 +615,7 @@ void pf_main()
         ++counts_visualize_map;
       }
 
-      if (counts_visualize_loc >= 0)
+      if (counts_visualize_loc >= visloc_interval)
       {
         ROS_DEBUG("rbpf: visualize loc");
         // publish poses

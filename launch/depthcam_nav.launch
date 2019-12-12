@@ -84,6 +84,11 @@
 
       <param name="t_only_mapping" value="10.0"/>
       <param name="mapping_interval" value="3"/>
+      <param name="publish_interval" value="0"/>
+      <param name="vismap_interval" value="3"/>
+      <param name="visloc_interval" value="0"/>
+      <param name="compress_interval" value="7"/>
+      <param name="locdata_interval" value="5"/>
     </node>
 
     <!-- Given robot_description parameter and joint states, publish TF frames -->
