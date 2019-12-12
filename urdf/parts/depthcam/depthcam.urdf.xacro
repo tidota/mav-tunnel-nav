@@ -66,6 +66,7 @@ http://gazebosim.org/tutorials?tut=ros_depth_camera&cat=connect_ros
           <pointCloudTopicName>${name}/depth/points</pointCloudTopicName>
           <frameName>${name}_link</frameName>
           <pointCloudCutoff>0.05</pointCloudCutoff>
+          <pointCloudCutoffMax>${max_range}</pointCloudCutoffMax>
           <distortionK1>0</distortionK1>
           <distortionK2>0</distortionK2>
           <distortionK3>0</distortionK3>
