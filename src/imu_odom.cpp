@@ -48,6 +48,8 @@ void locCallback(const nav_msgs::Odometry::ConstPtr& locdata)
 {
   if (!initial_imu && !calibration)
   {
+    ROS_DEBUG("Got locdata: (%7.2f, %7.2f, %7.2f) => (%7.2f, %7.2f, %7.2f)", vx, vy, vz,
+      locdata->twist.twist.linear.x, locdata->twist.twist.linear.y, locdata->twist.twist.linear.z);
     std::lock_guard<std::mutex> lk(odom_reset_mutex);
     x = locdata->pose.pose.position.x;
     y = locdata->pose.pose.position.y;

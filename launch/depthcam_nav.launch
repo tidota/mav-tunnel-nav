@@ -55,7 +55,7 @@
     </node>
 
     <!-- imu odometry -->
-    <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom">
+    <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom" output="screen">
       <param name="odom_reset_topic" value="odom_reset"/>
       <param name="imu_topic" value="imu"/>
       <param name="odom_topic" value="imu_odom/odometry"/>

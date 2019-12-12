@@ -266,6 +266,7 @@ void pf_main()
   int counts_visualize_loc = 0;
   int counts_map_update = 0;
   int counts_compress = 0;
+  int counts_locdata = 0;
 
   std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
 
@@ -309,6 +310,7 @@ void pf_main()
 
       int index_best = 0;
       double max_weight = 0;
+      double weight_sum = 0;
       if (now > initial_update + phase_only_mapping)
       {
         // Get sensory data (odom, depth cam)
@@ -366,7 +368,6 @@ void pf_main()
 
         ROS_DEBUG("rbpf: evaluate");
         // weight PF (use depth cam)
-        double weight_sum = 0;
         for (int i = 0; i < n_particles; ++i)
         {
           // Calculate a probability ranging from 0 to 1.
@@ -450,8 +451,32 @@ void pf_main()
         ++counts_compress;
       }
 
+      double x, y, z;
+      x = 0;
+      y = 0;
+      z = 0;
+      for (int i = 0; i < n_particles; ++i)
+      {
+        tf::Vector3 buff = particles[i]->getPose().getOrigin();
+        x += buff.x()*weights[i]/weight_sum;
+        y += buff.y()*weights[i]/weight_sum;
+        z += buff.z()*weights[i]/weight_sum;
+      }
+      tf::Vector3 average_loc(x, y, z);
+      x = 0;
+      y = 0;
+      z = 0;
+      for (int i = 0; i < n_particles; ++i)
+      {
+        tf::Vector3 buff = particles[i]->getVel();
+        x += buff.x()*weights[i]/weight_sum;
+        y += buff.y()*weights[i]/weight_sum;
+        z += buff.z()*weights[i]/weight_sum;
+      }
+      tf::Vector3 average_vel(x, y, z);
+
       // publish data
-      if (counts_publish >= 5)
+      if (counts_publish >= 0)
       {
         ROS_DEBUG("rbpf: publish data");
         octomap_msgs::Octomap map;
@@ -462,31 +487,44 @@ void pf_main()
         else
           ROS_ERROR("Error serializing OctoMap");
 
+        tf::Quaternion q = particles[index_best]->getPose().getRotation();
         tf::StampedTransform tf_stamped(
-          particles[index_best]->getPose(), now,
+          tf::Transform(q, average_loc), now,
           world_frame_id, robot_frame_id);
         tf_broadcaster.sendTransform(tf_stamped);
-
-        nav_msgs::Odometry locdata;
-        locdata.header.frame_id = world_frame_id;
-        locdata.header.stamp = now;
-        locdata.child_frame_id = robot_frame_id;
-        tf::Vector3 buff = tf_stamped.getOrigin();
-        locdata.pose.pose.position.x = buff.x();
-        locdata.pose.pose.position.y = buff.y();
-        locdata.pose.pose.position.z = buff.z();
-        buff = particles[index_best]->getVel();
-        locdata.twist.twist.linear.x = buff.x();
-        locdata.twist.twist.linear.y = buff.y();
-        locdata.twist.twist.linear.z = buff.z();
-        odom_reset_pub.publish(locdata);
-        ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight);
-
         counts_publish = 0;
       }
       else
       {
         ++counts_publish;
+      }
+
+      if (counts_locdata >= 50 && max_weight > 1.0/n_particles * 3.0)
+      {
+        nav_msgs::Odometry locdata;
+        locdata.header.frame_id = world_frame_id;
+        locdata.header.stamp = now;
+        locdata.child_frame_id = robot_frame_id;
+        locdata.pose.pose.position.x = average_loc.x();
+        locdata.pose.pose.position.y = average_loc.y();
+        locdata.pose.pose.position.z = average_loc.z();
+        locdata.twist.twist.linear.x = average_vel.x();
+        locdata.twist.twist.linear.y = average_vel.y();
+        locdata.twist.twist.linear.z = average_vel.z();
+        odom_reset_pub.publish(locdata);
+        ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight << " | UPDATE!!!!!!!!!");
+        ROS_DEBUG("vx: %7.2f, vy: %7.2f, vz: %7.2f",
+          locdata.twist.twist.linear.x,
+          locdata.twist.twist.linear.y,
+          locdata.twist.twist.linear.z);
+        counts_locdata = 0;
+      }
+      else
+      {
+        ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight << " | no update");
+        tf::Vector3 buff = particles[index_best]->getVel();
+        ROS_DEBUG("vx: %7.2f, vy: %7.2f, vz: %7.2f", buff.x(), buff.y(), buff.z());
+        ++counts_locdata;
       }
 
       // visualization
