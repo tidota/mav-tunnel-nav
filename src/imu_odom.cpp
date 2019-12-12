@@ -43,6 +43,8 @@ std::mutex t_mutex;
 
 std::mutex odom_reset_mutex;
 
+tf::Transform init_dir;
+
 ////////////////////////////////////////////////////////////////////////////////
 void locCallback(const nav_msgs::Odometry::ConstPtr& locdata)
 {
@@ -109,8 +111,9 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
     imu->linear_acceleration.x, imu->linear_acceleration.y, imu->linear_acceleration.z
   );
   tf::Quaternion imu_orientation(imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w);
+
   tf::Transform transform(imu_orientation, tf::Vector3(0,0,0));
-  acc_vec = transform * acc_vec;
+  acc_vec = init_dir * transform * acc_vec;
   double ax = acc_vec.x();
   double ay = acc_vec.y();
   double az = acc_vec.z() - grav;
@@ -132,6 +135,9 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
   //ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
 
+    tf::Quaternion global_ori = init_dir.getRotation() * imu_orientation;
+    global_ori.normalize();
+
     nav_msgs::Odometry odom;
     odom.header = imu->header;
     odom.header.frame_id = world_frame_id;
@@ -139,7 +145,10 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
     odom.pose.pose.position.x = x;
     odom.pose.pose.position.y = y;
     odom.pose.pose.position.z = z;
-    odom.pose.pose.orientation = imu->orientation;
+    odom.pose.pose.orientation.x = global_ori.x();
+    odom.pose.pose.orientation.y = global_ori.y();
+    odom.pose.pose.orientation.z = global_ori.z();
+    odom.pose.pose.orientation.w = global_ori.w();
     odom.twist.twist.linear.x = vx;
     odom.twist.twist.linear.y = vy;
     odom.twist.twist.linear.z = vz;
@@ -148,7 +157,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
     odom_pub.publish(odom);
 
     std::lock_guard<std::mutex> lk2(t_mutex);
-    t = tf::Transform(imu_orientation, tf::Vector3(x, y, z));
+    t = tf::Transform(global_ori, tf::Vector3(x, y, z));
   }
 }
 
@@ -159,7 +168,14 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
   tf::TransformBroadcaster tf_broadcaster;
-  t = tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(0, 0, 0));
+
+  double init_Y;
+  pnh.getParam("init_Y", init_Y);
+  tf::Quaternion init_rot;
+  init_rot.setRPY(0, 0, init_Y);
+  init_dir = tf::Transform(init_rot, tf::Vector3(0, 0, 0));
+
+  t = init_dir;
 
   x = y = z = 0;
   vx = vy = vz = 0;

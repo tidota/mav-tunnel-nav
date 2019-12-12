@@ -6,6 +6,7 @@
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.21"/>
+  <arg name="Y" default="3.14159"/>
 
   <!-- Start Gazebo -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -24,7 +25,7 @@
   </include>
 
   <group ns="iris">
-    <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
+    <include file="$(find mav_tunnel_nav)/launch/spawn_mav.launch">
       <arg name="mav_name" value="$(arg mav_name)" />
       <!--<arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_14ranges.xacro" />-->
       <arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_depthcam.xacro" />
@@ -34,6 +35,7 @@
       <arg name="x" value="$(arg x)"/>
       <arg name="y" value="$(arg y)"/>
       <arg name="z" value="$(arg z)"/>
+      <arg name="Y" value="$(arg Y)"/>
     </include>
 
     <!-- Converts joystick movements into sensors_msgs/Joy messages -->
@@ -56,6 +58,7 @@
 
     <!-- imu odometry -->
     <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom" output="screen">
+      <param name="init_Y" value="$(arg Y)"/>
       <param name="odom_reset_topic" value="odom_reset"/>
       <param name="imu_topic" value="imu"/>
       <param name="odom_topic" value="imu_odom/odometry"/>
@@ -76,6 +79,7 @@
 
       <param name="depth_cam_pc_downsample" value="1000"/>
 
+      <param name="init_Y" value="$(arg Y)"/>
       <param name="map_resol" value="0.1"/>
       <param name="map_probHit" value="0.8"/>
       <param name="map_probMiss" value="0.2"/>
