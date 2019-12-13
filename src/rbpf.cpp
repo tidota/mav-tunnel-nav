@@ -23,6 +23,7 @@
 
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/filter.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -302,21 +303,28 @@ void pf_main()
         if (pc_buff.height * pc_buff.width > 1)
         {
           pcl::fromROSMsg(pc_buff, *depth_cam_pc);
-          std::vector<int> indx_map;
-          pcl::removeNaNFromPointCloud(*depth_cam_pc, *depth_cam_pc, indx_map);
-          ROS_DEBUG_STREAM(
-            "downsampling point cloud " << indx_map.size()
-            << " -> " << indx_map.size()/depth_cam_pc_downsample);
-          for (unsigned int i = dwnsmp_start(gen); i < indx_map.size();
-            i += depth_cam_pc_downsample)
+
+          pcl::VoxelGrid<PointT> downSizeFilter;
+          downSizeFilter.setLeafSize(resol, resol, resol);
+          downSizeFilter.setInputCloud(depth_cam_pc);
+          downSizeFilter.filter(*depth_cam_pc);
+          for (unsigned int i = 0; i < depth_cam_pc->points.size(); ++i)
           {
-            tf::Vector3 point = camera_pose * tf::Vector3(
-                                        depth_cam_pc->points[indx_map[i]].x,
-                                        depth_cam_pc->points[indx_map[i]].y,
-                                        depth_cam_pc->points[indx_map[i]].z);
-            octocloud.push_back(
-              octomap::point3d(point.x(), point.y(), point.z()));
+            // if (pcl_isfinite(depth_cam_pc->points[i].x) &&
+            //     pcl_isfinite(depth_cam_pc->points[i].y) &&
+            //     pcl_isfinite(depth_cam_pc->points[i].z))
+            // {
+              tf::Vector3 point = camera_pose * tf::Vector3(
+                                          depth_cam_pc->points[i].x,
+                                          depth_cam_pc->points[i].y,
+                                          depth_cam_pc->points[i].z);
+              octocloud.push_back(
+                octomap::point3d(point.x(), point.y(), point.z()));
+            // }
           }
+          ROS_DEBUG_STREAM(
+            "depth_cam_pc(" << depth_cam_pc->points.size() << ") => " <<
+            "octocloud(" << octocloud.size() << ")");
           pc_buff.height = 0;
           pc_buff.width = 0;
         }
@@ -389,10 +397,10 @@ void pf_main()
           weight_sum += weights[i];
         }
 
-        ROS_DEBUG("rbpf: resample");
         // resample PF (and update map)
         if (weight_sum != 0)
         {
+          ROS_DEBUG("rbpf: resample start");
           // http://mrpt.ual.es/reference/devel/_c_particle_filter_data_8h_source.html#l00109
           std::vector<int> indx_list(n_particles);
           for (int i = 0; i < n_particles; ++i)
@@ -449,6 +457,7 @@ void pf_main()
           {
             ++counts_map_update;
           }
+          ROS_DEBUG("rbpf: resample done");
         }
         else
         {

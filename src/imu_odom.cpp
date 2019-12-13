@@ -88,7 +88,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
                       imu->linear_acceleration.y,
                       imu->linear_acceleration.z);
     sample_num++;
-    if (dt > 3.0 && sample_num >= 100)
+    if (dt > 10.0 && sample_num >= 100)
     {
       init_grav_dir /= sample_num;
       grav = init_grav_dir.length();
