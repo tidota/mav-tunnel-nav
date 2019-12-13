@@ -541,7 +541,7 @@ void pf_main()
         ++counts_publish;
       }
 
-      if (counts_locdata >= locdata_interval && max_weight > 1.0/n_particles * 3.0)
+      if (counts_locdata >= locdata_interval)// && max_weight > 1.0/n_particles * 3.0)
       {
         nav_msgs::Odometry locdata;
         locdata.header.frame_id = world_frame_id;
@@ -550,9 +550,9 @@ void pf_main()
         locdata.pose.pose.position.x = average_loc.x();
         locdata.pose.pose.position.y = average_loc.y();
         locdata.pose.pose.position.z = average_loc.z();
-        locdata.twist.twist.linear.x = average_vel.x();
-        locdata.twist.twist.linear.y = average_vel.y();
-        locdata.twist.twist.linear.z = average_vel.z();
+        locdata.twist.twist.linear.x = 0;//average_vel.x();
+        locdata.twist.twist.linear.y = 0;//average_vel.y();
+        locdata.twist.twist.linear.z = 0;//average_vel.z();
         odom_reset_pub.publish(locdata);
         ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight << " | UPDATE!!!!!!!!!");
         ROS_DEBUG("vx: %7.2f, vy: %7.2f, vz: %7.2f",
