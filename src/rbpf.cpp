@@ -130,7 +130,7 @@ void Particle::predict(
   const tf::Vector3 &vel, const tf::Quaternion &ori,
   const double &deltaT, std::mt19937 &gen)
 {
-  std::normal_distribution<> motion_noise_lin(0, 0.2);
+  std::normal_distribution<> motion_noise_lin(0, 0.1);
   this->vel_linear = tf::Vector3(
     vel.x() + motion_noise_lin(gen),
     vel.y() + motion_noise_lin(gen),
@@ -149,13 +149,46 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
   double log_lik = 0;
   int hits = 0;
 
+  tf::Pose sens_pose(this->pose.getRotation(), this->pose.getOrigin() + tf::Vector3(0.03, 0, -0.06));
+
   // for all point in the point cloud
   octomap::OcTreeKey key;
   octomap::OcTreeNode *node;
+  int offset = scan.size()/5;
+  for (unsigned int ip = 0; ip < scan.size(); ip += offset)
+  {
+    tf::Vector3 tf_pos = sens_pose.getOrigin();
+    tf::Vector3 tf_sens = tf::Vector3(scan[ip].x(), scan[ip].y(), scan[ip].z());
+    tf::Vector3 tf_target
+          = sens_pose * tf_sens;
+
+    double dist = tf_sens.length();
+    if (dist < 0.5)
+      continue;
+    octomap::point3d oct_pos(tf_pos.x(), tf_pos.y(), tf_pos.z());
+    octomap::point3d oct_target(tf_target.x(), tf_target.y(), tf_target.z());
+    octomap::point3d direction = oct_pos - oct_target;
+    octomap::point3d hit;
+    if (this->map->castRay(oct_target, direction, hit,
+        true, dist + 0.25)) //ignoreUnknownCells = true, maxRange
+    {
+      if (this->map->coordToKeyChecked(hit, key) &&
+       (node = this->map->search(key,0 /*depth*/)))
+      {
+        double err = (oct_target - hit).norm();
+        double sigma = 0.25; // standard deviation: 95% is in one cell length
+
+        log_lik +=
+          -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
+        ++hits;
+      }
+    }
+  }
+
   for (unsigned int ip = 0; ip < scan.size(); ++ip)
   {
     tf::Vector3 point
-          = this->pose * tf::Vector3(scan[ip].x(), scan[ip].y(), scan[ip].z());
+          = sens_pose * tf::Vector3(scan[ip].x(), scan[ip].y(), scan[ip].z());
     if (this->map->coordToKeyChecked(
           point.x(), point.y(), point.z(), key)
         && (node = this->map->search(key,0)))
@@ -164,15 +197,14 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
       ++hits;
     }
   }
-
   // return 0 if the major part of the point cloud landed on unknown cells.
-  return (hits < scan.size()*0.05)? 0: std::exp(log_lik/hits);
+  return (hits < 3)? 0: std::exp(log_lik);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Particle::update_map(const octomap::Pointcloud &scan)
 {
-  octomath::Vector3 sensor_org(0,0,0);
+  octomath::Vector3 sensor_org(0.03, 0, -0.06);
   tf::Vector3 pose_org = this->pose.getOrigin();
   tf::Quaternion pose_rot = this->pose.getRotation();
   octomath::Pose6D frame_org(

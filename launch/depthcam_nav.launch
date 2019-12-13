@@ -80,7 +80,7 @@
       <param name="depth_cam_pc_downsample" value="1000"/>
 
       <param name="init_Y" value="$(arg Y)"/>
-      <param name="map_resol" value="0.25"/>
+      <param name="map_resol" value="0.2"/>
       <param name="map_probHit" value="0.8"/>
       <param name="map_probMiss" value="0.2"/>
       <param name="map_threshMin" value="0.12"/>
