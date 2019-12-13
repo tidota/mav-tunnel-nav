@@ -111,9 +111,11 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
     imu->linear_acceleration.x, imu->linear_acceleration.y, imu->linear_acceleration.z
   );
   tf::Quaternion imu_orientation(imu->orientation.x, imu->orientation.y, imu->orientation.z, imu->orientation.w);
+  tf::Quaternion global_ori = init_dir.getRotation() * imu_orientation;
+  global_ori.normalize();
 
-  tf::Transform transform(imu_orientation, tf::Vector3(0,0,0));
-  acc_vec = init_dir * transform * acc_vec;
+  tf::Transform transform(global_ori, tf::Vector3(0,0,0));
+  acc_vec = transform * acc_vec;
   double ax = acc_vec.x();
   double ay = acc_vec.y();
   double az = acc_vec.z() - grav;
@@ -133,10 +135,20 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
     //if (std::fabs(az) >= 1.0)
       vz += az * dt;
 
-  //ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
+    // if (vx > 1.0)
+    //   vx = 1.0;
+    // else if (vx < -1.0)
+    //   vx = -1.0;
+    // if (vy > 1.0)
+    //   vy = 1.0;
+    // else if (vy < -1.0)
+    //   vy = -1.0;
+    // if (vz > 1.0)
+    //   vz = 1.0;
+    // else if (vz < -1.0)
+    //   vz = -1.0;
 
-    tf::Quaternion global_ori = init_dir.getRotation() * imu_orientation;
-    global_ori.normalize();
+  //ROS_INFO_STREAM("dt: " << dt << ", ax: " << ax << ", ay: " << ay << ", az: " << az);
 
     nav_msgs::Odometry odom;
     odom.header = imu->header;
