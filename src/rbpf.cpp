@@ -149,7 +149,7 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
   double log_lik = 0;
   int hits = 0;
 
-  tf::Pose sens_pose(this->pose.getRotation(), this->pose.getOrigin() + tf::Vector3(0.03, 0, -0.06));
+  tf::Pose sens_pose = this->pose;
 
   // for all point in the point cloud
   octomap::OcTreeKey key;
@@ -180,7 +180,6 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
 
         log_lik +=
           -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
-        ++hits;
       }
     }
   }
@@ -198,13 +197,14 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
     }
   }
   // return 0 if the major part of the point cloud landed on unknown cells.
-  return (hits < 3)? 0: std::exp(log_lik);
+  //ROS_DEBUG_STREAM("hits: " << hits);
+  return (hits < (int)scan.size()/10)? 0: std::exp(log_lik);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void Particle::update_map(const octomap::Pointcloud &scan)
 {
-  octomath::Vector3 sensor_org(0.03, 0, -0.06);
+  octomath::Vector3 sensor_org(0, 0, 0);
   tf::Vector3 pose_org = this->pose.getOrigin();
   tf::Quaternion pose_rot = this->pose.getRotation();
   octomath::Pose6D frame_org(
@@ -306,7 +306,8 @@ void pf_main()
   PointCloudT::Ptr depth_cam_pc(new PointCloudT());
   tf::Quaternion rotation;
   rotation.setRPY(-PI/2.0, 0, -PI/2.0);
-  const tf::Pose camera_pose(rotation, tf::Vector3(0, 0, 0));
+  //const tf::Pose camera_pose(rotation, tf::Vector3(0, 0, 0));
+  const tf::Pose camera_pose(rotation, tf::Vector3(0.03, 0, -0.06));
 
   int counts_publish = 0;
   int counts_visualize_map = 0;
@@ -427,6 +428,10 @@ void pf_main()
           // Calculate a probability ranging from 0 to 1.
           weights[i] = particles[i]->evaluate(octocloud);
           weight_sum += weights[i];
+        }
+        for (int i = 0; i < n_particles; ++i)
+        {
+          ROS_DEBUG("eval[%2d]: %7.2f", i, weights[i]/weight_sum);
         }
 
         // resample PF (and update map)
