@@ -514,6 +514,15 @@ void pf_main()
           }
         }
       }
+      else if (octocloud.size() > 0)
+      {
+        // mapping only at the beginning
+        ROS_DEBUG("rbpf: mapping only");
+        for (auto p: particles)
+        {
+          p->update_map(octocloud);
+        }
+      }
 
       // compress maps
       if (counts_compress >= compress_interval)
