@@ -74,8 +74,8 @@
       <param name="world_frame_id" value="world"/>
       <param name="robot_frame_id" value="base_link"/>
 
-      <param name="n_particles" value="40"/>
-      <param name="update_freq" value="3"/>
+      <param name="n_particles" value="50"/>
+      <param name="update_freq" value="2"/>
 
       <param name="depth_cam_pc_downsample" value="1000"/>
 
@@ -86,7 +86,7 @@
       <param name="map_threshMin" value="0.12"/>
       <param name="map_threshMax" value="0.97"/>
 
-      <param name="t_only_mapping" value="15.0"/>
+      <param name="t_only_mapping" value="20.0"/>
       <param name="mapping_interval" value="3"/>
       <param name="publish_interval" value="0"/>
       <param name="vismap_interval" value="3"/>
