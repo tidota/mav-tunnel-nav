@@ -92,7 +92,7 @@
       <param name="vismap_interval" value="3"/>
       <param name="visloc_interval" value="0"/>
       <param name="compress_interval" value="7"/>
-      <param name="locdata_interval" value="5"/>
+      <param name="locdata_interval" value="1000"/>
     </node>
 
     <!-- Given robot_description parameter and joint states, publish TF frames -->

@@ -147,7 +147,7 @@ void Particle::predict(
 double Particle::evaluate(const octomap::Pointcloud &scan)
 {
   double log_lik = 0;
-  int hits = 0;
+  // int hits = 0;
 
   tf::Pose sens_pose = this->pose;
 
@@ -170,17 +170,17 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
     octomap::point3d direction = oct_pos - oct_target;
     octomap::point3d hit;
     if (this->map->castRay(oct_target, direction, hit,
-        true, dist + 0.25)) //ignoreUnknownCells = true, maxRange
+        true, dist + 0.2)) //ignoreUnknownCells = true, maxRange
     {
-      if (this->map->coordToKeyChecked(hit, key) &&
-       (node = this->map->search(key,0 /*depth*/)))
-      {
+      // if (this->map->coordToKeyChecked(hit, key) &&
+      //  (node = this->map->search(key,0 /*depth*/)))
+      // {
         double err = (oct_target - hit).norm();
-        double sigma = 0.25; // standard deviation: 95% is in one cell length
+        double sigma = 0.2; // standard deviation
 
         log_lik +=
           -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
-      }
+      // }
     }
   }
 
