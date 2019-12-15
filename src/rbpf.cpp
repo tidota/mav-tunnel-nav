@@ -154,7 +154,7 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
   // for all point in the point cloud
   octomap::OcTreeKey key;
   octomap::OcTreeNode *node;
-  int offset = scan.size()/5;
+  int offset = scan.size()/30;
   for (unsigned int ip = 0; ip < scan.size(); ip += offset)
   {
     tf::Vector3 tf_pos = sens_pose.getOrigin();
@@ -184,21 +184,21 @@ double Particle::evaluate(const octomap::Pointcloud &scan)
     }
   }
 
-  for (unsigned int ip = 0; ip < scan.size(); ++ip)
-  {
-    tf::Vector3 point
-          = sens_pose * tf::Vector3(scan[ip].x(), scan[ip].y(), scan[ip].z());
-    if (this->map->coordToKeyChecked(
-          point.x(), point.y(), point.z(), key)
-        && (node = this->map->search(key,0)))
-    {
-      log_lik += std::log(node->getOccupancy());
-      ++hits;
-    }
-  }
+  // for (unsigned int ip = 0; ip < scan.size(); ++ip)
+  // {
+  //   tf::Vector3 point
+  //         = sens_pose * tf::Vector3(scan[ip].x(), scan[ip].y(), scan[ip].z());
+  //   if (this->map->coordToKeyChecked(
+  //         point.x(), point.y(), point.z(), key)
+  //       && (node = this->map->search(key,0)))
+  //   {
+  //     log_lik += std::log(node->getOccupancy());
+  //     ++hits;
+  //   }
+  // }
   // return 0 if the major part of the point cloud landed on unknown cells.
   //ROS_DEBUG_STREAM("hits: " << hits);
-  return (hits < (int)scan.size()/10)? 0: std::exp(log_lik);
+  return std::exp(log_lik);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
