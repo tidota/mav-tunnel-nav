@@ -57,6 +57,11 @@ std::mutex odom_mutex;
 sensor_msgs::PointCloud2 pc_buff;
 std::mutex pc_mutex;
 
+std::vector<std::string> sonar_topics;
+std::map<std::string, tf::Pose> sonar_poses;
+std::map<std::string, double> sonar_buff;
+std::mutex sonar_mutex;
+
 ////////////////////////////////////////////////////////////////////////////////
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
@@ -69,6 +74,30 @@ void pcCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(pc_mutex);
   pc_buff = *msg;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void sonarCallback(const sensor_msgs::Range::ConstPtr& new_range)
+{
+  std::lock_guard<std::mutex> lk(sonar_mutex);
+  // frame_id looks like "ray_xxxx_link". we need "xxxx" part.
+  int len = new_range->header.frame_id.length();
+  int pos1 = 0;
+  while (pos1 < len && new_range->header.frame_id[pos1] != '_'){ ++pos1; }
+  ++pos1;
+  int pos2 = pos1;
+  while (pos2 < len && new_range->header.frame_id[pos2] != '_'){ ++pos2; }
+
+  // then need "range_xxxx" so "range_" is appended
+  sonar_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
+    = new_range->range;
+
+  // ROS_DEBUG_STREAM(
+  //   "range " << new_range->header.frame_id
+  //            << "("
+  //            << new_range->header.frame_id.substr(pos1, pos2 - pos1)
+  //            << ")"
+  //            << " = " << new_range->range);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,6 +354,19 @@ void pf_main()
     if (now > last_update + update_phase)
     {
       ROS_DEBUG("rbpf: new iteration");
+
+      // { // just for debugging
+      //   // it shows the frames on the world frame.
+      //   for (auto sonar_topic: sonar_topics)
+      //   {
+      //
+      //     tf::StampedTransform tf_stamped(
+      //       sonar_poses[sonar_topic], now,
+      //       world_frame_id, sonar_topic);
+      //     tf_broadcaster.sendTransform(tf_stamped);
+      //   }
+      // }
+
       // calculate the delta T
       const double deltaT = (now - last_update).toSec();
       // initialize the time step
@@ -738,6 +780,30 @@ int main(int argc, char** argv)
   pnh.getParam("pc_topic", pc_topic);
   ros::Subscriber odom_sub = nh.subscribe(odom_topic, 1000, odomCallback);
   ros::Subscriber pc_sub = nh.subscribe(pc_topic, 1000, pcCallback);
+
+  std::string str_buff;
+  pnh.param<std::string>("sonar_list", str_buff, "");
+  std::stringstream ss(str_buff);
+  std::string token;
+  double x,y,z,P,R,Y;
+  std::vector<ros::Subscriber> sonar_subs;
+  while (ss >> token >> x >> y >> z >> R >> P >> Y)
+  {
+    ROS_DEBUG_STREAM(
+      "sonar: " << token << ", "
+                << x << ", " << y << ", " << z << ", "
+                << R << ", " << P << ", " << Y);
+
+    sonar_subs.push_back(
+      nh.subscribe(token, 1000, sonarCallback)
+    );
+    sonar_topics.push_back(token);
+    tf::Vector3 pos(x, y, z);
+    tf::Quaternion rot;
+    rot.setRPY(R * PI / 180.0, P * PI / 180.0, Y * PI / 180.0);
+    tf::Pose sonar_pose(rot, pos);
+    sonar_poses[token] = sonar_pose;
+  }
 
   std::thread t(pf_main);
 

@@ -93,6 +93,30 @@
       <param name="visloc_interval" value="0"/>
       <param name="compress_interval" value="7"/>
       <param name="locdata_interval" value="1000"/>
+
+      <!-- refer to xacro for sonar settings -->
+      <param name="sonar_list"
+        value = "range_front  0.11     0 -0.01 0 0   0
+                 range_rfront 0.11 -0.06 -0.01 0 0 -45
+                 range_lfront 0.11  0.06 -0.01 0 0  45
+
+                 range_right  0 -0.06 0.01 0 0 -90
+                 range_left   0  0.06 0.01 0 0  90
+
+                 range_rear   -0.12     0 -0.01 0 0  180
+                 range_rrear  -0.12 -0.06 -0.01 0 0 -135
+                 range_lrear  -0.12  0.06 -0.01 0 0  135
+
+                 range_up          0 0 0.055 0 -90   0
+                 range_ufront  0.037 0 0.055 0 -45   0
+                 range_urear  -0.037 0 0.055 0 -45 180
+
+                 range_down        0 0 -0.085 0 90   0
+                 range_dfront  0.037 0 -0.085 0 45   0
+                 range_drear  -0.037 0 -0.085 0 45 180"
+        />
+      <param name="sonar_max" value="1.5"/>
+      <param name="sonar_min" value="0.01"/>
     </node>
 
     <!-- Given robot_description parameter and joint states, publish TF frames -->
