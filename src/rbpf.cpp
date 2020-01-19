@@ -57,10 +57,11 @@ std::mutex odom_mutex;
 sensor_msgs::PointCloud2 pc_buff;
 std::mutex pc_mutex;
 
-std::vector<std::string> sonar_topics;
-std::map<std::string, tf::Pose> sonar_poses;
-std::map<std::string, double> sonar_buff;
-std::mutex sonar_mutex;
+std::vector<std::string> range_topics;
+std::map<std::string, tf::Pose> range_poses;
+std::map<std::string, double> range_buff;
+std::mutex range_mutex;
+double range_max, range_min;
 
 ////////////////////////////////////////////////////////////////////////////////
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -77,9 +78,9 @@ void pcCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void sonarCallback(const sensor_msgs::Range::ConstPtr& new_range)
+void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
 {
-  std::lock_guard<std::mutex> lk(sonar_mutex);
+  std::lock_guard<std::mutex> lk(range_mutex);
   // frame_id looks like "ray_xxxx_link". we need "xxxx" part.
   int len = new_range->header.frame_id.length();
   int pos1 = 0;
@@ -89,7 +90,7 @@ void sonarCallback(const sensor_msgs::Range::ConstPtr& new_range)
   while (pos2 < len && new_range->header.frame_id[pos2] != '_'){ ++pos2; }
 
   // then need "range_xxxx" so "range_" is appended
-  sonar_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
+  range_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
     = new_range->range;
 
   // ROS_DEBUG_STREAM(
@@ -173,10 +174,44 @@ void Particle::predict(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-double Particle::evaluate(const octomap::Pointcloud &scan)
+double Particle::evaluate(
+  const std::map<std::string, double> &range_data,
+  const octomap::Pointcloud &scan)
 {
   double log_lik = 0;
   // int hits = 0;
+
+  // evaluation by range data
+  for (auto range_name: range_topics)
+  {
+    auto data = range_data.find(range_name);
+    if (data == range_data.end())
+      continue;
+    double dist = data->second;
+    if (dist >= range_max || dist <= range_min)
+      continue;
+    tf::Vector3 tf_pos = range_poses[range_name].getOrigin();
+    tf::Vector3 tf_sens(dist, 0, 0);
+    tf::Vector3 tf_target = range_poses[range_name] * tf_sens;
+
+    octomap::point3d oct_pos(tf_pos.x(), tf_pos.y(), tf_pos.z());
+    octomap::point3d oct_target(tf_target.x(), tf_target.y(), tf_target.z());
+    octomap::point3d direction = oct_pos - oct_target;
+    octomap::point3d hit;
+    if (this->map->castRay(oct_target, direction, hit,
+        true, dist + 0.2)) //ignoreUnknownCells = true, maxRange
+    {
+      // if (this->map->coordToKeyChecked(hit, key) &&
+      //  (node = this->map->search(key,0 /*depth*/)))
+      // {
+        double err = (oct_target - hit).norm();
+        double sigma = 0.2; // standard deviation
+
+        log_lik +=
+          -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
+      // }
+    }
+  }
 
   tf::Pose sens_pose = this->pose;
 
@@ -357,12 +392,12 @@ void pf_main()
 
       // { // just for debugging
       //   // it shows the frames on the world frame.
-      //   for (auto sonar_topic: sonar_topics)
+      //   for (auto range_topic: range_topics)
       //   {
       //
       //     tf::StampedTransform tf_stamped(
-      //       sonar_poses[sonar_topic], now,
-      //       world_frame_id, sonar_topic);
+      //       range_poses[range_topic], now,
+      //       world_frame_id, range_topic);
       //     tf_broadcaster.sendTransform(tf_stamped);
       //   }
       // }
@@ -372,6 +407,14 @@ void pf_main()
       // initialize the time step
       last_update = now;
 
+      std::map<std::string, double> range_data;
+      {
+        std::lock_guard<std::mutex> lk(range_mutex);
+        for (auto item: range_buff)
+        {
+          range_data[item.first] = item.second;
+        }
+      }
       octomap::Pointcloud octocloud;
       {
         std::lock_guard<std::mutex> lk(pc_mutex);
@@ -468,7 +511,7 @@ void pf_main()
         for (int i = 0; i < n_particles; ++i)
         {
           // Calculate a probability ranging from 0 to 1.
-          weights[i] = particles[i]->evaluate(octocloud);
+          weights[i] = particles[i]->evaluate(range_data, octocloud);
           weight_sum += weights[i];
         }
         for (int i = 0; i < n_particles; ++i)
@@ -781,28 +824,30 @@ int main(int argc, char** argv)
   ros::Subscriber odom_sub = nh.subscribe(odom_topic, 1000, odomCallback);
   ros::Subscriber pc_sub = nh.subscribe(pc_topic, 1000, pcCallback);
 
+  pnh.getParam("range_max", range_max);
+  pnh.getParam("range_min", range_min);
   std::string str_buff;
-  pnh.param<std::string>("sonar_list", str_buff, "");
+  pnh.param<std::string>("range_list", str_buff, "");
   std::stringstream ss(str_buff);
   std::string token;
   double x,y,z,P,R,Y;
-  std::vector<ros::Subscriber> sonar_subs;
+  std::vector<ros::Subscriber> range_subs;
   while (ss >> token >> x >> y >> z >> R >> P >> Y)
   {
     ROS_DEBUG_STREAM(
-      "sonar: " << token << ", "
+      "range: " << token << ", "
                 << x << ", " << y << ", " << z << ", "
                 << R << ", " << P << ", " << Y);
 
-    sonar_subs.push_back(
-      nh.subscribe(token, 1000, sonarCallback)
+    range_subs.push_back(
+      nh.subscribe(token, 1000, rangeCallback)
     );
-    sonar_topics.push_back(token);
+    range_topics.push_back(token);
     tf::Vector3 pos(x, y, z);
     tf::Quaternion rot;
     rot.setRPY(R * PI / 180.0, P * PI / 180.0, Y * PI / 180.0);
-    tf::Pose sonar_pose(rot, pos);
-    sonar_poses[token] = sonar_pose;
+    tf::Pose range_pose(rot, pos);
+    range_poses[token] = range_pose;
   }
 
   std::thread t(pf_main);

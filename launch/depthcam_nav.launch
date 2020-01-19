@@ -94,8 +94,8 @@
       <param name="compress_interval" value="7"/>
       <param name="locdata_interval" value="1000"/>
 
-      <!-- refer to xacro for sonar settings -->
-      <param name="sonar_list"
+      <!-- refer to xacro for range settings -->
+      <param name="range_list"
         value = "range_front  0.11     0 -0.01 0 0   0
                  range_rfront 0.11 -0.06 -0.01 0 0 -45
                  range_lfront 0.11  0.06 -0.01 0 0  45
@@ -115,8 +115,8 @@
                  range_dfront  0.037 0 -0.085 0 45   0
                  range_drear  -0.037 0 -0.085 0 45 180"
         />
-      <param name="sonar_max" value="1.5"/>
-      <param name="sonar_min" value="0.01"/>
+      <param name="range_max" value="1.5"/>
+      <param name="range_min" value="0.01"/>
     </node>
 
     <!-- Given robot_description parameter and joint states, publish TF frames -->
