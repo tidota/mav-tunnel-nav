@@ -169,6 +169,10 @@ catkin_package(
     ${PROJECT_NAME}-extras.cmake
 )
 
+add_executable(auto_control src/auto_control.cpp)
+add_dependencies(auto_control ${catkin_EXPORTED_TARGETS})
+target_link_libraries(auto_control ${catkin_LIBRARIES})
+
 add_executable(imu_odom src/imu_odom.cpp)
 add_dependencies(imu_odom ${catkin_EXPORTED_TARGETS})
 target_link_libraries(imu_odom ${catkin_LIBRARIES})
