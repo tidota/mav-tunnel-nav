@@ -13,6 +13,8 @@
 #include <vector>
 
 #include <geometry_msgs/Twist.h>
+#include <mav_msgs/default_topics.h>
+#include <mav_msgs/RollPitchYawrateThrust.h>
 
 #include <ros/ros.h>
 
@@ -79,6 +81,11 @@ void control_main()
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
+  // std::string control_topic;
+  // pnh.getParam("control_topic", control_topic);
+  ros::Publisher ctrl_pub = nh.advertise<mav_msgs::RollPitchYawrateThrust> (
+      mav_msgs::default_topics::COMMAND_ROLL_PITCH_YAWRATE_THRUST, 10);
+
   // random numbers
   std::random_device rd{};
   std::mt19937 gen{rd()};
@@ -101,14 +108,13 @@ void control_main()
     if (now > last_update + update_phase)
     {
       // calculate the delta T
-      const double deltaT = (now - last_update).toSec();
+      //const double deltaT = (now - last_update).toSec();
       // initialize the time step
       last_update = now;
 
       if (f_enabled)
       {
         ROS_DEBUG("auto control: do something!");
-
 
         std::map<std::string, double> range_data;
         {
@@ -118,6 +124,19 @@ void control_main()
             range_data[item.first] = item.second;
           }
         }
+
+        mav_msgs::RollPitchYawrateThrust control_msg;
+        control_msg.roll = 0;
+        control_msg.pitch = 0;
+        control_msg.yaw_rate = 0;
+        control_msg.thrust.x = 0;
+        control_msg.thrust.y = 0;
+        control_msg.thrust.z = 0;
+
+        ros::Time update_time = ros::Time::now();
+        control_msg.header.stamp = update_time;
+        control_msg.header.frame_id = "rotors_joy_frame";
+        ctrl_pub.publish(control_msg);
       }
       else
       {
