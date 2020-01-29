@@ -114,8 +114,9 @@ void control_main()
 
       if (f_enabled)
       {
-        ROS_DEBUG("auto control: do something!");
+        ROS_DEBUG("auto control: calculate inputs!");
 
+        // get ranging data
         std::map<std::string, double> range_data;
         {
           std::lock_guard<std::mutex> lk(range_mutex);
@@ -125,6 +126,7 @@ void control_main()
           }
         }
 
+        //=== reactive control ===//
         mav_msgs::RollPitchYawrateThrust control_msg;
         control_msg.roll = 0;
         control_msg.pitch = 0;
@@ -132,6 +134,34 @@ void control_main()
         control_msg.thrust.x = 0;
         control_msg.thrust.y = 0;
         control_msg.thrust.z = 0;
+
+        // going_straight: moves the robot forward.
+        double going_straight_pitch = 0.2;
+        control_msg.pitch = going_straight_pitch;
+        // steering: adjusts the heading so that the robot's right side faces toward the wall.
+        double steering_yaw_rate = 3.0;
+        control_msg.yaw_rate = steering_yaw_rate;
+        // staying_on_the_middle_line: adjusts the horizontal position in the tube.
+        double middle_line_roll = 0.2;
+        double middle_line_thresh = 0.1;
+        if (// left is shorter => go to the right
+          range_data["range_left"]
+            < range_data["range_right"] - middle_line_thresh)
+        {
+          control_msg.roll = middle_line_roll;
+        }
+        else if (// right is shorter => go to the left
+          range_data["range_right"]
+            < range_data["range_left"] - middle_line_thresh)
+        {
+          control_msg.roll = -middle_line_roll;
+        }
+        // turning_around: turns the robot around so that it can avoid the wall in front of it.
+
+        // altitude_adjustment: keeps the altitude in the middle of the vertical line, assumes that there is no impending obstacles.
+
+        // obstacle_avoidance: avoids impending obstacles, assumes nothing.
+
 
         ros::Time update_time = ros::Time::now();
         control_msg.header.stamp = update_time;
