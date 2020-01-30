@@ -135,33 +135,179 @@ void control_main()
         control_msg.thrust.y = 0;
         control_msg.thrust.z = 0;
 
-        // going_straight: moves the robot forward.
-        double going_straight_pitch = 0.2;
-        control_msg.pitch = going_straight_pitch;
-        // steering: adjusts the heading so that the robot's right side faces toward the wall.
-        double steering_yaw_rate = 3.0;
-        control_msg.yaw_rate = steering_yaw_rate;
-        // staying_on_the_middle_line: adjusts the horizontal position in the tube.
-        double middle_line_roll = 0.2;
-        double middle_line_thresh = 0.1;
-        if (// left is shorter => go to the right
-          range_data["range_left"]
-            < range_data["range_right"] - middle_line_thresh)
+        const double range_max = 1.5;
+        // ===================== going_straight ============================= //
+        // moves the robot forward.
         {
-          control_msg.roll = middle_line_roll;
+          double range = range_data["range_front"];
+          if(range > range_max)
+            range = range_max;
+          double going_straight_pitch = 0.3; // TODO: parameterize it later?
+          control_msg.pitch = going_straight_pitch * range/range_max;
         }
-        else if (// right is shorter => go to the left
-          range_data["range_right"]
-            < range_data["range_left"] - middle_line_thresh)
+
+        // ===================== steering =================================== //
+        // adjusts the heading so that the robot's right side faces toward the
+        // wall.
         {
-          control_msg.roll = -middle_line_roll;
+          double rate = range_data["range_rfront"] / range_data["range_rrear"];
+
+          // if(
+          //   std::fmax(range_data["range_ufront"], range_data["range_dfront"])
+          //   / std::sqrt(2) < DIST_MIN_STEER)
+          // {
+          //   rate = 0;
+          // }
+
+          // input check
+          double steering_yaw_rate = 3.0; // TODO: parameterize it later?
+          if(rate > 1.1) // TODO: parameterize it later?
+          {
+            ROS_DEBUG("STEER TO THE RIGHT");
+            // calculate the output
+            control_msg.yaw_rate = -steering_yaw_rate * (rate - 1.0);
+          }
+          else if(rate < 0.9) // TODO: parameterize it later?
+          {
+            ROS_DEBUG("STEER TO THE LEFT");
+            // calculate the output
+            control_msg.yaw_rate = steering_yaw_rate * (1.0 - rate);
+          }
         }
-        // turning_around: turns the robot around so that it can avoid the wall in front of it.
 
-        // altitude_adjustment: keeps the altitude in the middle of the vertical line, assumes that there is no impending obstacles.
+        // ===================== staying_on_the_middle_line ================= //
+        // adjusts the horizontal position in the tube.
+        {
+          // if(std::fmax(range_data["range_ufront"], range_data["range_dfront"])
+          // / std::sqrt(2) >= DIST_MIN_MID) // TODO: parameterize it later?
+          // {
+          const double lengL
+            = (range_data["left"] < range_data["lfront"]/sqrt(2))?
+                range_data["left"]: range_data["lfront"]/sqrt(2);
+          const double lengR = range_data["right"];
+          const double lengF = range_data["front"];
 
-        // obstacle_avoidance: avoids impending obstacles, assumes nothing.
+          const double leng2comp = (lengL < lengF)? lengL: lengF;
 
+          // diff_rate is the gap from the mid with respect to y axis (left is
+          // positive)
+          const double mid_leng = (leng2comp + lengR)/2;
+          const double diff_leng = (lengR - leng2comp)/2;
+          const double diff_rate = (mid_leng != 0)? diff_leng/mid_leng: 0;
+
+          // input check
+          // if the front side is clear and it is out of range from the middle
+          // line apply a proportional value
+          double middle_line_roll = 0.3; // TODO: parameterize it later?
+          if(diff_rate < -0.1 || 0.1 < diff_rate)
+          {
+            ROS_DEBUG("STAY ON THE MIDDLE LINE");
+            control_msg.roll = middle_line_roll * diff_rate;
+          }
+          // }
+        }
+
+        // ===================== turning_around ============================= //
+        // turns the robot around so that it can avoid the wall in front of it.
+        {
+          double length_comp
+            = std::fmax(
+                range_data["range_ufront"],
+                range_data["range_dfront"]) / std::sqrt(2);
+
+          // input check
+          double turn_yaw_rate = 3.0; // TODO: parameterize it later?
+          if(length_comp < 0.5) // TODO: parameterize it later?
+          {
+            ROS_DEBUG("TURN LEFT!");
+            control_msg.roll = 0;
+            control_msg.pitch = 0;
+            // calculate the output
+            control_msg.yaw_rate = turn_yaw_rate;
+          }
+          else if(
+            range_data["range_ufront"]
+              <= range_data["range_up"] * sqrt(2) * 0.9 &&
+            range_data["range_dfront"]
+              <= range_data["range_down"] * sqrt(2) * 0.9) // TODO: parameterize it later?
+          {
+            length_comp = fmax(range_data["front"], length_comp);
+
+            if(
+              range_data["right"] > length_comp &&
+              range_data["rfront"] > range_data["right"] * sqrt(2) * 1.0) // TODO: parameterize it later?
+            {
+              ROS_DEBUG("TURN RIGHT");
+              control_msg.roll = 0;
+              control_msg.pitch = 0;
+              // calculate the output
+              control_msg.yaw_rate = -turn_yaw_rate;
+            }
+            else if(
+              range_data["right"] > length_comp &&
+              range_data["rfront"] <= range_data["right"] * sqrt(2) * 1.0) // TODO: parameterize it later?
+            {
+              ROS_DEBUG("TURN LEFT");
+              control_msg.roll = 0;
+              control_msg.pitch = 0;
+              // calculate the output
+              control_msg.yaw_rate = turn_yaw_rate;
+            }
+          }
+        }
+
+        // ===================== altitude_adjustment ======================== //
+        // keeps the altitude in the middle of the vertical line, assumes that
+        // there is no impending obstacles.
+        // diff_rate is the gap from the mid altitude with respect to z axis
+        {
+          const double mid_leng = (range_data["up"] + range_data["down"])/2;
+          const double diff_leng = (range_data["down"] - range_data["up"])/2;
+          const double diff_rate = (mid_leng != 0)? diff_leng/mid_leng: 0;
+
+          double alt_thrust = 30.0; // TODO: parameterize it later?
+
+          // input check
+          // if it is out of range defined by DIST_OFF_RATE_ALT, apply a proportional value
+          if(diff_rate < -0.1 || 0.1 < diff_rate) // TODO: parameterize it later?
+          {
+            ROS_DEBUG("KEEP THE ALTITUDE");
+            control_msg.thrust.z =  alt_thrust * (diff_rate + 1.0) / 2;
+          }
+        }
+
+        const double obs_thresh = 0.3;
+        // ===================== obstacle_avoidance ========================= //
+        // avoids impending obstacles, assumes nothing.
+        {
+          tf::Vector3 unit_vec(-1, 0, 0);
+          tf::Vector3 mov_dir(0, 0, 0);
+          for (auto item: range_poses)
+          {
+            if (range_data[item.first] < obs_thresh)
+            {
+              tf::Quaternion rot = item.second.getRotation();
+              mov_dir += tf::Transform(rot, tf::Vector3(0,0,0)) * unit_vec;
+            }
+          }
+          if (mov_dir.length() > 0)
+          {
+            // initialize the command to override it.
+            control_msg.roll = 0;
+            control_msg.pitch = 0;
+            control_msg.yaw_rate = 0;
+            control_msg.thrust.x = 0;
+            control_msg.thrust.y = 0;
+            control_msg.thrust.z = 0;
+            mov_dir.normalize();
+            // x
+            control_msg.roll = mov_dir.x() * 0.3; // TODO: parameterize it later?
+            // y
+            control_msg.pitch = mov_dir.y() * -0.3; // TODO: parameterize it later?
+            // z
+            control_msg.thrust.z = (mov_dir.z() + 1.0) / 2 * 30.0; // TODO: parameterize it later?
+          }
+        }
 
         ros::Time update_time = ros::Time::now();
         control_msg.header.stamp = update_time;
