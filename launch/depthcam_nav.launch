@@ -76,6 +76,14 @@
         />
       <param name="range_max" value="1.5"/>
       <param name="range_min" value="0.01"/>
+      <param name="STEER_RIGHT_THRESH" value="1.1"/>
+      <param name="STEER_LEFT_THRESH" value="0.9"/>
+      <param name="MIDDLE_THRESH" value="0.1"/>
+      <param name="TURN_THRESH1" value="0.5"/>
+      <param name="TURN_THRESH2" value="0.9"/>
+      <param name="TURN_THRESH3" value="1.0"/>
+      <param name="ALT_THRESH" value="0.05"/>
+      <param name="OBS_THRESH" value="0.3"/>
     </node>
 
     <!-- Sends motor commands based given commanded rates for roll/pitch/yaw and thrust -->
