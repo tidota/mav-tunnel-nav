@@ -42,12 +42,15 @@
     <node name="joy_node" pkg="joy" type="joy_node" />
 
     <!-- Converts sensor_msgs/Joy to mav_msgs/RollPitchYawRateThrust messages -->
-    <node name="rotors_joy_interface" pkg="rotors_joy_interface" type="rotors_joy_interface">
-      <!--
-      <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/logitech_f310.yaml" />
-      -->
+    <!-- <node name="rotors_joy_interface" pkg="rotors_joy_interface" type="rotors_joy_interface">
+      <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
+    </node> -->
+    <!-- Converts joy to teleop input -->
+    <node pkg="mav_tunnel_nav" type="teleop_node" name="teleop_twist_joy">
       <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
     </node>
+    <!-- Convert cmd_vel into pose command so as to provide the same interface -->
+    <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="/iris/odometry_sensor1/pose /iris/cmd_vel /iris/command/pose"/>
 
     <!-- Autonomous control based on ranging data -->
     <node name="auto_control" pkg="mav_tunnel_nav" type="auto_control" output="screen">
@@ -87,13 +90,19 @@
     </node>
 
     <!-- Sends motor commands based given commanded rates for roll/pitch/yaw and thrust -->
-    <node name="roll_pitch_yawrate_thrust_controller_node" pkg="rotors_control" type="roll_pitch_yawrate_thrust_controller_node">
+    <!-- <node name="roll_pitch_yawrate_thrust_controller_node" pkg="rotors_control" type="roll_pitch_yawrate_thrust_controller_node">
       <rosparam command="load" file="$(find rotors_gazebo)/resource/roll_pitch_yawrate_thrust_controller_iris.yaml" />
       <rosparam command="load" file="$(find rotors_gazebo)/resource/iris.yaml" />
       <remap from="odometry" to="imu_odom/odometry" />
+    </node> -->
+    <!-- Spawn a position controller -->
+    <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node">
+      <rosparam command="load" file="$(find rotors_gazebo)/resource/lee_controller_iris.yaml" />
+      <rosparam command="load" file="$(find rotors_gazebo)/resource/iris.yaml" />
+      <remap from="odometry" to="odometry_sensor1/odometry" />
     </node>
 
-    <!-- imu odometry -->
+    <!-- imu odometry (optional) -->
     <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom" output="screen">
       <param name="init_Y" value="$(arg Y)"/>
       <param name="odom_reset_topic" value="odom_reset"/>
