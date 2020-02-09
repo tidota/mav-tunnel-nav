@@ -1,11 +1,38 @@
-# Sanwa gamepad (JY-P70UR)
-axis_roll_ : 3
-axis_pitch_ : 2
-axis_thrust_ : 1
-# buttons for iris yaw :( so use left and right bumpers
-button_yaw_left_: 6
-button_yaw_right_: 8
-# make it more fun to fly
-max_roll: 0.3
-max_pitch: 0.3
-max_yaw_rate: 3
+# # Sanwa gamepad (JY-P70UR)
+# axis_roll_ : 3
+# axis_pitch_ : 2
+# axis_thrust_ : 1
+# # buttons for iris yaw :( so use left and right bumpers
+# button_yaw_left_: 6
+# button_yaw_right_: 8
+# # make it more fun to fly
+# max_roll: 0.3
+# max_pitch: 0.3
+# max_yaw_rate: 3
+
+# to check your joy control: sudo jstest /dev/input/js0
+# L trigger, small(6), large(7)
+# R trigger, small(8), large(9)
+# L stick, horizontal(0), vertical(1), button(10)
+# R stick, horizontal(3), vertical(2), button(11)
+# buttons
+# 3 2 4
+# 1 0 5
+
+axis_linear: 1  # Left thumb stick vertical
+scale_linear: 0.7
+axis_angular: 0  # Left thumb stick horizontal
+scale_angular: 0.4
+
+axis_vertical: 2  # Right thumb stick vertical
+scale_vertical: 0.7
+axis_horizontal: 3  # Right thumb stick horizontal
+scale_horizontal: 0.7
+
+dead_man_switch_left: 7
+dead_man_switch_right: 9
+
+joy_node:
+  dev: /dev/input/js0
+  deadzone: 0.1
+  autorepeat_rate: 20
