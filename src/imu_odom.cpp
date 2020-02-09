@@ -15,6 +15,7 @@
 #include <string>
 #include <mutex>
 
+#include <geometry_msgs/Pose.h>
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
@@ -25,6 +26,8 @@ std::string odom_reset_topic;
 std::string imu_topic;
 std::string odom_topic;
 ros::Publisher odom_pub;
+std::string odom_pose_topic;
+ros::Publisher odom_pose_pub;
 std::string world_frame_id;
 std::string odom_frame_id;
 
@@ -168,6 +171,12 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& imu)
 
     odom_pub.publish(odom);
 
+    geometry_msgs::Pose odom_pose;
+    odom_pose.position = odom.pose.pose.position;
+    odom_pose.orientation = odom.pose.pose.orientation;
+
+    odom_pose_pub.publish(odom_pose);
+
     std::lock_guard<std::mutex> lk2(t_mutex);
     t = tf::Transform(global_ori, tf::Vector3(x, y, z));
   }
@@ -196,10 +205,12 @@ int main(int argc, char** argv)
   pnh.getParam("odom_reset_topic", odom_reset_topic);
   pnh.getParam("imu_topic", imu_topic);
   pnh.getParam("odom_topic", odom_topic);
+  pnh.getParam("odom_pose_topic", odom_pose_topic);
   pnh.getParam("world_frame_id", world_frame_id);
   pnh.getParam("odom_frame_id", odom_frame_id);
 
   odom_pub = nh.advertise<nav_msgs::Odometry>(odom_topic, 1000);
+  odom_pose_pub = nh.advertise<geometry_msgs::Pose>(odom_pose_topic, 1000);
   ros::Subscriber imu_sub = nh.subscribe(imu_topic, 1000, imuCallback);
   ros::Subscriber odom_reset_sub
     = nh.subscribe(odom_reset_topic, 1000, locCallback);
