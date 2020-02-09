@@ -51,6 +51,7 @@
     </node>
     <!-- Convert cmd_vel into pose command so as to provide the same interface -->
     <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="odometry_sensor1/pose cmd_vel command/pose"/>
+    <!-- <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="imu_odom/pose cmd_vel command/pose"/> -->
 
     <!-- Autonomous control based on ranging data -->
     <node name="auto_control" pkg="mav_tunnel_nav" type="auto_control" output="screen">
@@ -100,6 +101,7 @@
       <rosparam command="load" file="$(find rotors_gazebo)/resource/lee_controller_iris.yaml" />
       <rosparam command="load" file="$(find rotors_gazebo)/resource/iris.yaml" />
       <remap from="odometry" to="odometry_sensor1/odometry" />
+      <!-- <remap from="odometry" to="imu_odom/odometry" /> -->
     </node>
 
     <!-- imu odometry (optional) -->
@@ -108,6 +110,7 @@
       <param name="odom_reset_topic" value="odom_reset"/>
       <param name="imu_topic" value="imu"/>
       <param name="odom_topic" value="imu_odom/odometry"/>
+      <param name="odom_pose_topic" value="imu_odom/pose"/>
       <param name="world_frame_id" value="world"/>
       <param name="odom_frame_id" value="odom"/>
     </node>
