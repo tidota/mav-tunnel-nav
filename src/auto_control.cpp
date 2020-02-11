@@ -102,10 +102,8 @@ void control_main()
   const ros::Time initial_update = ros::Time::now();
   ros::Time last_update = initial_update;
 
-  double STEER_RIGHT_THRESH;
-  pnh.getParam("STEER_RIGHT_THRESH", STEER_RIGHT_THRESH);
-  double STEER_LEFT_THRESH;
-  pnh.getParam("STEER_LEFT_THRESH", STEER_LEFT_THRESH);
+  double STEER_THRESH;
+  pnh.getParam("STEER_THRESH", STEER_THRESH);
   double MIDDLE_THRESH;
   pnh.getParam("MIDDLE_THRESH", MIDDLE_THRESH);
   double TURN_THRESH1;
@@ -118,6 +116,23 @@ void control_main()
   pnh.getParam("ALT_THRESH", ALT_THRESH);
   double OBS_THRESH;
   pnh.getParam("OBS_THRESH", OBS_THRESH);
+
+  double straight_rate;
+  pnh.getParam("straight_rate", straight_rate);
+  double steering_yaw_rate;
+  pnh.getParam("steering_yaw_rate", steering_yaw_rate);
+  double mid_open;
+  pnh.getParam("mid_open", mid_open);
+  double middle_line_rate;
+  pnh.getParam("middle_line_rate", middle_line_rate);
+  double turn_yaw_rate;
+  pnh.getParam("turn_yaw_rate", turn_yaw_rate);
+  double alt_rate;
+  pnh.getParam("alt_rate", alt_rate);
+  double obs_rate;
+  pnh.getParam("obs_rate", obs_rate);
+  double alt_open;
+  pnh.getParam("alt_open", alt_open);
 
   while (ros::ok())
   {
@@ -157,93 +172,77 @@ void control_main()
         {
           // ===================== going_straight ============================= //
           // moves the robot forward.
-          {
-            ROS_DEBUG("STRAIGHT");
-            double range = range_data.at("range_front");
-            if(range > range_max)
-              range = range_max;
-            double going_straight_pitch = 0.3; // TODO: parameterize it later?
-            // control_msg.pitch = going_straight_pitch * range/range_max;
-          }
+          // {
+          //   ROS_DEBUG("STRAIGHT");
+          //   control_msg.linear.x = straight_rate;
+          // }
 
           // ===================== steering =================================== //
           // adjusts the heading so that the robot's right side faces toward the
           // wall.
           {
-            double rate = range_data.at("range_rfront") / range_data.at("range_rrear");
-
-            // if(
-            //   std::fmax(range_data.at("range_ufront"), range_data.at("range_dfront"))
-            //   / std::sqrt(2) < DIST_MIN_STEER)
-            // {
-            //   rate = 0;
-            // }
+            double range_rf = range_data.at("range_rfront");
+            double range_rr = range_data.at("range_rrear");
+            double diff_rate = (range_rr - range_rf) / (range_rf + range_rr);
 
             // input check
-            double steering_yaw_rate = 3.0; // TODO: parameterize it later?
-            if(rate > STEER_RIGHT_THRESH)
+            if(diff_rate < -STEER_THRESH || STEER_THRESH < diff_rate)
             {
-              ROS_DEBUG("STEER TO THE RIGHT");
+              if (STEER_THRESH < diff_rate)
+                ROS_DEBUG("STEER TO THE RIGHT");
+              else
+                ROS_DEBUG("STEER TO THE LEFT");
               // calculate the output
-              // control_msg.yaw_rate = -steering_yaw_rate * (rate - 1.0);
-            }
-            else if(rate < STEER_LEFT_THRESH)
-            {
-              ROS_DEBUG("STEER TO THE LEFT");
-              // calculate the output
-              // control_msg.yaw_rate = steering_yaw_rate * (1.0 - rate);
+              control_msg.angular.z = steering_yaw_rate * diff_rate;
             }
           }
 
           // ===================== staying_on_the_middle_line ================= //
           // adjusts the horizontal position in the tube.
           {
-            // if(std::fmax(range_data.at("range_ufront"), range_data.at("range_dfront"))
-            // / std::sqrt(2) >= DIST_MIN_MID) // TODO: parameterize it later?
-            // {
+            // pick shorter one as "left" length
             const double lengL
-              = (range_data.at("range_left") < range_data.at("range_lfront")/sqrt(2))?
-                  range_data.at("range_left"): range_data.at("range_lfront")/sqrt(2);
-            const double lengR = range_data.at("range_right");
-            const double lengF = range_data.at("range_front");
+              = std::min({range_data.at("range_left"),
+                          range_data.at("range_lfront")/sqrt(2),
+                          range_data.at("range_front")});
 
-            const double leng2comp = (lengL < lengF)? lengL: lengF;
+            const double lengR = range_data.at("range_right");
 
             // diff_rate is the gap from the mid with respect to y axis (left is
             // positive)
-            const double mid_leng = (leng2comp + lengR)/2;
-            const double diff_leng = (lengR - leng2comp)/2;
-            const double diff_rate = (mid_leng != 0)? diff_leng/mid_leng: 0;
+            const double mid_leng = (lengL + lengR)/2;
+            const double diff_leng = (lengR - lengL)/2;
+            const double diff_rate
+              = (lengL > range_max * 0.99)? lengR / range_max - mid_open:
+                (mid_leng != 0)? diff_leng/mid_leng: 0;
 
             // input check
             // if the front side is clear and it is out of range from the middle
             // line apply a proportional value
-            double middle_line_roll = 0.3; // TODO: parameterize it later?
             if(diff_rate < -MIDDLE_THRESH || MIDDLE_THRESH < diff_rate)
             {
               ROS_DEBUG("STAY ON THE MIDDLE LINE");
-              // control_msg.roll = middle_line_roll * diff_rate;
+              control_msg.linear.y = middle_line_rate * -diff_rate;
             }
-            // }
           }
 
           // ===================== turning_around ============================= //
           // turns the robot around so that it can avoid the wall in front of it.
           {
+            // input check
             double length_comp
               = std::fmax(
                   range_data.at("range_ufront"),
                   range_data.at("range_dfront")) / std::sqrt(2);
-
-            // input check
-            double turn_yaw_rate = 3.0; // TODO: parameterize it later?
             if(length_comp < TURN_THRESH1)
             {
+              // if both up-front and down-front ranges are too short
+
               ROS_DEBUG("TURN LEFT!");
-              // control_msg.roll = 0;
-              // control_msg.pitch = 0;
-              // // calculate the output
-              // control_msg.yaw_rate = turn_yaw_rate;
+              control_msg.linear.x = 0;
+              control_msg.linear.y = 0;
+              // calculate the output
+              control_msg.angular.z = turn_yaw_rate;
             }
             else if(
               range_data.at("range_ufront")
@@ -251,6 +250,10 @@ void control_main()
               range_data.at("range_dfront")
                 <= range_data.at("range_down") * sqrt(2) * TURN_THRESH2)
             {
+              // if both up-front and down-front ranges are short relative to
+              // up and down ranges respectively
+
+              // max (up-front, front, down-front)
               length_comp = fmax(range_data.at("range_front"), length_comp);
 
               if(
@@ -258,22 +261,24 @@ void control_main()
                 range_data.at("range_rfront")
                   > range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
               {
+                // if the length is less than both right and right-front ranges
                 ROS_DEBUG("TURN RIGHT");
-                // control_msg.roll = 0;
-                // control_msg.pitch = 0;
-                // // calculate the output
-                // control_msg.yaw_rate = -turn_yaw_rate;
+                control_msg.linear.x = 0;
+                control_msg.linear.y = 0;
+                // calculate the output
+                control_msg.angular.z = -turn_yaw_rate;
               }
               else if(
                 range_data.at("range_right") > length_comp &&
                 range_data.at("range_rfront")
                   <= range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
               {
+                // if the length is more than both right and right-front ranges
                 ROS_DEBUG("TURN LEFT");
-                // control_msg.roll = 0;
-                // control_msg.pitch = 0;
-                // // calculate the output
-                // control_msg.yaw_rate = turn_yaw_rate;
+                control_msg.linear.x = 0;
+                control_msg.linear.y = 0;
+                // calculate the output
+                control_msg.angular.z = turn_yaw_rate;
               }
             }
           }
@@ -283,20 +288,21 @@ void control_main()
           // there is no impending obstacles.
           // diff_rate is the gap from the mid altitude with respect to z axis
           {
-            const double mid_leng
-              = (range_data.at("range_up") + range_data.at("range_down"))/2;
-            const double diff_leng
-              = (range_data.at("range_down") - range_data.at("range_up"))/2;
-            const double diff_rate = (mid_leng != 0)? diff_leng/mid_leng: 0;
-
-            double alt_thrust = 30.0; // TODO: parameterize it later?
+            const double range_up = range_data.at("range_up");
+            const double range_down = range_data.at("range_down");
+            const double mid_leng = (range_up + range_down)/2;
+            const double diff_leng = (range_down - range_up)/2;
+            const double diff_rate
+              = (range_up == range_max)? range_down / range_max - alt_open:
+                (mid_leng != 0)? diff_leng/mid_leng: 0;
 
             // input check
-            // if it is out of range defined by DIST_OFF_RATE_ALT, apply a proportional value
             if(diff_rate < -ALT_THRESH || ALT_THRESH < diff_rate)
             {
+              // if it is out of range defined by DIST_OFF_RATE_ALT, apply a
+              // proportional value
               ROS_DEBUG("KEEP THE ALTITUDE");
-              // control_msg.thrust.z =  alt_thrust * (diff_rate + 1.0) / 2;
+              control_msg.linear.z =  alt_rate * -diff_rate;
             }
           }
 
@@ -324,11 +330,11 @@ void control_main()
               control_msg.angular.z = 0;
               mov_dir.normalize();
               // x
-              control_msg.linear.x = mov_dir.x() * 1.0; // TODO: parameterize it later?
+              control_msg.linear.x = mov_dir.x() * obs_rate;
               // y
-              control_msg.linear.y = mov_dir.y() * 1.0; // TODO: parameterize it later?
+              control_msg.linear.y = mov_dir.y() * obs_rate;
               // z
-              control_msg.linear.z = mov_dir.z() * 1.0; // TODO: parameterize it later?
+              control_msg.linear.z = mov_dir.z() * obs_rate;
             }
           }
         }
