@@ -136,6 +136,13 @@ void control_main()
   double alt_open;
   pnh.getParam("alt_open", alt_open);
 
+  double max_linear_x;
+  pnh.getParam("max_linear_x", max_linear_x);
+  double max_linear_y;
+  pnh.getParam("max_linear_y", max_linear_y);
+  double max_linear_z;
+  pnh.getParam("max_linear_z", max_linear_z);
+
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
@@ -339,6 +346,19 @@ void control_main()
               control_msg.linear.z = mov_dir.z() * obs_rate;
             }
           }
+
+          if (control_msg.linear.x > max_linear_x)
+            control_msg.linear.x = max_linear_x;
+          else if (control_msg.linear.x < -max_linear_x)
+            control_msg.linear.x = -max_linear_x;
+          if (control_msg.linear.y > max_linear_y)
+            control_msg.linear.y = max_linear_y;
+          else if (control_msg.linear.y < -max_linear_y)
+            control_msg.linear.y = -max_linear_y;
+          if (control_msg.linear.z > max_linear_z)
+            control_msg.linear.z = max_linear_z;
+          else if (control_msg.linear.z < -max_linear_z)
+            control_msg.linear.z = -max_linear_z;
         }
         catch (const std::out_of_range& oor)
         {

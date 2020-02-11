@@ -93,9 +93,13 @@
       <param name="mid_open" value="0.8"/>
       <param name="middle_line_rate" value="2.0"/>
       <param name="turn_yaw_rate" value="1.0"/>
-      <param name="alt_rate" value="1.0"/>
+      <param name="alt_rate" value="2.0"/>
       <param name="obs_rate" value="1.0"/>
       <param name="alt_open" value="0.8"/>
+
+      <param name="max_linear_x" value="0.3"/>
+      <param name="max_linear_y" value="0.3"/>
+      <param name="max_linear_z" value="0.3"/>
     </node>
 
     <!-- Sends motor commands based given commanded rates for roll/pitch/yaw and thrust -->
