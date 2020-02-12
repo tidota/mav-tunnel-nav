@@ -181,10 +181,10 @@ void control_main()
         {
           // ===================== going_straight ============================= //
           // moves the robot forward.
-          // {
-          //   ROS_DEBUG("STRAIGHT");
-          //   control_msg.linear.x = straight_rate;
-          // }
+          {
+            ROS_DEBUG("STRAIGHT");
+            control_msg.linear.x = straight_rate;
+          }
 
           // ===================== steering =================================== //
           // adjusts the heading so that the robot's right side faces toward the
