@@ -302,7 +302,8 @@ void control_main()
             const double mid_leng = (range_up + range_down)/2;
             const double diff_leng = (range_down - range_up)/2;
             const double diff_rate
-              = (range_up == range_max)? range_down / range_max - alt_open:
+              = (range_down == range_max)? 1:
+                (range_up == range_max)? range_down / range_max - alt_open:
                 (mid_leng != 0)? diff_leng/mid_leng: 0;
 
             // input check
