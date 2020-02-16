@@ -54,6 +54,7 @@ std::string robot_frame_id;
 
 nav_msgs::Odometry odom_buff;
 std::mutex odom_mutex;
+tf::Transpose odom_pose;
 
 sensor_msgs::PointCloud2 pc_buff;
 std::mutex pc_mutex;
@@ -67,6 +68,8 @@ double range_max, range_min;
 ////////////////////////////////////////////////////////////////////////////////
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
+  // TODO:
+  // update odom_pose by the odometry data.
   std::lock_guard<std::mutex> lk(odom_mutex);
   odom_buff = *msg;
 }
@@ -161,6 +164,8 @@ void Particle::predict(
   const tf::Vector3 &vel, const tf::Quaternion &ori,
   const double &deltaT, std::mt19937 &gen)
 {
+  // TODO:
+  // apply the relative pose from the previous step with some noise.
   std::normal_distribution<> motion_noise_lin(0, 0.05);
   this->vel_linear = tf::Vector3(
     vel.x() + motion_noise_lin(gen),
@@ -383,6 +388,9 @@ void pf_main()
 
   std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
 
+  // TODO:
+  // reset the relative pose basedon the odometry data.
+
   while (ros::ok())
   {
     // === Update PF ===
@@ -418,6 +426,7 @@ void pf_main()
       }
       octomap::Pointcloud octocloud;
       {
+        // Depthcam data
         std::lock_guard<std::mutex> lk(pc_mutex);
         if (pc_buff.height * pc_buff.width > 1)
         {
@@ -454,8 +463,11 @@ void pf_main()
       double weight_sum = 0;
       if (now > initial_update + phase_only_mapping)
       {
-        // Get sensory data (odom, depth cam)
+        // Odometry data
         {
+          // TODO:
+          // get the relative pose from the previous step
+          // then, reset it to 0
           std::lock_guard<std::mutex> lk(odom_mutex);
           pose_prev = pose_curr;
           tf::Vector3 pos(
@@ -494,6 +506,8 @@ void pf_main()
         for (auto p: particles)
         {
           // move the particle
+          // TODO:
+          // call predict with the relative pose.
           p->predict(
             tf::Vector3(
               odom_buff.twist.twist.linear.x,
