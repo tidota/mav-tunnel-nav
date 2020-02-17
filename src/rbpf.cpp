@@ -54,7 +54,6 @@ std::string robot_frame_id;
 
 nav_msgs::Odometry odom_buff;
 std::mutex odom_mutex;
-tf::Transpose odom_pose;
 
 sensor_msgs::PointCloud2 pc_buff;
 std::mutex pc_mutex;
@@ -68,7 +67,6 @@ double range_max, range_min;
 ////////////////////////////////////////////////////////////////////////////////
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-  // TODO:
   // update odom_pose by the odometry data.
   std::lock_guard<std::mutex> lk(odom_mutex);
   odom_buff = *msg;
@@ -119,7 +117,7 @@ Particle::Particle(const double &init_Y, const double &resol,
   tf::Quaternion rot_buff;
   rot_buff.setRPY(0, 0, init_Y);
   this->pose = tf::Transform(rot_buff, tf::Vector3(0, 0, 0));
-  this->vel_linear = tf::Vector3(0, 0, 0);
+//  this->vel_linear = tf::Vector3(0, 0, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,7 +125,7 @@ Particle::Particle(const Particle &src)
 {
   // copy the localization data
   this->pose = src.pose;
-  this->vel_linear = src.vel_linear;
+//  this->vel_linear = src.vel_linear;
 
   // copy the mapping data
   this->map = new octomap::OcTree(*src.map);
@@ -149,10 +147,10 @@ const tf::Pose Particle::getPose()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-const tf::Vector3 Particle::getVel()
-{
-  return this->vel_linear;
-}
+// const tf::Vector3 Particle::getVel()
+// {
+//   return this->vel_linear;
+// }
 ////////////////////////////////////////////////////////////////////////////////
 const octomap::OcTree* Particle::getMap()
 {
@@ -161,22 +159,27 @@ const octomap::OcTree* Particle::getMap()
 
 ////////////////////////////////////////////////////////////////////////////////
 void Particle::predict(
-  const tf::Vector3 &vel, const tf::Quaternion &ori,
-  const double &deltaT, std::mt19937 &gen)
+  const tf::Vector3 &delta_pos, const tf::Quaternion &delta_rot,
+  //const double &deltaT,
+  std::mt19937 &gen)
 {
   // TODO:
   // apply the relative pose from the previous step with some noise.
   std::normal_distribution<> motion_noise_lin(0, 0.05);
-  this->vel_linear = tf::Vector3(
-    vel.x() + motion_noise_lin(gen),
-    vel.y() + motion_noise_lin(gen),
-    vel.z() + motion_noise_lin(gen));
-  tf::Vector3 new_pos = this->pose.getOrigin()
-                      + tf::Vector3(
-                          this->vel_linear.x() * deltaT,
-                          this->vel_linear.y() * deltaT,
-                          this->vel_linear.z() * deltaT);
-  this->pose = tf::Transform(ori, new_pos);
+  // this->vel_linear = tf::Vector3(
+  //   vel.x() + motion_noise_lin(gen),
+  //   vel.y() + motion_noise_lin(gen),
+  //   vel.z() + motion_noise_lin(gen));
+  // tf::Vector3 new_pos = this->pose.getOrigin()
+  //                     + tf::Vector3(
+  //                         this->vel_linear.x() * deltaT,
+  //                         this->vel_linear.y() * deltaT,
+  //                         this->vel_linear.z() * deltaT);
+  tf::Vector3 delta_pos_noise(
+    delta_pos.x() + motion_noise_lin(gen),
+    delta_pos.y() + motion_noise_lin(gen),
+    delta_pos.z() + motion_noise_lin(gen));
+  this->pose = this->pose * tf::Transform(delta_rot, delta_pos_noise);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,7 +374,7 @@ void pf_main()
 
   tf::Pose pose_prev;
   tf::Pose pose_curr;
-  tf::Transform vel;
+  //tf::Transform vel;
 
   PointCloudT::Ptr depth_cam_pc(new PointCloudT());
   tf::Quaternion rotation;
@@ -387,9 +390,6 @@ void pf_main()
   int counts_locdata = 0;
 
   std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
-
-  // TODO:
-  // reset the relative pose basedon the odometry data.
 
   while (ros::ok())
   {
@@ -457,43 +457,44 @@ void pf_main()
           pc_buff.width = 0;
         }
       }
+      // Odometry data
+      tf::Transform diff_pose;
+      {
+        // TODO:
+        // get the relative pose from the previous step
+        // then, reset it to 0
+        std::lock_guard<std::mutex> lk(odom_mutex);
+        tf::Vector3 pos(
+          odom_buff.pose.pose.position.x,
+          odom_buff.pose.pose.position.y,
+          odom_buff.pose.pose.position.z);
+        tf::Quaternion dir(
+          odom_buff.pose.pose.orientation.x,
+          odom_buff.pose.pose.orientation.y,
+          odom_buff.pose.pose.orientation.z,
+          odom_buff.pose.pose.orientation.w);
+        pose_curr.setOrigin(pos);
+        pose_curr.setRotation(dir);
+        diff_pose = pose_prev.inverse() * pose_curr;
+        pose_prev = pose_curr;
+        // tf::Vector3 vel_lin(
+        //   odom_buff.twist.twist.linear.x,
+        //   odom_buff.twist.twist.linear.y,
+        //   odom_buff.twist.twist.linear.z);
+        // tf::Quaternion vel_ang;
+        // vel_ang.setRPY(
+        //   odom_buff.twist.twist.angular.x,
+        //   odom_buff.twist.twist.angular.y,
+        //   odom_buff.twist.twist.angular.z);
+        // vel.setOrigin(vel_lin);
+        // vel.setRotation(vel_ang);
+      }
 
       int index_best = 0;
       double max_weight = 0;
       double weight_sum = 0;
       if (now > initial_update + phase_only_mapping)
       {
-        // Odometry data
-        {
-          // TODO:
-          // get the relative pose from the previous step
-          // then, reset it to 0
-          std::lock_guard<std::mutex> lk(odom_mutex);
-          pose_prev = pose_curr;
-          tf::Vector3 pos(
-            odom_buff.pose.pose.position.x,
-            odom_buff.pose.pose.position.y,
-            odom_buff.pose.pose.position.z);
-          tf::Quaternion dir(
-            odom_buff.pose.pose.orientation.x,
-            odom_buff.pose.pose.orientation.y,
-            odom_buff.pose.pose.orientation.z,
-            odom_buff.pose.pose.orientation.w);
-          pose_curr.setOrigin(pos);
-          pose_curr.setRotation(dir);
-          tf::Vector3 vel_lin(
-            odom_buff.twist.twist.linear.x,
-            odom_buff.twist.twist.linear.y,
-            odom_buff.twist.twist.linear.z);
-          tf::Quaternion vel_ang;
-          vel_ang.setRPY(
-            odom_buff.twist.twist.angular.x,
-            odom_buff.twist.twist.angular.y,
-            odom_buff.twist.twist.angular.z);
-          vel.setOrigin(vel_lin);
-          vel.setRotation(vel_ang);
-        }
-
         // initialize weights and errors
         for (int i = 0; i < n_particles; ++i)
         {
@@ -503,22 +504,25 @@ void pf_main()
 
         ROS_DEBUG("rbpf: predict");
         // predict PF (use odometory)
+        const tf::Vector3 delta_pos = diff_pose.getOrigin();
+        const tf::Quaternion delta_rot = diff_pose.getRotation();
         for (auto p: particles)
         {
           // move the particle
           // TODO:
           // call predict with the relative pose.
-          p->predict(
-            tf::Vector3(
-              odom_buff.twist.twist.linear.x,
-              odom_buff.twist.twist.linear.y,
-              odom_buff.twist.twist.linear.z),
-            tf::Quaternion(
-              odom_buff.pose.pose.orientation.x,
-              odom_buff.pose.pose.orientation.y,
-              odom_buff.pose.pose.orientation.z,
-              odom_buff.pose.pose.orientation.w),
-            deltaT, gen);
+          p->predict(delta_pos, delta_rot,
+            // tf::Vector3(
+            //   odom_buff.twist.twist.linear.x,
+            //   odom_buff.twist.twist.linear.y,
+            //   odom_buff.twist.twist.linear.z),
+            // tf::Quaternion(
+            //   odom_buff.pose.pose.orientation.x,
+            //   odom_buff.pose.pose.orientation.y,
+            //   odom_buff.pose.pose.orientation.z,
+            //   odom_buff.pose.pose.orientation.w),
+            //deltaT,
+            gen);
         }
 
         ROS_DEBUG("rbpf: evaluate");
@@ -651,17 +655,17 @@ void pf_main()
         z += buff.z()/n_particles;
       }
       tf::Vector3 average_loc(x, y, z);
-      x = 0;
-      y = 0;
-      z = 0;
-      for (int i = 0; i < n_particles; ++i)
-      {
-        tf::Vector3 buff = particles[i]->getVel();
-        x += buff.x()/n_particles;
-        y += buff.y()/n_particles;
-        z += buff.z()/n_particles;
-      }
-      tf::Vector3 average_vel(x, y, z);
+      // x = 0;
+      // y = 0;
+      // z = 0;
+      // for (int i = 0; i < n_particles; ++i)
+      // {
+      //   tf::Vector3 buff = particles[i]->getVel();
+      //   x += buff.x()/n_particles;
+      //   y += buff.y()/n_particles;
+      //   z += buff.z()/n_particles;
+      // }
+      // tf::Vector3 average_vel(x, y, z);
 
       // publish data
       if (counts_publish >= publish_interval)
@@ -710,8 +714,8 @@ void pf_main()
       else
       {
         ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight << " | no update");
-        tf::Vector3 buff = particles[index_best]->getVel();
-        ROS_DEBUG("vx: %7.2f, vy: %7.2f, vz: %7.2f", buff.x(), buff.y(), buff.z());
+        // tf::Vector3 buff = particles[index_best]->getVel();
+        // ROS_DEBUG("vx: %7.2f, vy: %7.2f, vz: %7.2f", buff.x(), buff.y(), buff.z());
         ++counts_locdata;
       }
 

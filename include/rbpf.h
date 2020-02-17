@@ -16,8 +16,8 @@ class Particle
   private: tf::Pose pose;
   public: const tf::Pose getPose();
   // velocities
-  private: tf::Vector3 vel_linear;
-  public: const tf::Vector3 getVel();
+  // private: tf::Vector3 vel_linear;
+  // public: const tf::Vector3 getVel();
   // map
   private: octomap::OcTree *map;
   public: const octomap::OcTree* getMap();
@@ -29,8 +29,9 @@ class Particle
   public: Particle();
   public: ~Particle();
   public: void predict(
-    const tf::Vector3 &vel, const tf::Quaternion &ori,
-    const double &deltaT, std::mt19937 &gen);
+    const tf::Vector3 &delta_pos, const tf::Quaternion &delta_rot,
+    //const double &deltaT,
+    std::mt19937 &gen);
   public: double evaluate(
     const std::map<std::string, double> &range_data,
     const octomap::Pointcloud &scan);
