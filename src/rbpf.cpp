@@ -312,7 +312,9 @@ void pf_main()
   ros::Publisher odom_reset_pub
     = nh.advertise<nav_msgs::Odometry>(odom_reset_topic, 1);
 
-  ros::Publisher map_pub = nh.advertise<octomap_msgs::Octomap>("octomap", 1);
+  std::string octomap_topic;
+  pnh.getParam("octomap_topic", octomap_topic);
+  ros::Publisher map_pub = nh.advertise<octomap_msgs::Octomap>(octomap_topic, 1);
   ros::Publisher marker_occupied_pub
     = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
   ros::Publisher vis_poses_pub

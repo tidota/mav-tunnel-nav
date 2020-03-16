@@ -156,6 +156,8 @@
       <param name="compress_interval" value="7"/>
       <param name="locdata_interval" value="1000"/>
 
+      <param name="octomap_topic" value="octomap"/>
+
       <!-- refer to xacro for range settings -->
       <param name="range_list"
         value = "range_front  0.11     0 -0.01 0 0   0
@@ -179,6 +181,13 @@
         />
       <param name="range_max" value="1.5"/>
       <param name="range_min" value="0.01"/>
+    </node>
+
+    <!-- map saver -->
+    <node name="map_saver" pkg="mav_tunnel_nav" type="map_saver" output="screen">
+      <param name="filename" value="octomap.bt"/>
+      <param name="octomap_topic" value="octomap"/>
+      <param name="savemap_topic" value="savemap"/>
     </node>
 
     <!-- Given robot_description parameter and joint states, publish TF frames -->

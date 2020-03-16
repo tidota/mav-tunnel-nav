@@ -189,6 +189,10 @@ add_executable(teleop_node src/teleop_node.cpp)
 add_dependencies(teleop_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(teleop_node ${catkin_LIBRARIES})
 
+add_executable(map_saver src/map_saver.cpp)
+add_dependencies(map_saver ${catkin_EXPORTED_TARGETS})
+target_link_libraries(map_saver ${catkin_LIBRARIES})
+
 #add_executable(octomap_test src/octomap_test.cpp)
 #add_dependencies(octomap_test ${catkin_EXPORTED_TARGETS})
 #target_link_libraries(octomap_test ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES})
