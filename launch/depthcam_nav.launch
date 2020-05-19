@@ -8,7 +8,7 @@
   <arg name="z" default="0.31"/>
   <arg name="Y" default="-1.570796"/>
 
-  <!-- Start Gazebo -->
+  <!-- start gazebo server -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name"
          value="$(find mav_tunnel_nav)/worlds/IndianTunnel.world" />
@@ -18,7 +18,7 @@
     -->
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
-    <arg name="gui" value="true"/>
+    <arg name="gui" value="false"/>
     <arg name="headless" value="false"/>
     <arg name="debug" value="false"/>
     <arg name="extra_gazebo_args" value="--verbose"/>
@@ -194,6 +194,12 @@
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
 
-    <node pkg="rviz" type="rviz" name="rviz_nav" output="screen" args="-d $(find mav_tunnel_nav)/config/rbpf/rbpf.rviz"></node>
   </group>
+
+  <!-- start rviz -->
+  <node pkg="rviz" type="rviz" name="rviz_nav" output="screen" args="-d $(find mav_tunnel_nav)/config/rbpf/rbpf.rviz"></node>
+
+  <!-- start gazebo client -->
+  <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen" args=""/>
+
 </launch>
