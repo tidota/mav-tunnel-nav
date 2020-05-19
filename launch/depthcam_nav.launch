@@ -196,10 +196,4 @@
 
   </group>
 
-  <!-- start rviz -->
-  <node pkg="rviz" type="rviz" name="rviz_nav" output="screen" args="-d $(find mav_tunnel_nav)/config/rbpf/rbpf.rviz"></node>
-
-  <!-- start gazebo client -->
-  <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen" args=""/>
-
 </launch>
