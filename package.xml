@@ -45,8 +45,6 @@
   <build_depend>octomap</build_depend>
 
   <build_depend>laser_geometry</build_depend>
-  <build_depend>mrpt1</build_depend>
-  <build_depend>mrpt_bridge</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>visualization_msgs</build_depend>
   <build_depend>tf</build_depend>
@@ -69,8 +67,6 @@
   <run_depend>octomap</run_depend>
 
   <run_depend>laser_geometry</run_depend>
-  <run_depend>mrpt1</run_depend>
-  <run_depend>mrpt_bridge</run_depend>
   <run_depend>nav_msgs</run_depend>
   <run_depend>visualization_msgs</run_depend>
   <run_depend>tf</run_depend>

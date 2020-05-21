@@ -20,7 +20,6 @@ find_package(catkin REQUIRED COMPONENTS
 
   laser_geometry
   nav_msgs
-  mrpt_bridge
   visualization_msgs
   dynamic_reconfigure
 )
@@ -35,13 +34,6 @@ find_package(PCL 1.7 REQUIRED)
 
 # Octomap
 find_package(octomap REQUIRED)
-
-# MRPT packages
-# find_package(MRPT 1.5 REQUIRED gui obs slam)
-# message(STATUS "MRPT_VERSION: ${MRPT_VERSION}")
-# if(MRPT_VERSION VERSION_LESS "1.9.9")
-#   set (CMAKE_CXX_STANDARD 14)
-# endif()
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
