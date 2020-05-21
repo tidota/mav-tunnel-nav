@@ -1,1 +1,1 @@
-- git: {local-name: mav-tunnel-nav, uri: 'https://github.com/tidota/iris-tunnel-nav.git', version: master}
+- git: {local-name: mav-tunnel-nav, uri: 'https://github.com/tidota/mav-tunnel-nav.git', version: master}
