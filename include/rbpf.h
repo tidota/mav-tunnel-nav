@@ -28,6 +28,7 @@ class Particle
   public: Particle(const Particle &src);
   public: Particle();
   public: ~Particle();
+  public: void initOrientation(const tf::Quaternion &orientation);
   public: void predict(
     const tf::Vector3 &delta_pos, const tf::Quaternion &delta_rot,
     //const double &deltaT,

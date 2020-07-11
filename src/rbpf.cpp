@@ -158,6 +158,12 @@ const octomap::OcTree* Particle::getMap()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void Particle::initOrientation(const tf::Quaternion &orientation)
+{
+  this->pose.setRotation(this->pose.getRotation() * orientation);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Particle::predict(
   const tf::Vector3 &delta_pos, const tf::Quaternion &delta_rot,
   //const double &deltaT,
@@ -226,7 +232,7 @@ double Particle::evaluate(
 
   // for all point in the point cloud
   octomap::OcTreeKey key;
-  octomap::OcTreeNode *node;
+  //octomap::OcTreeNode *node;
   int offset = scan.size()/30;
   for (unsigned int ip = 0; ip < scan.size(); ip += offset)
   {
@@ -346,6 +352,9 @@ void pf_main()
   pnh.getParam("map_threshMin", threshMin);
   pnh.getParam("map_threshMax", threshMax);
 
+  double t_pose_adjust;
+  pnh.getParam("t_pose_adjust", t_pose_adjust);
+  const ros::Duration phase_pose_adjust(t_pose_adjust);
   double t_only_mapping;
   pnh.getParam("t_only_mapping", t_only_mapping);
   const ros::Duration phase_only_mapping(t_only_mapping);
@@ -393,6 +402,54 @@ void pf_main()
 
   std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
 
+  // initialize the estimated pose
+  while (ros::ok())
+  {
+    ros::Time now = ros::Time::now();
+    if (now > last_update + update_phase)
+    {
+      ROS_DEBUG("rbpf: iteration for pose init");
+      // initialize the time step
+      last_update = now;
+      if (now > initial_update + phase_pose_adjust)
+      {
+        // Odometry data
+        tf::Quaternion orientation;
+        //tf::Transform diff_pose;
+        {
+          std::lock_guard<std::mutex> lk(odom_mutex);
+          // tf::Vector3 pos(
+          //   odom_buff.pose.pose.position.x,
+          //   odom_buff.pose.pose.position.y,
+          //   odom_buff.pose.pose.position.z);
+          // tf::Quaternion dir(
+          //   odom_buff.pose.pose.orientation.x,
+          //   odom_buff.pose.pose.orientation.y,
+          //   odom_buff.pose.pose.orientation.z,
+          //   odom_buff.pose.pose.orientation.w);
+          // pose_curr.setOrigin(pos);
+          // pose_curr.setRotation(dir);
+          orientation = tf::Quaternion(
+            odom_buff.pose.pose.orientation.x,
+            odom_buff.pose.pose.orientation.y,
+            odom_buff.pose.pose.orientation.z,
+            odom_buff.pose.pose.orientation.w);
+          // diff_pose = pose_prev.inverse() * pose_curr;
+          // pose_prev = pose_curr;
+        }
+
+        // update the estimated poses with the odometry data.
+        for (auto p: particles)
+        {
+          p->initOrientation(orientation);
+        }
+
+        break;
+      }
+    }
+  }
+
+  // the main loop
   while (ros::ok())
   {
     // === Update PF ===
@@ -414,7 +471,7 @@ void pf_main()
       // }
 
       // calculate the delta T
-      const double deltaT = (now - last_update).toSec();
+      //const double deltaT = (now - last_update).toSec();
       // initialize the time step
       last_update = now;
 
@@ -495,7 +552,7 @@ void pf_main()
       int index_best = 0;
       double max_weight = 0;
       double weight_sum = 0;
-      if (now > initial_update + phase_only_mapping)
+      if (now > initial_update + phase_pose_adjust + phase_only_mapping)
       {
         // initialize weights and errors
         for (int i = 0; i < n_particles; ++i)
