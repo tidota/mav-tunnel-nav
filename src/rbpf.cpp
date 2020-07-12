@@ -160,7 +160,7 @@ const octomap::OcTree* Particle::getMap()
 ////////////////////////////////////////////////////////////////////////////////
 void Particle::initOrientation(const tf::Quaternion &orientation)
 {
-  this->pose.setRotation(this->pose.getRotation() * orientation);
+  this->pose.setRotation(orientation);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
