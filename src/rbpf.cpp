@@ -413,9 +413,6 @@ void pf_main()
       last_update = now;
       if (now > initial_update + phase_pose_adjust)
       {
-        // initial Y orientation
-        tf::Quaternion orientation_Y;
-        orientation_Y.setRPY(0, 0, init_Y);
         // Odometry data
         tf::Quaternion orientation;
         //tf::Transform diff_pose;
@@ -432,7 +429,7 @@ void pf_main()
           //   odom_buff.pose.pose.orientation.w);
           // pose_curr.setOrigin(pos);
           // pose_curr.setRotation(dir);
-          orientation = orientation_Y * tf::Quaternion(
+          orientation = tf::Quaternion(
             odom_buff.pose.pose.orientation.x,
             odom_buff.pose.pose.orientation.y,
             odom_buff.pose.pose.orientation.z,
