@@ -112,7 +112,7 @@ Note: In this case, you need to work on the machine behind NAT. You also need to
 install `sshuttle` on the other machine so that it can connect to your machine.
 
 Let's say the other machine's name is `seilon-3` and has an account `tidota` and
-the local network address behind NAT is `10.24.6.0/24`.
+the local network address behind NAT is `10.24.5.0/24`.
 
 Open a separate terminal, connect to the machine with reverse tunnel.
 ```
@@ -120,7 +120,7 @@ ssh tidota@seilon-3 -R 2222:localhost:22
 ```
 Then, run sshuttle on that machine.
 ```
-sshuttle --dns -r tidota@localhost:2222 10.24.6.0/24
+sshuttle --dns -r tidota@localhost:2222 10.24.5.0/24
 ```
 
 After that, gzserver can run on the other machine (`seilon-3`) and can connect
