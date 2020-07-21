@@ -14,7 +14,7 @@
   <!-- ray sensors -->
   <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/range/range1ray_14align.urdf.xacro" />
   <xacro:range1ray_14align_macro
-    max="1.5"
+    max="3.0"
     min="0.01"
     offX_front="0.11"
     offX_back="-0.12"

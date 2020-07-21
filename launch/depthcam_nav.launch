@@ -81,7 +81,7 @@
 
       <!-- These must be the same as those in the xacro file of Iris -->
       <!-- see iris_depthcam.xacro -->
-      <param name="range_max" value="1.5"/>
+      <param name="range_max" value="3.0"/>
       <param name="range_min" value="0.01"/>
 
       <param name="STEER_THRESH" value="0.1"/>
