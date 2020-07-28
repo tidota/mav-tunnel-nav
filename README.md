@@ -1,9 +1,14 @@
 # MAV navigation in an enclosed environment
 
-This repository contains ROS nodes for MAV navigation in a tunnel environment
+This repository contains ROS nodes for MAV navigation in a cavern tunnel environment
 which is simulated by Gazebo.
 
+![](./img/drone.jpg)
 MAV models from [rotorS](https://github.com/ethz-asl/rotors_simulator).
+
+![](./img/gazebo_rviz.png)
+The environment model is based on the dataset of Indian Tunnel, which was originally created by CMU and is currently maintained by NASA.
+https://ti.arc.nasa.gov/dataset/caves/
 
 # System Requirements
 
@@ -79,8 +84,7 @@ rosservice call /iris/enable "data: true"
 Then, Iris starts to fly.
 
 ## Running on multiple machines
-It is possible to run the ROS nodes on multiple machines.
-
+This repo contains a bash script to run the ROS nodes on multiple machines:
 `src/mav-tunnel-nav/scripts/network_setup.sh`
 This will set environment variables required for network settings of ROS and
 Gazebo.
@@ -99,6 +103,17 @@ must be set to `:0` as `gzserver` apparently needs to use the graphic card to
 simulate a camera. You can run roslaunch like this.
 ```
 DISPLAY=:0 roslaunch mav_tunnel_nav depthcam_nav.launch
+```
+Then, the whole picture looks like this.
+```
++-----------------+        +------------------+
+|                 |        |                  |
+|                 |        |     roscore      |
+|      rviz      <----------> other ROS nodes |
+|     gzclient    |        |     gzserver     |
+|                 |        |                  |
+| [local machine] |        | [remote machine] |
++-----------------+        +------------------+
 ```
 
 ## Running across network one of which is behind NAT
@@ -125,3 +140,24 @@ sshuttle --dns -r tidota@localhost:2222 10.24.5.0/24
 
 After that, gzserver can run on the other machine (`seilon-3`) and can connect
 to gzclient running on your machine.
+```
+    10.24.5.0/24            NAT|              Internet
+                               |
++-------------------+          |          +--------------------+
+|                   |          |          |                    |
+|      +-----------------------------------------------+       |
+|      |            |          |          |            |       |
+|      |            |          |          |            V       |
+|      |            |          |          |       roscore      |
+|    rviz           |          |          |    other ROS nodes |
+|  gzclient         |          |          |       gzserver     |
+|      ^            |          |          |            |       |
+|      |          +-------------------------+          |       |
+|      |          |   reverse SSH tunnel    |          |       |
+|      |          |      and sshuttle       |          |       |
+|      +----- port# 22 <--------------- port# 2222 <---+       |
+|                 |                         |                  |
+|                 +-------------------------+                  |
+|  [local machine]  |          |          |  [remote machine]  |
++-------------------+          |          +--------------------+
+```
