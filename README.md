@@ -3,8 +3,12 @@
 This repository contains ROS nodes for MAV navigation in a cavern tunnel environment
 which is simulated by Gazebo.
 
+The previous work is https://github.com/tidota/quadrotor-tunnel-nav, which used
+the `hector_quadrotor` package.
+This repo uses the rotorS package instead.
+
 ![](./img/drone.jpg)
-MAV models from [rotorS](https://github.com/ethz-asl/rotors_simulator).
+MAV model from [rotorS](https://github.com/ethz-asl/rotors_simulator).
 
 ![](./img/gazebo_rviz.png)
 The environment model is based on the dataset of Indian Tunnel, which was originally created by CMU and is currently maintained by NASA.
@@ -116,7 +120,7 @@ Then, the whole picture looks like this.
 +-----------------+        +------------------+
 ```
 
-## Running across network one of which is behind NAT
+## Running across networks one of which is behind NAT
 `gzserver` also directly connects to `gzclient` by opening an arbitrary port.
 If `gzclient` is running in a network behind NAT, `gzserver` cannot connect to
 it.
