@@ -93,6 +93,25 @@ rosservice call /iris/savemap "data: true"
 ```
 It will save the current octomap in the directory `~/.ros`.
 
+The saved file can be displaybed by `octovis`.
+You can get the tool from `octomap` repo.
+https://github.com/OctoMap/octomap
+```
+git clone https://github.com/OctoMap/octomap.git
+cd octomap
+mkdir build
+cd build
+cmake ..
+make -j4
+```
+In the `build` directory,
+```
+cd ../bin
+./octovis ~/.ros/octomap200728_232007.bt
+```
+Then, it will display the map.
+![](./img/octovis.png)
+
 ## Running on multiple machines
 This repo contains a bash script to run the ROS nodes on multiple machines:
 `src/mav-tunnel-nav/scripts/network_setup.sh`
