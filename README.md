@@ -87,6 +87,12 @@ rosservice call /iris/enable "data: true"
 ```
 Then, Iris starts to fly.
 
+After a while, you can save the map.
+```
+rosservice call /iris/savemap "data: true"
+```
+It will save the current octomap in the directory `~/.ros`.
+
 ## Running on multiple machines
 This repo contains a bash script to run the ROS nodes on multiple machines:
 `src/mav-tunnel-nav/scripts/network_setup.sh`
