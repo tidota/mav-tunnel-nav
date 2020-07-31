@@ -115,7 +115,7 @@ Then, it will display the map.
 ### Mapping only
 This will only perform mapping while taking the ground truth trajectory.
 ```
-roslaunch mav_tunnel_nav depthcam_nav.launch enable_ground_truth:=true
+roslaunch mav_tunnel_nav depthcam_nav.launch map_only:=true
 ```
 
 ## Running on multiple machines
