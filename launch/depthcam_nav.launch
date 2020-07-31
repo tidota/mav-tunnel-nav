@@ -85,11 +85,15 @@
       <param name="range_max" value="3.0"/>
       <param name="range_min" value="0.01"/>
 
-      <param name="STEER_THRESH" value="0.1"/>
+      <!-- lower, more likely to steer -->
+      <param name="STEER_THRESH" value="0.05"/>
       <param name="MIDDLE_THRESH" value="0.1"/>
-      <param name="TURN_THRESH1" value="0.5"/>
+      <!-- condition1: higher, more likely turn left -->
+      <param name="TURN_THRESH1" value="0.8"/>
+      <!-- condition2: (if condition1 unmet) higher, more likely turn -->
       <param name="TURN_THRESH2" value="0.9"/>
-      <param name="TURN_THRESH3" value="1.0"/>
+      <!-- condition3: (if condition2 met) higher, more likely turn right -->
+      <param name="TURN_THRESH3" value="1.1"/>
       <param name="ALT_THRESH" value="0.05"/>
       <param name="OBS_THRESH" value="0.2"/>
 
