@@ -8,6 +8,7 @@
   <arg name="z" default="0.31"/>
   <arg name="Y" default="-1.570796"/>
   <arg name="map_only" default="false"/>
+  <arg name="ground_truth" default="$(arg map_only)"/>
 
   <!-- start gazebo server -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -31,7 +32,7 @@
       <!--<arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_14ranges.xacro" />-->
       <arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_depthcam.xacro" />
       <arg name="enable_logging" value="false" />
-      <arg name="enable_ground_truth" value="$(arg map_only)" />
+      <arg name="enable_ground_truth" value="$(arg ground_truth)" />
       <arg name="log_file" value="iris"/>
       <arg name="x" value="$(arg x)"/>
       <arg name="y" value="$(arg y)"/>
