@@ -112,6 +112,12 @@ cd ../bin
 Then, it will display the map.
 ![](./img/octovis.png)
 
+### Mapping only
+This will only perform mapping while taking the ground truth trajectory.
+```
+roslaunch mav_tunnel_nav depthcam_nav.launch enable_ground_truth:=true
+```
+
 ## Running on multiple machines
 This repo contains a bash script to run the ROS nodes on multiple machines:
 `src/mav-tunnel-nav/scripts/network_setup.sh`
