@@ -104,7 +104,9 @@ void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Particle::Particle(const double &init_Y, const double &resol,
+Particle::Particle(
+  const double &init_x, const double &init_y, const double &init_z,
+  const double &init_Y, const double &resol,
   const double &probHit, const double &probMiss,
   const double &threshMin, const double &threshMax)
 {
@@ -116,8 +118,7 @@ Particle::Particle(const double &init_Y, const double &resol,
 
   tf::Quaternion rot_buff;
   rot_buff.setRPY(0, 0, init_Y);
-  this->pose = tf::Transform(rot_buff, tf::Vector3(0, 0, 0));
-//  this->vel_linear = tf::Vector3(0, 0, 0);
+  this->pose = tf::Transform(rot_buff, tf::Vector3(init_x, init_y, init_z));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +133,7 @@ Particle::Particle(const Particle &src)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Particle::Particle(): Particle(0.0, 0.25, 0.7, 0.4, 0.12, 0.97){}
+Particle::Particle(): Particle(0.0, 0.0, 0.0, 0.0, 0.25, 0.7, 0.4, 0.12, 0.97){}
 
 ////////////////////////////////////////////////////////////////////////////////
 Particle::~Particle()
@@ -339,12 +340,18 @@ void pf_main()
   int depth_cam_pc_downsample;
   pnh.getParam("depth_cam_pc_downsample", depth_cam_pc_downsample);
 
+  double init_x;
+  double init_y;
+  double init_z;
   double init_Y;
   double resol;
   double probHit;
   double probMiss;
   double threshMin;
   double threshMax;
+  pnh.getParam("init_x", init_x);
+  pnh.getParam("init_y", init_y);
+  pnh.getParam("init_z", init_z);
   pnh.getParam("init_Y", init_Y);
   pnh.getParam("map_resol", resol);
   pnh.getParam("map_probHit", probHit);
@@ -376,7 +383,8 @@ void pf_main()
   {
     particles.push_back(
       std::make_shared<Particle>(
-        init_Y, resol, probHit, probMiss, threshMin, threshMax));
+        init_x, init_y, init_z, init_Y,
+        resol, probHit, probMiss, threshMin, threshMax));
   }
   std::vector<double> weights(n_particles);
   std::vector<double> errors(n_particles);

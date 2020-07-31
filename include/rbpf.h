@@ -22,7 +22,9 @@ class Particle
   private: octomap::OcTree *map;
   public: const octomap::OcTree* getMap();
 
-  public: Particle(const double &init_Y, const double &resol,
+  public: Particle(
+    const double &init_x, const double &init_y, const double &init_z,
+    const double &init_Y, const double &resol,
     const double &probHit, const double &probMiss,
     const double &threshMin, const double &threshMax);
   public: Particle(const Particle &src);
