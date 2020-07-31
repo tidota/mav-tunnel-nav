@@ -90,7 +90,7 @@
       <param name="STEER_THRESH" value="0.05"/>
       <param name="MIDDLE_THRESH" value="0.1"/>
       <!-- condition1: higher, more likely turn left -->
-      <param name="TURN_THRESH1" value="0.8"/>
+      <param name="TURN_THRESH1" value="1.2"/>
       <!-- condition2: (if condition1 unmet) higher, more likely turn -->
       <param name="TURN_THRESH2" value="0.9"/>
       <!-- condition3: (if condition2 met) higher, more likely turn right -->

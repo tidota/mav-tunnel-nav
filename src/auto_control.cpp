@@ -239,11 +239,19 @@ void control_main()
           // turns the robot around so that it can avoid the wall in front of it.
           {
             // input check
-            double length_comp
-              = std::fmax(
-                  range_data.at("range_ufront"),
-                  range_data.at("range_dfront")) / std::sqrt(2);
-            if(length_comp < TURN_THRESH1)
+            std::vector<double> vlist
+                = {range_data.at("range_ufront"),
+                   range_data.at("range_front"),
+                   range_data.at("range_dfront")};
+            std::sort(vlist.begin(), vlist.end());
+            std::vector<double> hlist
+                = {range_data.at("range_front"),
+                   range_data.at("range_rfront"),
+                   range_data.at("range_right")};
+            std::sort(hlist.begin(), hlist.end());
+            double front_comp = (vlist[0] + vlist[1])/2;
+            double rfront_comp = (hlist[0] + hlist[1])/2;
+            if(front_comp < TURN_THRESH1 || rfront_comp < TURN_THRESH1)
             {
               // if both up-front and down-front ranges are too short
 
@@ -263,7 +271,8 @@ void control_main()
               // up and down ranges respectively
 
               // max (up-front, front, down-front)
-              length_comp = fmax(range_data.at("range_front"), length_comp);
+              double length_comp
+                = fmax(range_data.at("range_front"), length_comp);
 
               if(
                 range_data.at("range_right") > length_comp &&
