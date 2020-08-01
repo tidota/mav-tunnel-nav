@@ -200,6 +200,32 @@
     </group>
     <!-- mapping only (using the ground truth poses) -->
     <group if="$(arg map_only)">
+      <node name="map_only" pkg="mav_tunnel_nav" type="map_only" output="screen">
+        <param name="pc_topic" value="camera_ir/camera/depth/points"/>
+        <param name="world_frame_id" value="world"/>
+        <param name="robot_frame_id" value="base_link"/>
+
+        <param name="update_freq" value="2"/>
+
+        <param name="depth_cam_pc_downsample" value="1000"/>
+
+        <param name="init_x" value="$(arg x)"/>
+        <param name="init_y" value="$(arg y)"/>
+        <param name="init_z" value="$(arg z)"/>
+        <param name="init_Y" value="$(arg Y)"/>
+        <param name="map_resol" value="0.2"/>
+        <param name="map_probHit" value="0.8"/>
+        <param name="map_probMiss" value="0.2"/>
+        <param name="map_threshMin" value="0.12"/>
+        <param name="map_threshMax" value="0.97"/>
+
+        <param name="mapping_interval" value="3"/>
+        <param name="publish_interval" value="0"/>
+        <param name="vismap_interval" value="3"/>
+        <param name="compress_interval" value="7"/>
+
+        <param name="octomap_topic" value="octomap"/>
+      </node>
     </group>
 
     <!-- map saver -->

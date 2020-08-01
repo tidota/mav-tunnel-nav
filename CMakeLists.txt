@@ -177,6 +177,14 @@ target_link_libraries(rbpf
   ${OCTOMAP_LIBRARIES}
 )
 
+add_executable(map_only src/map_only.cpp)
+add_dependencies(map_only ${catkin_EXPORTED_TARGETS})
+target_link_libraries(map_only
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${OCTOMAP_LIBRARIES}
+)
+
 add_executable(teleop_node src/teleop_node.cpp)
 add_dependencies(teleop_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(teleop_node ${catkin_LIBRARIES})
