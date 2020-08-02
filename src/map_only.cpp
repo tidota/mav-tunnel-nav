@@ -134,11 +134,16 @@ void pf_main()
   int counts_map_update = 0;
   int counts_compress = 0;
 
-  // TODO: create octomap object
-  //
+  // create octomap object
+  octomap::OcTree *map;
+  map = new octomap::OcTree(resol);
+  map->setProbHit(probHit);
+  map->setProbMiss(probMiss);
+  map->setClampingThresMin(threshMin);
+  map->setClampingThresMax(threshMax);
 
-  // TODO: get the current pose
-  //
+  // create current pose
+  tf::Pose pose;
 
   // the main loop
   while (ros::ok())
@@ -148,6 +153,9 @@ void pf_main()
     {
       // initialize the time step
       last_update = now;
+
+      // TODO: get the current pose
+      //
 
       octomap::Pointcloud octocloud;
       {
@@ -185,14 +193,24 @@ void pf_main()
 
       if (octocloud.size() > 0)
       {
-        // TODO
         // update map
+        octomath::Vector3 sensor_org(0, 0, 0);
+        tf::Vector3 pose_org = pose.getOrigin();
+        tf::Quaternion pose_rot = pose.getRotation();
+        octomath::Pose6D frame_org(
+          octomath::Vector3(pose_org.x(), pose_org.y(), pose_org.z()),
+          octomath::Quaternion(
+            pose_rot.w(), pose_rot.x(), pose_rot.y(), pose_rot.z())
+        );
+        map->insertPointCloud(octocloud, sensor_org, frame_org);
       }
 
       // compress maps
       if (counts_compress >= compress_interval)
       {
-        // TODO compress
+        // compress
+        map->toMaxLikelihood();
+        map->prune();
         counts_compress = 0;
       }
       else
@@ -204,14 +222,14 @@ void pf_main()
       if (counts_publish >= publish_interval)
       {
         ROS_DEBUG("publish map");
-        octomap_msgs::Octomap map;
-        map.header.frame_id = world_frame_id;
-        map.header.stamp = now;
-        // TODO publish 
-        // if (octomap_msgs::fullMapToMsg(*particles[index_best]->getMap(), map))
-        //   map_pub.publish(map);
-        // else
-        //   ROS_ERROR("Error serializing OctoMap");
+        octomap_msgs::Octomap map_msg;
+        map_msg.header.frame_id = world_frame_id;
+        map_msg.header.stamp = now;
+        // publish
+        if (octomap_msgs::fullMapToMsg(*map, map_msg))
+          map_pub.publish(map_msg);
+        else
+          ROS_ERROR("Error serializing OctoMap");
         counts_publish = 0;
       }
       else
@@ -223,7 +241,7 @@ void pf_main()
       if (counts_visualize_map >= vismap_interval)
       {
         ROS_DEBUG("visualize map");
-        const octomap::OcTree* m;// = particles[index_best]->getMap();
+        const octomap::OcTree* m = map;// = particles[index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
         occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
         for (
