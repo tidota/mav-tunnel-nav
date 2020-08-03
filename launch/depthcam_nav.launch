@@ -203,7 +203,7 @@
       <node name="map_only" pkg="mav_tunnel_nav" type="map_only" output="screen">
         <param name="pc_topic" value="camera_ir/camera/depth/points"/>
         <param name="world_frame_id" value="world"/>
-        <param name="robot_frame_id" value="base_link"/>
+        <param name="robot_frame_id" value="iris/base_link"/>
 
         <param name="update_freq" value="2"/>
 
