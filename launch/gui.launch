@@ -6,4 +6,19 @@
   <!-- start gazebo client -->
   <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen" args=""/>
 
+  <!-- teleop by a joypad -->
+  <group ns="iris">
+    <!-- Converts joystick movements into sensors_msgs/Joy messages -->
+    <node name="joy_node" pkg="joy" type="joy_node" />
+
+    <!-- Converts sensor_msgs/Joy to mav_msgs/RollPitchYawRateThrust messages -->
+    <!-- <node name="rotors_joy_interface" pkg="rotors_joy_interface" type="rotors_joy_interface">
+      <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
+    </node> -->
+    <!-- Converts joy to teleop input -->
+    <node pkg="mav_tunnel_nav" type="teleop_node" name="teleop_twist_joy">
+      <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
+    </node>
+  </group>
+
 </launch>

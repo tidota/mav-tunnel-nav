@@ -118,6 +118,24 @@ This will only perform mapping while taking the ground truth trajectory.
 roslaunch mav_tunnel_nav depthcam_nav.launch map_only:=true
 ```
 
+### Manual control
+The drone can be controlled by a joypad (`/dev/input/js0`).
+
+Note that it is configured for Sanwa's gamepad (JY-P70UR) in default.
+To configure for other gamepads, create a yaml file and specify it for the
+teleop node.
+
+For example, there is a yaml file for Logitech f310.
+(`./config/joypads/logitech_f310.yaml`)
+To switch to it, in the launch file, change
+```
+<rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
+```
+to
+```
+<rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/logitech_f310.yaml" />
+```
+
 ## Running on multiple machines
 This repo contains a bash script to run the ROS nodes on multiple machines:
 `src/mav-tunnel-nav/scripts/network_setup.sh`
