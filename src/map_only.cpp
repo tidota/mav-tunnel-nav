@@ -35,7 +35,8 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/ColorRGBA.h>
 
-#include <tf/transform_broadcaster.h>
+//#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 
 #include <visualization_msgs/MarkerArray.h>
@@ -72,7 +73,9 @@ void pf_main()
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
-  tf::TransformBroadcaster tf_broadcaster;
+  //tf::TransformBroadcaster tf_broadcaster;
+  std::shared_ptr<tf::TransformListener> TF_listener
+    = std::make_shared<tf::TransformListener>();
 
   std::string octomap_topic;
   pnh.getParam("octomap_topic", octomap_topic);
@@ -154,8 +157,26 @@ void pf_main()
       // initialize the time step
       last_update = now;
 
-      // TODO: get the current pose
-      //
+      // TODO
+      // get the current pose
+      tf::StampedTransform ground_truth_tf;
+      try
+      {
+        TF_listener->waitForTransform(
+          world_frame_id, robot_frame_id,
+          ros::Time(0), ros::Duration(1));
+        TF_listener->lookupTransform(
+          world_frame_id, robot_frame_id,
+          ros::Time(0), ground_truth_tf);
+        pose = ground_truth_tf;
+      }
+      catch (tf::TransformException ex)
+      {
+        ROS_INFO_STREAM(
+          "Transfrom from " << robot_frame_id <<
+          " to " << world_frame_id << " is not available yet.");
+        return;
+      }
 
       octomap::Pointcloud octocloud;
       {
