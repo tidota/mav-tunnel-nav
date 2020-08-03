@@ -161,7 +161,7 @@ Then, the whole picture looks like this.
 ```
 +-----------------+        +------------------+
 |                 |        |                  |
-|                 |        |     roscore      |
+|    joy/teleop   |        |     roscore      |
 |      rviz      <----------> other ROS nodes |
 |     gzclient    |        |     gzserver     |
 |                 |        |                  |
@@ -201,9 +201,9 @@ to gzclient running on your machine.
 |      +-----------------------------------------------+       |
 |      |            |          |          |            |       |
 |      |            |          |          |            V       |
-|      |            |          |          |       roscore      |
+|  joy/teleop       |          |          |       roscore      |
 |    rviz           |          |          |    other ROS nodes |
-|  gzclient         |          |          |       gzserver     |
+|   gzclient        |          |          |       gzserver     |
 |      ^            |          |          |            |       |
 |      |          +-------------------------+          |       |
 |      |          |   reverse SSH tunnel    |          |       |
