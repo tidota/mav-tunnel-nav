@@ -19,18 +19,19 @@
 # 3 2 4
 # 1 0 5
 
-axis_linear: 1  # Left thumb stick vertical
-scale_linear: 0.7
-axis_angular: 0  # Left thumb stick horizontal
-scale_angular: 0.4
+teleop_twist_joy:
+  axis_linear: 1  # Left thumb stick vertical
+  scale_linear: 0.7
+  axis_angular: 0  # Left thumb stick horizontal
+  scale_angular: 0.4
 
-axis_vertical: 2  # Right thumb stick vertical
-scale_vertical: 0.7
-axis_horizontal: 3  # Right thumb stick horizontal
-scale_horizontal: 0.7
+  axis_vertical: 2  # Right thumb stick vertical
+  scale_vertical: 0.7
+  axis_horizontal: 3  # Right thumb stick horizontal
+  scale_horizontal: 0.7
 
-dead_man_switch_left: 7
-dead_man_switch_right: 9
+  dead_man_switch_left: 7
+  dead_man_switch_right: 9
 
 joy_node:
   dev: /dev/input/js0
