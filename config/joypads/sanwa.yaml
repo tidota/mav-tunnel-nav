@@ -33,6 +33,11 @@ teleop_twist_joy:
   dead_man_switch_left: 7
   dead_man_switch_right: 9
 
+  # The drone seems to drift upward when it is moving perhaps because the
+  # position controller has no knowledge about the payload.
+  # This will add some bias to the z axis in cmd_vel message.
+  bias_z: -0.25
+
 joy_node:
   dev: /dev/input/js0
   deadzone: 0.1

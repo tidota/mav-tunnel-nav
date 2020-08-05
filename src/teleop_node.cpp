@@ -58,13 +58,16 @@ class Teleop
 
   /// \brief Map from a robot name to a ROS publisher to control velocity.
   private: ros::Publisher velPubMap;
+
+  /// \brief Bias to Z axis.
+  private: double bias_z;
 };
 
 /////////////////////////////////////////////////
 Teleop::Teleop():
   linear(1), angular(0), linearScale(0), angularScale(0),
   vertical(2), horizontal(3), verticalScale(0), horizontalScale(0),
-  leftDeadMan(10), rightDeadMan(11)
+  leftDeadMan(10), rightDeadMan(11), bias_z(0)
 {
   // Load joy control settings. Setting values must be loaded by rosparam.
   ros::NodeHandle pnh("~");
@@ -83,6 +86,9 @@ Teleop::Teleop():
     "dead_man_switch_left", this->leftDeadMan, this->leftDeadMan);
   pnh.param(
     "dead_man_switch_right", this->rightDeadMan, this->rightDeadMan);
+
+  pnh.param(
+    "bias_z", this->bias_z, this->bias_z);
 
   // Create a publisher object to generate a velocity command, and associate
   // it to the corresponding robot's name.
@@ -112,6 +118,8 @@ void Teleop::JoyCallback(const sensor_msgs::Joy::ConstPtr &_joy)
       = this->verticalScale * _joy->axes[this->vertical];
     twist.angular.z
       = this->angularScale * _joy->axes[this->angular];
+
+    twist.linear.z += this->bias_z;
 
     // Publish the control values.
     this->velPubMap.publish(twist);
