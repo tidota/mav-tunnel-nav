@@ -118,6 +118,12 @@ This will only perform mapping while taking the ground truth trajectory.
 roslaunch mav_tunnel_nav depthcam_nav.launch map_only:=true
 ```
 
+You can also load a map made in the previous trial.
+```
+roslaunch mav_tunnel_nav depthcam_nav.launch map_only:=true map_filename=<path to the file>
+```
+Replace `<path to the file>` with the actual path.
+
 ### Manual control
 The drone can be controlled by a joypad (`/dev/input/js0`).
 
