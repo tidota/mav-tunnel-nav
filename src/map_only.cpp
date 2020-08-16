@@ -144,6 +144,13 @@ void pf_main()
   map->setProbMiss(probMiss);
   map->setClampingThresMin(threshMin);
   map->setClampingThresMax(threshMax);
+  // if a filename was passed, load the data of the file.
+  std::string map_filename;
+  pnh.getParam("map_filename", map_filename);
+  if (map_filename.size() > 0)
+  {
+    map->readBinary(map_filename);
+  }
 
   // create current pose
   tf::Pose pose;

@@ -9,6 +9,7 @@
   <arg name="Y" default="-1.570796"/>
   <arg name="map_only" default="false"/>
   <arg name="ground_truth" default="$(arg map_only)"/>
+  <arg name="map_filename" default=""/>
 
   <!-- start gazebo server -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -207,6 +208,8 @@
         <param name="map_probMiss" value="0.2"/>
         <param name="map_threshMin" value="0.12"/>
         <param name="map_threshMax" value="0.97"/>
+
+        <param name="map_filename" value="$(arg map_filename)"/>
 
         <param name="mapping_interval" value="3"/>
         <param name="publish_interval" value="0"/>
