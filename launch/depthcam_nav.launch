@@ -28,7 +28,7 @@
   </include>
 
   <group ns="iris">
-    <include file="$(find mav_tunnel_nav)/launch/spawn_mav.launch">
+    <include file="$(find mav_tunnel_nav)/launch/spawn_mav_model.launch">
       <arg name="mav_name" value="$(arg mav_name)" />
       <!--<arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_14ranges.xacro" />-->
       <arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_depthcam.xacro" />

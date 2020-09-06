@@ -22,7 +22,7 @@
   </include>
 
   <group ns="iris">
-    <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
+    <include file="$(find rotors_gazebo)/launch/spawn_mav_model.launch">
       <arg name="mav_name" value="$(arg mav_name)" />
       <arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_14ranges.xacro" />
       <arg name="enable_logging" value="false" />
