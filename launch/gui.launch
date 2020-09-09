@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="mav_name" default="iris" />
+
   <!-- start rviz -->
   <node pkg="rviz" type="rviz" name="rviz_nav" output="screen" args="-d $(find mav_tunnel_nav)/config/rbpf/rbpf.rviz"></node>
 
@@ -7,7 +9,7 @@
   <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen" args=""/>
 
   <!-- teleop by a joypad -->
-  <group ns="iris">
+  <group ns="$(arg mav_name)">
 
     <!-- =================================================================== -->
     <!--                      teleop by the joy pad                          -->
