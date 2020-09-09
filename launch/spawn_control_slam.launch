@@ -1,0 +1,203 @@
+<?xml version="1.0"?>
+<launch>
+  <env name="ROSCONSOLE_CONFIG_FILE" value="$(find mav_tunnel_nav)/config/rbpf/rosconsole.config"/>
+
+  <arg name="mav_name" default="iris" />
+  <arg name="x" default="0.0"/>
+  <arg name="y" default="-2.0"/>
+  <arg name="z" default="0.31"/>
+  <arg name="Y" default="-1.570796"/>
+  <arg name="map_only" default="false"/>
+  <arg name="map_filename" default=""/>
+
+  <!-- Convert cmd_vel into pose command so as to provide the same interface -->
+  <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="odometry_sensor1/pose cmd_vel command/pose"/>
+  <!-- <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="imu_odom/pose cmd_vel command/pose"/> -->
+
+  <!-- Autonomous control based on ranging data -->
+  <node name="auto_control" pkg="mav_tunnel_nav" type="auto_control" output="screen">
+    <param name="enable_topic" value="enable"/>
+    <param name="update_freq" value="50"/>
+    <!-- refer to xacro for range settings -->
+    <param name="range_list"
+      value = "range_front  0.11     0 -0.01 0 0   0
+               range_rfront 0.11 -0.06 -0.01 0 0 -45
+               range_lfront 0.11  0.06 -0.01 0 0  45
+
+               range_right  0 -0.06 0.01 0 0 -90
+               range_left   0  0.06 0.01 0 0  90
+
+               range_rear   -0.12     0 -0.01 0 0  180
+               range_rrear  -0.12 -0.06 -0.01 0 0 -135
+               range_lrear  -0.12  0.06 -0.01 0 0  135
+
+               range_up          0 0 0.055 0 -90   0
+               range_ufront  0.037 0 0.055 0 -45   0
+               range_urear  -0.037 0 0.055 0 -45 180
+
+               range_down        0 0 -0.085 0 90   0
+               range_dfront  0.037 0 -0.085 0 45   0
+               range_drear  -0.037 0 -0.085 0 45 180"
+      />
+
+    <!-- These must be the same as those in the xacro file of Iris -->
+    <!-- see iris_depthcam.xacro -->
+    <param name="range_max" value="3.0"/>
+    <param name="range_min" value="0.01"/>
+
+    <!-- lower, more likely to steer -->
+    <param name="STEER_THRESH" value="0.05"/>
+    <param name="MIDDLE_THRESH" value="0.1"/>
+    <!-- condition1: higher, more likely turn left -->
+    <param name="TURN_THRESH1" value="1.2"/>
+    <!-- condition2: (if condition1 unmet) higher, more likely turn -->
+    <param name="TURN_THRESH2" value="0.9"/>
+    <!-- condition3: (if condition2 met) higher, more likely turn right -->
+    <param name="TURN_THRESH3" value="1.1"/>
+    <param name="ALT_THRESH" value="0.05"/>
+    <param name="OBS_THRESH" value="0.2"/>
+
+    <param name="straight_rate" value="2.0"/>
+    <param name="steering_yaw_rate" value="1.0"/>
+    <param name="mid_open" value="0.8"/>
+    <param name="middle_line_rate" value="2.0"/>
+    <param name="turn_yaw_rate" value="1.0"/>
+    <param name="alt_rate" value="2.0"/>
+    <param name="obs_rate" value="1.0"/>
+    <param name="alt_open" value="0.8"/>
+
+    <param name="max_linear_x" value="0.3"/>
+    <param name="max_linear_y" value="0.3"/>
+    <param name="max_linear_z" value="0.5"/>
+  </node>
+
+  <!-- Sends motor commands based given commanded rates for roll/pitch/yaw and thrust -->
+  <!-- <node name="roll_pitch_yawrate_thrust_controller_node" pkg="rotors_control" type="roll_pitch_yawrate_thrust_controller_node">
+    <rosparam command="load" file="$(find rotors_gazebo)/resource/roll_pitch_yawrate_thrust_controller_iris.yaml" />
+    <rosparam command="load" file="$(find rotors_gazebo)/resource/iris.yaml" />
+    <remap from="odometry" to="imu_odom/odometry" />
+  </node> -->
+  <!-- Spawn a position controller -->
+  <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node">
+    <rosparam command="load" file="$(find rotors_gazebo)/resource/lee_controller_iris.yaml" />
+    <rosparam command="load" file="$(find rotors_gazebo)/resource/iris.yaml" />
+    <remap from="odometry" to="odometry_sensor1/odometry" />
+    <!-- <remap from="odometry" to="imu_odom/odometry" /> -->
+  </node>
+
+  <!-- imu odometry (optional) -->
+  <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom" output="screen">
+    <param name="init_Y" value="$(arg Y)"/>
+    <param name="odom_reset_topic" value="odom_reset"/>
+    <param name="imu_topic" value="imu"/>
+    <param name="odom_topic" value="imu_odom/odometry"/>
+    <param name="odom_pose_topic" value="imu_odom/pose"/>
+    <param name="world_frame_id" value="world"/>
+    <param name="odom_frame_id" value="odom"/>
+  </node>
+
+  <!-- rbpf -->
+  <group unless="$(arg map_only)">
+    <node name="rbpf" pkg="mav_tunnel_nav" type="rbpf" output="screen">
+      <!-- <param name="odom_topic" value="imu_odom/odometry"/> -->
+      <param name="odom_topic" value="odometry_sensor1/odometry"/>
+      <param name="odom_reset_topic" value="odom_reset"/>
+      <param name="pc_topic" value="camera_ir/camera/depth/points"/>
+      <param name="world_frame_id" value="world"/>
+      <param name="robot_frame_id" value="base_link"/>
+
+      <param name="n_particles" value="50"/>
+      <param name="update_freq" value="2"/>
+
+      <param name="depth_cam_pc_downsample" value="1000"/>
+
+      <param name="init_x" value="$(arg x)"/>
+      <param name="init_y" value="$(arg y)"/>
+      <param name="init_z" value="$(arg z)"/>
+      <param name="init_Y" value="$(arg Y)"/>
+      <param name="map_resol" value="0.2"/>
+      <param name="map_probHit" value="0.8"/>
+      <param name="map_probMiss" value="0.2"/>
+      <param name="map_threshMin" value="0.12"/>
+      <param name="map_threshMax" value="0.97"/>
+
+      <param name="t_pose_adjust" value="5.0"/>
+      <param name="t_only_mapping" value="15.0"/>
+      <param name="mapping_interval" value="3"/>
+      <param name="publish_interval" value="0"/>
+      <param name="vismap_interval" value="3"/>
+      <param name="visloc_interval" value="0"/>
+      <param name="compress_interval" value="7"/>
+      <param name="locdata_interval" value="1000"/>
+
+      <param name="octomap_topic" value="octomap"/>
+
+      <!-- refer to xacro for range settings -->
+      <param name="range_list"
+        value = "range_front  0.11     0 -0.01 0 0   0
+                 range_rfront 0.11 -0.06 -0.01 0 0 -45
+                 range_lfront 0.11  0.06 -0.01 0 0  45
+
+                 range_right  0 -0.06 0.01 0 0 -90
+                 range_left   0  0.06 0.01 0 0  90
+
+                 range_rear   -0.12     0 -0.01 0 0  180
+                 range_rrear  -0.12 -0.06 -0.01 0 0 -135
+                 range_lrear  -0.12  0.06 -0.01 0 0  135
+
+                 range_up          0 0 0.055 0 -90   0
+                 range_ufront  0.037 0 0.055 0 -45   0
+                 range_urear  -0.037 0 0.055 0 -45 180
+
+                 range_down        0 0 -0.085 0 90   0
+                 range_dfront  0.037 0 -0.085 0 45   0
+                 range_drear  -0.037 0 -0.085 0 45 180"
+        />
+      <param name="range_max" value="1.5"/>
+      <param name="range_min" value="0.01"/>
+    </node>
+  </group>
+  <!-- mapping only (using the ground truth poses) -->
+  <group if="$(arg map_only)">
+    <node name="map_only" pkg="mav_tunnel_nav" type="map_only" output="screen">
+      <param name="pc_topic" value="camera_ir/camera/depth/points"/>
+      <param name="world_frame_id" value="world"/>
+      <param name="robot_frame_id" value="$(arg mav_name)/base_link"/>
+
+      <param name="update_freq" value="2"/>
+
+      <param name="depth_cam_pc_downsample" value="1000"/>
+
+      <param name="init_x" value="$(arg x)"/>
+      <param name="init_y" value="$(arg y)"/>
+      <param name="init_z" value="$(arg z)"/>
+      <param name="init_Y" value="$(arg Y)"/>
+      <param name="map_resol" value="0.2"/>
+      <param name="map_probHit" value="0.8"/>
+      <param name="map_probMiss" value="0.2"/>
+      <param name="map_threshMin" value="0.12"/>
+      <param name="map_threshMax" value="0.97"/>
+
+      <param name="map_filename" value="$(arg map_filename)"/>
+
+      <param name="mapping_interval" value="3"/>
+      <param name="publish_interval" value="0"/>
+      <param name="vismap_interval" value="3"/>
+      <param name="compress_interval" value="7"/>
+
+      <param name="octomap_topic" value="octomap"/>
+    </node>
+  </group>
+
+  <!-- map saver -->
+  <node name="map_saver" pkg="mav_tunnel_nav" type="map_saver" output="screen">
+    <param name="filename" value="octomap.bt"/>
+    <param name="octomap_topic" value="octomap"/>
+    <param name="savemap_topic" value="savemap"/>
+  </node>
+
+  <!-- Given robot_description parameter and joint states, publish TF frames -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
+</launch>
