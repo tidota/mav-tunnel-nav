@@ -1,19 +1,14 @@
 robots:
   - robot1
-  - robot3
-  - robot5
-  - robot7
-  - robot9
-  - robot2
-  - robot4
-  - robot6
-  - robot8
-  - robot10
+#  - robot2
 
 robot1:
-  x: 0
-  y: -2
-  Y: 0
+  x: 0.0
+  y: -2.0
+  z: 0.31
+  Y: -1.570796
+  map_only: false
+  map_filename: ''
 
 robot2:
   x: -8

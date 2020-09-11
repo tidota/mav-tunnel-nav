@@ -17,17 +17,13 @@ if __name__ == '__main__':
 	args = rospy.myargv(sys.argv)
 
 	print ('start')
-	if "--nogui" in args:
-		gui='false'
-	else:
-		gui='true'
 
 	rospy.init_node('robot_team_spawner')
 
 	rospack = rospkg.RosPack()
 	try:
-		f = open(rospack.get_path('quadrotor_tunnel_nav') + '/config/adhoc/robots.yaml', 'r')
-		dict_robot = yaml.load(f.read())
+		f = open(rospack.get_path('mav_tunnel_nav') + '/config/robot_settings/robots.yaml', 'r')
+		dict_robot = yaml.load(f.read(), Loader=yaml.FullLoader)
 	except Exception as e:
 		print(e)
 
@@ -35,13 +31,15 @@ if __name__ == '__main__':
 	for robot in dict_robot['robots']:
 		cmd = [
 			'roslaunch',
-			'quadrotor_tunnel_nav',
+			'mav_tunnel_nav',
 			'spawn_robot.launch',
-			'ns:=' + robot,
+			'mav_name:=' + robot,
 			'x:=' + str(eval(str(dict_robot[robot]['x']))),
 			'y:=' + str(eval(str(dict_robot[robot]['y']))),
+			'z:=' + str(eval(str(dict_robot[robot]['z']))),
 			'Y:=' + str(eval(str(dict_robot[robot]['Y']))),
-			'gui:=' + gui,
+			'map_only:=' + str(dict_robot[robot]['map_only']),
+			'map_filename:=' + str(dict_robot[robot]['map_filename']),
 		]
 		cmd_list[robot] = cmd
 

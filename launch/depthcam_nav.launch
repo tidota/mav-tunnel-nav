@@ -27,29 +27,7 @@
     <arg name="extra_gazebo_args" value="--verbose"/>
   </include>
 
-  <group ns="$(arg mav_name)">
-    <include file="$(find mav_tunnel_nav)/launch/spawn_mav_model.launch">
-      <arg name="mav_name" value="$(arg mav_name)" />
-      <!--<arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_14ranges.xacro" />-->
-      <arg name="model" value="$(find mav_tunnel_nav)/urdf/iris/iris_depthcam.xacro" />
-      <arg name="enable_logging" value="false" />
-      <arg name="enable_ground_truth" value="$(arg ground_truth)" />
-      <arg name="log_file" value="$(arg mav_name)"/>
-      <arg name="x" value="$(arg x)"/>
-      <arg name="y" value="$(arg y)"/>
-      <arg name="z" value="$(arg z)"/>
-      <arg name="Y" value="$(arg Y)"/>
-    </include>
-
-    <include file="$(find mav_tunnel_nav)/launch/spawn_control_slam.launch">
-      <arg name="mav_name" value="$(arg mav_name)" />
-      <arg name="x" value="$(arg x)"/>
-      <arg name="y" value="$(arg y)"/>
-      <arg name="z" value="$(arg z)"/>
-      <arg name="Y" value="$(arg Y)"/>
-      <arg name="map_only" value="$(arg map_only)"/>
-      <arg name="map_filename" value="$(arg map_filename)"/>
-    </include>
-  </group>
+  <!-- spawn robots described in the yaml file -->
+  <node pkg="mav_tunnel_nav" type="auto_launch.py" name="robot_team_spawner"/>
 
 </launch>
