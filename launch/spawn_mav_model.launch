@@ -4,7 +4,7 @@
   <arg name="mav_name" default="firefly"/>
   <arg name="namespace" default="$(arg mav_name)"/>
   <arg name="model" default="$(find rotors_description)/urdf/$(arg mav_name)_base.xacro"/>
-  <arg name="tf_prefix" default="$(optenv ROS_NAMESPACE)"/>
+  <arg name="tf_prefix" default="$(arg mav_name)"/>
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.1"/>
