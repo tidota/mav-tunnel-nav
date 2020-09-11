@@ -28,6 +28,6 @@
   </include>
 
   <!-- spawn robots described in the yaml file -->
-  <node pkg="mav_tunnel_nav" type="auto_launch.py" name="robot_team_spawner"/>
+  <node pkg="mav_tunnel_nav" type="auto_launch.py" name="robot_team_spawner" output="screen"/>
 
 </launch>
