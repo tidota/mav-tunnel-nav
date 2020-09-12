@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="mav_name" default="iris" />
+  <arg name="mav_name" default="robot1" />
 
   <!-- start rviz -->
   <node pkg="rviz" type="rviz" name="rviz_nav" output="screen" args="-d $(find mav_tunnel_nav)/config/rbpf/rbpf.rviz"></node>
