@@ -134,7 +134,6 @@ void pf_main()
 
   int counts_publish = 0;
   int counts_visualize_map = 0;
-  int counts_map_update = 0;
   int counts_compress = 0;
 
   // create octomap object
