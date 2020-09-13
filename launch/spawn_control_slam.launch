@@ -93,7 +93,7 @@
     <param name="odom_topic" value="imu_odom/odometry"/>
     <param name="odom_pose_topic" value="imu_odom/pose"/>
     <param name="world_frame_id" value="world"/>
-    <param name="odom_frame_id" value="odom"/>
+    <param name="odom_frame_id" value="$(arg mav_name)/odom"/>
   </node>
 
   <!-- rbpf -->
@@ -104,7 +104,7 @@
       <param name="odom_reset_topic" value="odom_reset"/>
       <param name="pc_topic" value="camera_ir/camera/depth/points"/>
       <param name="world_frame_id" value="world"/>
-      <param name="robot_frame_id" value="base_link"/>
+      <param name="robot_frame_id" value="$(arg mav_name)/base_link"/>
 
       <param name="n_particles" value="50"/>
       <param name="update_freq" value="2"/>
