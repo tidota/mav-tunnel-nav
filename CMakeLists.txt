@@ -162,6 +162,48 @@ catkin_package(
   CFG_EXTRAS
     ${PROJECT_NAME}-extras.cmake
 )
+# Create a static library with the Protobuf messages used internally.
+set(protobuf_lib_name QuadrotorTunnelNavProtobuf)
+add_subdirectory(src/sim_plugins/protobuf)
+set_source_files_properties(${PROTO_SOURCES} ${PROTO_HEADERS}
+                            PROPERTIES GENERATED TRUE)
+add_library(${protobuf_lib_name} STATIC ${PROTO_SOURCES})
+add_dependencies(${protobuf_lib_name} protobuf_compilation)
+set_target_properties(${protobuf_lib_name}
+  PROPERTIES POSITION_INDEPENDENT_CODE ON COMPILE_FLAGS "-Wno-unused-parameter")
+
+# Create the libAdHocNetPlugin.so library.
+set(adhocnet_plugin_name AdHocNetPlugin)
+add_library(${adhocnet_plugin_name} src/sim_plugins/AdHocNetPlugin.cc)
+target_include_directories(${adhocnet_plugin_name}
+  PRIVATE ${CATKIN_DEVEL_PREFIX}/include)
+target_include_directories(${adhocnet_plugin_name}
+  PRIVATE src/sim_plugins)
+target_link_libraries(${adhocnet_plugin_name}
+  ${catkin_LIBRARIES}
+  ${protobuf_lib_name}
+  ${ignition-transport4_LIBRARIES}
+)
+add_dependencies(${adhocnet_plugin_name}
+  protobuf_compilation
+)
+
+# Create the libAdHocClientPlugin.so library.
+set(adhocclient_plugin_name AdHocClientPlugin)
+add_library(${adhocclient_plugin_name} src/sim_plugins/AdHocClientPlugin.cc)
+target_include_directories(${adhocclient_plugin_name}
+  PRIVATE ${CATKIN_DEVEL_PREFIX}/include)
+target_include_directories(${adhocclient_plugin_name}
+  PRIVATE src/sim_plugins)
+target_link_libraries(${adhocclient_plugin_name}
+  ${catkin_LIBRARIES}
+  ${protobuf_lib_name}
+  ${ignition-transport4_LIBRARIES}
+  ssl crypto
+)
+add_dependencies(${adhocclient_plugin_name}
+  protobuf_compilation
+)
 
 add_executable(auto_control src/auto_control.cpp)
 add_dependencies(auto_control ${catkin_EXPORTED_TARGETS})
