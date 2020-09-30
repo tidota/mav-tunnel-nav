@@ -9,7 +9,7 @@
 #include <gazebo/common/Assert.hh>
 #include <gazebo/common/Events.hh>
 
-#include "sim_plugins/AdHocNetPlugin.hh"
+#include <sim_plugins/AdHocNetPlugin.hh>
 
 using namespace gazebo;
 

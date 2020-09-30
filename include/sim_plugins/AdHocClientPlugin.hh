@@ -19,9 +19,9 @@
 #include <gazebo/physics/physics.hh>
 #include <gazebo/transport/transport.hh>
 
-#include "sim_plugins/CommonTypes.hh"
-#include "mav_tunnel_nav/protobuf/datagram.pb.h"
-#include "mav_tunnel_nav/protobuf/siminfo.pb.h"
+#include <sim_plugins/CommonTypes.hh>
+#include <mav_tunnel_nav/protobuf/datagram.pb.h>
+#include <mav_tunnel_nav/protobuf/siminfo.pb.h>
 
 namespace gazebo
 {

@@ -7,7 +7,7 @@
 
 #include <openssl/sha.h>
 
-#include "sim_plugins/AdHocClientPlugin.hh"
+#include <sim_plugins/AdHocClientPlugin.hh>
 
 using namespace gazebo;
 
