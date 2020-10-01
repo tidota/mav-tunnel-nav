@@ -25,4 +25,8 @@
     offZ_horizon2="0.01"
     offZ_down="-0.085"
   />
+
+  <gazebo>
+    <plugin name="adhocclient_plugin" filename="libAdHocClientPlugin.so" />
+  </gazebo>
 </robot>

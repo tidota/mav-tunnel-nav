@@ -61,5 +61,8 @@
 
     <!-- support of rotors -->
     <plugin name="ros_interface_plugin" filename="librotors_gazebo_ros_interface_plugin.so"/>
+
+    <!-- communication -->
+    <plugin name="adhocnet_plugin" filename="libAdHocNetPlugin.so" />
   </world>
 </sdf>
