@@ -1,5 +1,15 @@
 # TODO list
 
+## communication plugin(s)
+
+- World plugin
+
+  works as a broker. It exposes ignition transport topics.
+
+- communication client
+
+  interacts with the world plugin and the ROS nodes of the robot.
+
 ## inter-robot communication
 
 ### Beacon
