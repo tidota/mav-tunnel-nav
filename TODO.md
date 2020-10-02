@@ -1,41 +1,46 @@
 # TODO list
 
-- [x] Migrate package.xml and CMakeLists.txt from the old repo
-- [x] Modify the files
-- [x] Installation instructions in README.md
+## inter-robot communication
 
-  seems like the rotorS packages are available as Debian packages.
+### Beacon
+- beacon thread
+  - at some interval
+    - broadcast beacons
+    - wait for some time
+    - update the neighbors list
 
-  `sudo apt install ros-melodic-rotors-*`
+- callback (when receiving a beacon packet)
+  - reply back
 
-  maybe, I can just add `rotors-simulator` in package.xml? => no it didn't..
+### Data exchange
 
-- [x] Make a script to download and setup a world model in .gazebo
+- thread (maybe the main process of rbpf? or a separate thread?)
 
-  Google Drive now does not let command-line based downloading...?
-  OK, just provide instruction to install them.
+  - at some probability
+    - randomly choose a receiver from the neighbors list
+    - send a request to exchange
+    - busy-wait for a reply and time
+    - if no timed out and acc received
+      - lock the data
+      - calc weights for omega and 1-omega
+      - send particles with weights of 1-omega
+      - wait for particles w/ weights from the other
+      - resampling
+      - unlock the data
 
-- [x] Make and test a launch file
-- [x] Rename the package "mav_tunnel_nav"
-- [x] Rename the github repo as well
-- [x] Solve the problem of library path (rotors_gazebo_plugins are not loaded?)
+- callback (receiving a request to exchange)
+  - if the data is not locked already
+    - lock the data
+    - send acc
+    - calc weights for omega and 1-omega
+    - send particles with weights of 1-omega
+    - wait for particles w/ weights from the other
+    - resampling
+  - else
+    - send rejection
 
-  - the rotors package itself has a problem to load plugins?
+- callback (receiving data)
+  - enque?
 
-    https://github.com/ethz-asl/rotors_simulator/pull/506
-    seems like libmav_msgs.so is missing
-
-    The error messages disappeared after copying `libmav_msgs` to `/opt/ros/melodic/lib`.
-
-- [x] Setup joy control by Sanwa gamepad.
-
-  - the world plugin `librotors_gazebo_ros_interface_plugin.so` is necessary in a world file.
-
-- [ ] Try to use only IMU for position estimation
-
-  - the controller subscribes the odometry data, but only reads the orientation and angular velocity parts.
-  - IMU provides those items.
-  - make a publisher for `/iris/odometry_sensor1/odometry` based on IMU?
-
-- [ ] Update the installation+setup instructions
-- [ ] Add a manual control(?)
+- callback (receiving acc)
+  - raise a flag?
