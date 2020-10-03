@@ -50,8 +50,8 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr /*_sdf*/)
   //       robot + "/comm_out", &AdHocNetPlugin::OnMessage, this);
   // }
   //
-  // this->updateConnection = event::Events::ConnectWorldUpdateBegin(
-  //   std::bind(&AdHocNetPlugin::OnUpdate, this));
+  this->updateConnection = event::Events::ConnectWorldUpdateBegin(
+    std::bind(&AdHocNetPlugin::OnUpdate, this));
   //
   // this->robotsReadyToComm = false;
   //

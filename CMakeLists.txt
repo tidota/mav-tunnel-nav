@@ -190,23 +190,6 @@ add_dependencies(${adhocnet_plugin_name}
   protobuf_compilation
 )
 
-# Create the libAdHocClientPlugin.so library.
-set(adhocclient_plugin_name AdHocClientPlugin)
-add_library(${adhocclient_plugin_name} src/sim_plugins/AdHocClientPlugin.cc)
-target_include_directories(${adhocclient_plugin_name}
-  PRIVATE ${CATKIN_DEVEL_PREFIX}/include)
-target_include_directories(${adhocclient_plugin_name}
-  PRIVATE src/sim_plugins)
-target_link_libraries(${adhocclient_plugin_name}
-  ${catkin_LIBRARIES}
-  ${protobuf_lib_name}
-  ${ignition-transport4_LIBRARIES}
-  ssl crypto
-)
-add_dependencies(${adhocclient_plugin_name}
-  protobuf_compilation
-)
-
 add_executable(auto_control src/auto_control.cpp)
 add_dependencies(auto_control ${catkin_EXPORTED_TARGETS})
 target_link_libraries(auto_control ${catkin_LIBRARIES})

@@ -7,7 +7,6 @@
 #include <thread>
 #include <unordered_set>
 
-//#include <hector_uav_msgs/EnableMotors.h>
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
@@ -35,19 +34,6 @@ namespace adhoc
 namespace gazebo
 {
   /// \brief A plugin that controls ad hoc communications.
-  ///
-  /// At the beginning, it waits until all robots are spawned in the
-  /// environrmnet. Then, it starts simulation based on the configuration file.
-  ///
-  /// At each trial, it sends out commands to fly to the middle altitude. Once
-  /// they reach the altitude, the plugin sends out commands to start flight and
-  /// communication, followed by monitoring the network performance.
-  ///
-  /// Once the duration passed, it sends out commands to stop creating new
-  /// packets. When they finish all packets in the network, the robots stops.
-  /// The plugin checks all robot's speeds and when they are all zero, it resets
-  /// the robot's positions and starts another simulation.
-  ///
   class AdHocNetPlugin : public WorldPlugin
   {
     /// \breif. Constructor.
@@ -105,8 +91,8 @@ namespace gazebo
     // /// \brief Thread object to check if robots are ready to fly.
     // private: std::thread robotCheckThread;
 
-    /// \brief An Ignition Transport node for communications.
-    private: transport::NodePtr node;
+    // /// \brief An Ignition Transport node for communications.
+    // private: transport::NodePtr node;
 
     // /// \brief subscriber map to receive data.
     // private: std::map< std::string, transport::SubscriberPtr > subMap;
@@ -128,8 +114,8 @@ namespace gazebo
     // private: std::vector<boost::shared_ptr<adhoc::msgs::SimInfo const>>
     //   listStopResponses;
 
-    // /// \brief ROS node handler
-    // private: ros::NodeHandle n;
+    /// \brief ROS node handler
+    private: ros::NodeHandle n;
 
     // /// \brief Publisher to send a command to start flying.
     // private: ros::Publisher startFlyingPub;
