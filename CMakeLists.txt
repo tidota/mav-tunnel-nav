@@ -93,11 +93,11 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-#generate_messages(
-#  DEPENDENCIES
-#  std_msgs
-#  geometry_msgs
-#)
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -164,15 +164,6 @@ catkin_package(
   CFG_EXTRAS
     ${PROJECT_NAME}-extras.cmake
 )
-# Create a static library with the Protobuf messages used internally.
-set(protobuf_lib_name QuadrotorTunnelNavProtobuf)
-add_subdirectory(src/sim_plugins/protobuf)
-set_source_files_properties(${PROTO_SOURCES} ${PROTO_HEADERS}
-                            PROPERTIES GENERATED TRUE)
-add_library(${protobuf_lib_name} STATIC ${PROTO_SOURCES})
-add_dependencies(${protobuf_lib_name} protobuf_compilation)
-set_target_properties(${protobuf_lib_name}
-  PROPERTIES POSITION_INDEPENDENT_CODE ON COMPILE_FLAGS "-Wno-unused-parameter")
 
 # Create the libAdHocNetPlugin.so library.
 set(adhocnet_plugin_name AdHocNetPlugin)
@@ -183,12 +174,10 @@ target_include_directories(${adhocnet_plugin_name}
   PRIVATE src/sim_plugins)
 target_link_libraries(${adhocnet_plugin_name}
   ${catkin_LIBRARIES}
-  ${protobuf_lib_name}
   ${ignition-transport4_LIBRARIES}
 )
 add_dependencies(${adhocnet_plugin_name}
-  protobuf_compilation
-)
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_executable(auto_control src/auto_control.cpp)
 add_dependencies(auto_control ${catkin_EXPORTED_TARGETS})
