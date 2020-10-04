@@ -11,6 +11,8 @@
   <arg name="ground_truth" default="$(arg map_only)"/>
   <arg name="map_filename" default=""/>
 
+  <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/robots.yaml" />
+
   <!-- start gazebo server -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name"

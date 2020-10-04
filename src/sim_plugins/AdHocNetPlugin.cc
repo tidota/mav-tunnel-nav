@@ -23,33 +23,42 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr /*_sdf*/)
   GZ_ASSERT(_world, "AdHocNetPlugin world pointer is NULL");
   this->world = _world;
 
-  // this->n.param("robots", this->robotList, this->robotList);
-  //
-  // std::vector<std::string> tempVec;
-  // this->n.param("setting_list", tempVec, tempVec);
-  // for (auto item: tempVec)
-  // {
-  //   gzmsg << "Setting: " << item << std::endl;
-  //   this->settingList.push(item);
-  // }
-  //
-  // this->node = transport::NodePtr(new transport::Node());
-  // this->node->Init();
-  //
-  // this->simCmdPub = this->node->Advertise<adhoc::msgs::SimInfo>("/sim_cmd");
-  // this->simCmdResSub = this->node->Subscribe<adhoc::msgs::SimInfo>(
-  //   "/sim_cmd_res", &AdHocNetPlugin::OnSimCmdResponse, this);
-  //
-  // for (auto robot: this->robotList)
-  // {
-  //   this->pubMap[robot]
-  //     = this->node->Advertise<adhoc::msgs::Datagram>(
-  //       robot + "/comm_in");
-  //   this->subMap[robot]
-  //     = this->node->Subscribe<adhoc::msgs::Datagram>(
-  //       robot + "/comm_out", &AdHocNetPlugin::OnMessage, this);
-  // }
-  //
+  this->nh.param("robots", this->robotList, this->robotList);
+
+  std::string beacon_up_topic;
+  std::string beacon_down_topic;
+  std::string sync_up_topic;
+  std::string sync_down_topic;
+  std::string data_up_topic;
+  std::string data_down_topic;
+
+  for (auto robot: this->robotList)
+  {
+    this->beacon_subs[robot]
+      = this->nh.subscribe(
+          robot + "/" + beacon_up_topic, 1000,
+          &AdHocNetPlugin::OnBeaconMsg, this);
+    this->beacon_pubs[robot]
+      = this->nh.advertise<mav_tunnel_nav::SrcDstMsg>(
+          robot + "/" + beacon_down_topic, 1);
+
+    this->sync_subs[robot]
+      = this->nh.subscribe(
+          robot + "/" + beacon_up_topic, 1000,
+          &AdHocNetPlugin::OnSyncMsg, this);
+    this->sync_pubs[robot]
+      = this->nh.advertise<mav_tunnel_nav::SrcDstMsg>(
+          robot + "/" + beacon_down_topic, 1);
+
+    this->data_subs[robot]
+      = this->nh.subscribe(
+          robot + "/" + beacon_up_topic, 1000,
+          &AdHocNetPlugin::OnDataMsg, this);
+    this->data_pubs[robot]
+      = this->nh.advertise<mav_tunnel_nav::Particles>(
+          robot + "/" + beacon_down_topic, 1);
+  }
+
   this->updateConnection = event::Events::ConnectWorldUpdateBegin(
     std::bind(&AdHocNetPlugin::OnUpdate, this));
   //
@@ -141,6 +150,24 @@ void AdHocNetPlugin::OnUpdate()
   //     this->topoChangeCount += this->CheckTopoChange();
   //   }
   // }
+}
+
+// //////////////////////////////////////////////////
+void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+{
+
+}
+
+// //////////////////////////////////////////////////
+void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+{
+
+}
+
+// //////////////////////////////////////////////////
+void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
+{
+
 }
 
 // //////////////////////////////////////////////////

@@ -19,8 +19,8 @@
 #include <sdf/sdf.hh>
 
 #include <sim_plugins/CommonTypes.hh>
-#include <mav_tunnel_nav/protobuf/datagram.pb.h>
-#include <mav_tunnel_nav/protobuf/siminfo.pb.h>
+#include <mav_tunnel_nav/SrcDstMsg.h>
+#include <mav_tunnel_nav/Particles.h>
 
 namespace adhoc
 {
@@ -45,6 +45,18 @@ namespace gazebo
 
     /// \brief Callback for World Update events.
     private: void OnUpdate();
+
+    /// \brief Callback executed when a new beacon is received.
+    /// \param[in] msg The beacon message.
+    private: void OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg);
+
+    /// \brief Callback executed when a new sync message is received.
+    /// \param[in] msg The synchronization message.
+    private: void OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg);
+
+    /// \brief Callback executed when new particle data is received.
+    /// \param[in] msg The particle message.
+    private: void OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg);
 
     // /// \brief Checks all robots are ready to fly
     // public: void CheckRobotsReadyTh();
@@ -115,17 +127,23 @@ namespace gazebo
     //   listStopResponses;
 
     /// \brief ROS node handler
-    private: ros::NodeHandle n;
+    private: ros::NodeHandle nh;
 
-    // /// \brief Publisher to send a command to start flying.
-    // private: ros::Publisher startFlyingPub;
-    //
-    // /// \brief Publisher to update the robot speed.
-    // private: ros::Publisher navVelUpdatePub;
-    //
-    // /// \brief list of robot names.
-    // private: std::vector<std::string> robotList;
-    //
+    // subscribers and publishers for beacon
+    private: std::map<std::string, ros::Subscriber> beacon_subs;
+    private: std::map<std::string, ros::Publisher> beacon_pubs;
+
+    // subscribers and publishers for synchronization of exchange
+    private: std::map<std::string, ros::Subscriber> sync_subs;
+    private: std::map<std::string, ros::Publisher> sync_pubs;
+
+    // subscribers and publishers for data exchange
+    private: std::map<std::string, ros::Subscriber> data_subs;
+    private: std::map<std::string, ros::Publisher> data_pubs;
+
+    /// \brief list of robot names.
+    private: std::vector<std::string> robotList;
+
     // /// \brief list of maps from robot's name to its initial pose.
     // private: std::map<std::string, POSE> initPoseList;
     //
