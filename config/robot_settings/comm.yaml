@@ -1,0 +1,6 @@
+beacon_up_topic: beacon_up_topic
+beacon_down_topic: beacon_down_topic
+sync_up_topic: sync_up_topic
+sync_down_topic: sync_down_topic
+data_up_topic: data_up_topic
+data_down_topic: data_down_topic

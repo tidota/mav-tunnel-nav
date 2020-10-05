@@ -26,52 +26,53 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr /*_sdf*/)
   this->nh.param("robots", this->robotList, this->robotList);
 
   std::string beacon_up_topic;
+  this->nh.param(
+    "beacon_up_topic", beacon_up_topic, beacon_up_topic);
   std::string beacon_down_topic;
+  this->nh.param(
+    "beacon_down_topic", beacon_down_topic, beacon_down_topic);
   std::string sync_up_topic;
+  this->nh.param(
+    "sync_up_topic", sync_up_topic, sync_up_topic);
   std::string sync_down_topic;
+  this->nh.param(
+    "sync_down_topic", sync_down_topic, sync_down_topic);
   std::string data_up_topic;
+  this->nh.param(
+    "data_up_topic", data_up_topic, data_up_topic);
   std::string data_down_topic;
+  this->nh.param(
+    "data_down_topic", data_down_topic, data_down_topic);
 
   for (auto robot: this->robotList)
   {
     this->beacon_subs[robot]
       = this->nh.subscribe(
-          robot + "/" + beacon_up_topic, 1000,
+          "/" + robot + "/" + beacon_up_topic, 1000,
           &AdHocNetPlugin::OnBeaconMsg, this);
     this->beacon_pubs[robot]
       = this->nh.advertise<mav_tunnel_nav::SrcDstMsg>(
-          robot + "/" + beacon_down_topic, 1);
+          "/" + robot + "/" + beacon_down_topic, 1);
 
     this->sync_subs[robot]
       = this->nh.subscribe(
-          robot + "/" + beacon_up_topic, 1000,
+          "/" + robot + "/" + beacon_up_topic, 1000,
           &AdHocNetPlugin::OnSyncMsg, this);
     this->sync_pubs[robot]
       = this->nh.advertise<mav_tunnel_nav::SrcDstMsg>(
-          robot + "/" + beacon_down_topic, 1);
+          "/" + robot + "/" + beacon_down_topic, 1);
 
     this->data_subs[robot]
       = this->nh.subscribe(
-          robot + "/" + beacon_up_topic, 1000,
+          "/" + robot + "/" + beacon_up_topic, 1000,
           &AdHocNetPlugin::OnDataMsg, this);
     this->data_pubs[robot]
       = this->nh.advertise<mav_tunnel_nav::Particles>(
-          robot + "/" + beacon_down_topic, 1);
+          "/" + robot + "/" + beacon_down_topic, 1);
   }
 
   this->updateConnection = event::Events::ConnectWorldUpdateBegin(
     std::bind(&AdHocNetPlugin::OnUpdate, this));
-  //
-  // this->robotsReadyToComm = false;
-  //
-  // this->startFlyingPub
-  //   = this->n.advertise<std_msgs::Bool>("/start_flying", 1, true);
-  //
-  // this->navVelUpdatePub
-  //   = this->n.advertise<std_msgs::Float32>("/nav_vel_update", 1);
-  //
-  // this->robotCheckThread
-  //   = std::thread(&AdHocNetPlugin::CheckRobotsReadyTh, this);
 }
 
 /////////////////////////////////////////////////
@@ -155,19 +156,64 @@ void AdHocNetPlugin::OnUpdate()
 // //////////////////////////////////////////////////
 void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
 {
+  // std::lock_guard<std::mutex> lk(this->beacon_mutex);
+  // this->beacon_buff(std::make_shared<mav_tunnel_nav::SrcDstMsg>(*msg));
 
+  if (this->beacon_subs.count(msg->source) > 0)
+  {
+    if (msg->destination.size() == 0)
+    {
+      for (auto robot: this->robotList)
+      {
+        if (msg->source != robot)
+        {
+          // if the destination is in the range
+          // TODO
+          //this->beacon_pubs[robot]->publish(*msg);
+        }
+      }
+    }
+    else if (this->beacon_pubs.count(msg->destination) > 0)
+    {
+      // if the destination is in the range
+      // TODO
+      // this->beacon_pubs[msg->destination]->publish(*msg);
+    }
+  }
 }
 
 // //////////////////////////////////////////////////
 void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
 {
+  // std::lock_guard<std::mutex> lk(this->sync_mutex);
+  // this->sync_buff(std::make_shared<mav_tunnel_nav::SrcDstMsg>(*msg));
 
+  if (this->sync_subs.count(msg->source) > 0)
+  {
+    if (this->sync_pubs.count(msg->destination) > 0)
+    {
+      // if the destination is in the range
+      // TODO
+      // this->beacon_pubs[msg->destination]->publish(*msg);
+    }
+  }
 }
 
 // //////////////////////////////////////////////////
 void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
 {
+  // std::lock_guard<std::mutex> lk(this->data_mutex);
+  // this->data_buff(std::make_shared<mav_tunnel_nav::ParticlesMsg>(*msg));
 
+  if (this->data_subs.count(msg->source) > 0)
+  {
+    if (this->data_pubs.count(msg->destination) > 0)
+    {
+      // if the destination is in the range
+      // TODO
+      // this->beacon_pubs[msg->destination]->publish(*msg);
+    }
+  }
 }
 
 // //////////////////////////////////////////////////
