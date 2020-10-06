@@ -203,6 +203,15 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
       // if the destination is in the range
       auto robot1 = this->world->ModelByName(msg->source);
       auto robot2 = this->world->ModelByName(msg->destination);
+
+      // a vector from robot1 to robot2
+      //   NOTE: maybe this vector will be w.r.t. robot1's ref frame when the
+      //         orientation is taken into account.
+      // get yaw and pitch
+      // axis b from yaw, axis a from b and pitch, axis c from yaw and pitch
+      // add noise to a and b
+      // combine all a b c
+
       // TODO
       // add estimated dist
       // this->beacon_pubs[msg->destination]->publish(*msg);
