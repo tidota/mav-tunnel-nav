@@ -99,6 +99,9 @@ namespace gazebo
 
     /// \brief list of robot names.
     private: std::vector<std::string> robotList;
+
+    /// \brief communication range
+    private: double comm_range;
   };
 }
 #endif

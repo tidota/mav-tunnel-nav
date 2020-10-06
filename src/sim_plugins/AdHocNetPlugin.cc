@@ -25,6 +25,8 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr /*_sdf*/)
 
   this->nh.param("robots", this->robotList, this->robotList);
 
+  this->nh.param("comm_range", this->comm_range, this->comm_range);
+
   std::string beacon_up_topic;
   this->nh.param(
     "beacon_up_topic", beacon_up_topic, beacon_up_topic);
@@ -168,7 +170,10 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
         if (msg->source != robot)
         {
           // if the destination is in the range
+          auto robot1 = this->world->ModelByName(msg->source);
+          auto robot2 = this->world->ModelByName(robot);
           // TODO
+          // add estimated dist
           //this->beacon_pubs[robot]->publish(*msg);
         }
       }
@@ -176,7 +181,10 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
     else if (this->beacon_pubs.count(msg->destination) > 0)
     {
       // if the destination is in the range
+      auto robot1 = this->world->ModelByName(msg->source);
+      auto robot2 = this->world->ModelByName(msg->destination);
       // TODO
+      // add estimated dist
       // this->beacon_pubs[msg->destination]->publish(*msg);
     }
   }
@@ -193,7 +201,10 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
     if (this->sync_pubs.count(msg->destination) > 0)
     {
       // if the destination is in the range
+      auto robot1 = this->world->ModelByName(msg->source);
+      auto robot2 = this->world->ModelByName(msg->destination);
       // TODO
+      // add estimated dist
       // this->beacon_pubs[msg->destination]->publish(*msg);
     }
   }
@@ -210,7 +221,10 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
     if (this->data_pubs.count(msg->destination) > 0)
     {
       // if the destination is in the range
+      auto robot1 = this->world->ModelByName(msg->source);
+      auto robot2 = this->world->ModelByName(msg->destination);
       // TODO
+      // add estimated relative pose
       // this->beacon_pubs[msg->destination]->publish(*msg);
     }
   }

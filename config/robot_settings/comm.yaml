@@ -1,3 +1,4 @@
+comm_range: 10.0
 beacon_up_topic: beacon_up_topic
 beacon_down_topic: beacon_down_topic
 sync_up_topic: sync_up_topic
