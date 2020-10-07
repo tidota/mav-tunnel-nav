@@ -2,4 +2,5 @@ string source
 string destination
 geometry_msgs/Pose[] particles
 float64[] weights
-double estimated_distance
+float64 estimated_distance
+geometry_msgs/Point estimated_orientation

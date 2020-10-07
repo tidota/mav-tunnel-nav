@@ -1,4 +1,6 @@
 comm_range: 10.0
+sigmaDst: 0.1
+sigmaOri: 0.05 #about 2.5 deg
 beacon_up_topic: beacon_up_topic
 beacon_down_topic: beacon_down_topic
 sync_up_topic: sync_up_topic

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <fstream>
+#include <random>
 #include <sstream>
 
 #include <dynamic_reconfigure/Reconfigure.h>
@@ -26,6 +27,10 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr /*_sdf*/)
   this->nh.param("robots", this->robotList, this->robotList);
 
   this->nh.param("comm_range", this->comm_range, this->comm_range);
+
+  this->nh.param("sigmaDst", this->sigmaDst, this->sigmaDst);
+  this->nh.param("sigmaOri", this->sigmaOri, this->sigmaOri);
+  this->gen.seed(1000);
 
   std::string beacon_up_topic;
   this->nh.param(
@@ -161,6 +166,8 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
   // std::lock_guard<std::mutex> lk(this->beacon_mutex);
   // this->beacon_buff(std::make_shared<mav_tunnel_nav::SrcDstMsg>(*msg));
 
+  std::normal_distribution<> dst_noise(0, sigmaDst);
+
   if (this->beacon_subs.count(msg->source) > 0)
   {
     if (msg->destination.size() == 0)
@@ -196,6 +203,8 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
   // std::lock_guard<std::mutex> lk(this->sync_mutex);
   // this->sync_buff(std::make_shared<mav_tunnel_nav::SrcDstMsg>(*msg));
 
+  std::normal_distribution<> dst_noise(0, sigmaDst);
+
   if (this->sync_subs.count(msg->source) > 0)
   {
     if (this->sync_pubs.count(msg->destination) > 0)
@@ -224,6 +233,9 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
 {
   // std::lock_guard<std::mutex> lk(this->data_mutex);
   // this->data_buff(std::make_shared<mav_tunnel_nav::ParticlesMsg>(*msg));
+
+  std::normal_distribution<> dst_noise(0, sigmaDst);
+  std::normal_distribution<> ori_noise(0, sigmaOri);
 
   if (this->data_subs.count(msg->source) > 0)
   {

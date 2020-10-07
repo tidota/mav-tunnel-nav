@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <random>
 #include <thread>
 #include <unordered_set>
 
@@ -102,6 +103,11 @@ namespace gazebo
 
     /// \brief communication range
     private: double comm_range;
+
+    /// \brief pseudo random number generator.
+    private: std::mt19937 gen;
+    private: double sigmaDst;
+    private: double sigmaOri;
   };
 }
 #endif
