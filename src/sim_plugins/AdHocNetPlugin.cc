@@ -97,7 +97,7 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
 /////////////////////////////////////////////////
 void AdHocNetPlugin::OnUpdate()
 {
-  this->CheckLineOfSight(tf::Vector3(0,0,1), tf::Vector3(0,0,-10));
+  //this->CheckLineOfSight(tf::Vector3(0,0,1), tf::Vector3(0,0,-10));
 
   // std::lock_guard<std::mutex> lk(this->simInfoMutex);
   //
@@ -278,11 +278,11 @@ bool AdHocNetPlugin::CheckLineOfSight(
   this->line_of_sight->SetPoints(start, end);
   this->line_of_sight->GetIntersection(dist, entityName);
 
-
-  if (entityName == this->terrainName)
+  // entityName has a path to the collision entity
+  // e.g., <model name>::<link name>::<collision name>
+  // so only the model name is checked here.
+  if (entityName.substr(entityName.find(":")) == this->terrainName)
     hit = true;
-
-  ROS_DEBUG_STREAM("LOS entity name: " << entityName);
 
   return hit;
 }
