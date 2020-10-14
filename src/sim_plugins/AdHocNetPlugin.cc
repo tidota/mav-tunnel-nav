@@ -69,19 +69,19 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
 
     this->sync_subs[robot]
       = this->nh.subscribe(
-          "/" + robot + "/" + beacon_up_topic, 1000,
+          "/" + robot + "/" + sync_up_topic, 1000,
           &AdHocNetPlugin::OnSyncMsg, this);
     this->sync_pubs[robot]
       = this->nh.advertise<mav_tunnel_nav::SrcDstMsg>(
-          "/" + robot + "/" + beacon_down_topic, 1);
+          "/" + robot + "/" + sync_down_topic, 1);
 
     this->data_subs[robot]
       = this->nh.subscribe(
-          "/" + robot + "/" + beacon_up_topic, 1000,
+          "/" + robot + "/" + data_up_topic, 1000,
           &AdHocNetPlugin::OnDataMsg, this);
     this->data_pubs[robot]
       = this->nh.advertise<mav_tunnel_nav::Particles>(
-          "/" + robot + "/" + beacon_down_topic, 1);
+          "/" + robot + "/" + data_down_topic, 1);
   }
 
   this->updateConnection = event::Events::ConnectWorldUpdateBegin(
