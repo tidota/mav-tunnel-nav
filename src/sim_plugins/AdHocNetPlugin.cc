@@ -3,21 +3,27 @@
 #include <random>
 #include <sstream>
 
-#include <dynamic_reconfigure/Reconfigure.h>
-#include <openssl/sha.h>
+// #include <dynamic_reconfigure/Reconfigure.h>
+// #include <openssl/sha.h>
+
+#include <ignition/math.hh>
+
 #include <ros/master.h>
 
 #include <gazebo/common/Assert.hh>
 #include <gazebo/common/Events.hh>
+#include <gazebo/physics/physics.hh>
 
 #include <sim_plugins/AdHocNetPlugin.hh>
+
+#include <tf/transform_datatypes.h>
 
 using namespace gazebo;
 
 GZ_REGISTER_WORLD_PLUGIN(AdHocNetPlugin)
 
 /////////////////////////////////////////////////
-void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr /*_sdf*/)
+void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
 {
   gzmsg << "Starting Ad Hoc Net server" << std::endl;
 
@@ -80,6 +86,12 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr /*_sdf*/)
 
   this->updateConnection = event::Events::ConnectWorldUpdateBegin(
     std::bind(&AdHocNetPlugin::OnUpdate, this));
+
+  this->line_of_sight = boost::dynamic_pointer_cast<physics::RayShape>(
+      this->world->Physics()->CreateShape("ray",
+      physics::CollisionPtr()));
+
+  this->terrainName = _sdf->Get<std::string>("terrain_name");
 }
 
 /////////////////////////////////////////////////
@@ -249,6 +261,28 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
       // this->beacon_pubs[msg->destination]->publish(*msg);
     }
   }
+}
+
+// //////////////////////////////////////////////////
+bool AdHocNetPlugin::CheckLineOfSight(
+  const tf::Vector3& point1, const tf::Vector3& point2)
+{
+  ignition::math::Vector3d start(point1.x(), point1.y(), point1.z());
+  ignition::math::Vector3d end(point2.x(), point2.y(), point2.z());
+  std::string entityName;
+  double dist;
+  bool hit = false;
+
+  this->line_of_sight->SetPoints(start, end);
+  this->line_of_sight->GetIntersection(dist, entityName);
+
+
+  if (entityName == this->terrainName)
+    hit = true;
+
+  ROS_DEBUG_STREAM("LOS entity name: " << entityName);
+
+  return hit;
 }
 
 // //////////////////////////////////////////////////

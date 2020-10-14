@@ -20,6 +20,9 @@
 #include <sdf/sdf.hh>
 
 #include <sim_plugins/CommonTypes.hh>
+
+#include <tf/transform_datatypes.h>
+
 #include <mav_tunnel_nav/SrcDstMsg.h>
 #include <mav_tunnel_nav/Particles.h>
 
@@ -58,6 +61,14 @@ namespace gazebo
     /// \brief Callback executed when new particle data is received.
     /// \param[in] msg The particle message.
     private: void OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg);
+
+    /// \brief Helper function to check the line of sight condition of the given
+    ///        two points.
+    /// \param[in] point1 A coordinate of the first point.
+    /// \param[in] point2 A coordinate of the secodn point.
+    /// \return True if there is no obstacle between the points.
+    private: inline bool CheckLineOfSight(
+      const tf::Vector3& point1, const tf::Vector3& point2);
 
     /// \brief World pointer.
     private: physics::WorldPtr world;
@@ -108,6 +119,12 @@ namespace gazebo
     private: std::mt19937 gen;
     private: double sigmaDst;
     private: double sigmaOri;
+
+    /// \brief shape to check line-of-sight condition.
+    private: physics::RayShapePtr line_of_sight;
+
+    /// \brief the name of the terrain
+    private: std::string terrainName;
   };
 }
 #endif
