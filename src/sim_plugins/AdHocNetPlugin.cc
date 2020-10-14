@@ -97,6 +97,8 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
 /////////////////////////////////////////////////
 void AdHocNetPlugin::OnUpdate()
 {
+  this->CheckLineOfSight(tf::Vector3(0,0,1), tf::Vector3(0,0,-10));
+
   // std::lock_guard<std::mutex> lk(this->simInfoMutex);
   //
   // if (!this->robotsReadyToComm)
