@@ -271,6 +271,12 @@ bool AdHocNetPlugin::CheckLineOfSight(
 {
   ignition::math::Vector3d start = robot1->WorldPose().Pos();
   ignition::math::Vector3d end = robot2->WorldPose().Pos();
+  ignition::math::Vector3d diff = end - start;
+  diff.Normalize();
+  // move them for .5 meter toward the other robot
+  start = start + diff * 0.5;
+  end = end - diff * 0.5;
+
   std::string entityName;
   double dist;
   bool hit = false;
