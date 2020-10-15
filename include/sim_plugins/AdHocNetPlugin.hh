@@ -63,12 +63,20 @@ namespace gazebo
     private: void OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg);
 
     /// \brief Helper function to check the line of sight condition of the given
-    ///        two points.
-    /// \param[in] point1 A coordinate of the first point.
-    /// \param[in] point2 A coordinate of the secodn point.
+    ///        two robots.
+    /// \param[in] robot1 the first robot.
+    /// \param[in] robot2 the second robot.
     /// \return True if there is no obstacle between the points.
     private: inline bool CheckLineOfSight(
-      const tf::Vector3& point1, const tf::Vector3& point2);
+      const physics::ModelPtr& robot1, physics::ModelPtr& robot2);
+
+    /// \brief Helper function to check the two robots are in the communication
+    ///        range. (obstacles between them are not checked)
+    /// \param[in] robot1 the first robot.
+    /// \param[in] robot2 the second robot.
+    /// \return True if they are in the communication range.
+    private: inline bool CheckRange(
+      const physics::ModelPtr& robot1, physics::ModelPtr& robot2);
 
     /// \brief World pointer.
     private: physics::WorldPtr world;

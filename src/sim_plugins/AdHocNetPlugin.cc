@@ -265,12 +265,12 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
   }
 }
 
-// //////////////////////////////////////////////////
+//////////////////////////////////////////////////
 bool AdHocNetPlugin::CheckLineOfSight(
-  const tf::Vector3& point1, const tf::Vector3& point2)
+  const physics::ModelPtr& robot1, physics::ModelPtr& robot2)
 {
-  ignition::math::Vector3d start(point1.x(), point1.y(), point1.z());
-  ignition::math::Vector3d end(point2.x(), point2.y(), point2.z());
+  ignition::math::Vector3d start = robot1->WorldPose().Pos();
+  ignition::math::Vector3d end = robot2->WorldPose().Pos();
   std::string entityName;
   double dist;
   bool hit = false;
@@ -285,6 +285,20 @@ bool AdHocNetPlugin::CheckLineOfSight(
     hit = true;
 
   return hit;
+}
+
+//////////////////////////////////////////////////
+bool AdHocNetPlugin::CheckRange(
+  const physics::ModelPtr& robot1, physics::ModelPtr& robot2)
+{
+  ignition::math::Vector3d start = robot1->WorldPose().Pos();
+  ignition::math::Vector3d end = robot2->WorldPose().Pos();
+
+  bool inRange = false;
+  if ((end - start).Length() <= this->comm_range)
+    inRange = true;
+
+  return inRange;
 }
 
 // //////////////////////////////////////////////////
