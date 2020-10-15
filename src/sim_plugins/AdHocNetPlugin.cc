@@ -191,14 +191,16 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
         if (msg->source != robot)
         {
           // if the destination is in the range
-          auto robot1 = this->world->ModelByName(msg->source);
-          auto robot2 = this->world->ModelByName(robot);
+          auto robot1 = this->world->ModelByName(robot);
+          auto robot2 = this->world->ModelByName(msg->source);
           if (this->CheckRange(robot1, robot2)
             && this->CheckLineOfSight(robot1, robot2))
           {
-            // TODO
-            // add estimated dist
-            //this->beacon_pubs[robot]->publish(*msg);
+            mav_tunnel_nav::SrcDstMsg msg2send = *msg;
+            msg2send.estimated_distance
+              = (robot2->WorldPose().Pos() - robot1->WorldPose().Pos()).Length()
+                + dst_noise(gen);
+            this->beacon_pubs[msg->source].publish(msg2send);
           }
         }
       }
@@ -211,9 +213,11 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
       if (this->CheckRange(robot1, robot2)
         && this->CheckLineOfSight(robot1, robot2))
       {
-        // TODO
-        // add estimated dist
-        // this->beacon_pubs[msg->destination]->publish(*msg);
+        mav_tunnel_nav::SrcDstMsg msg2send = *msg;
+        msg2send.estimated_distance
+          = (robot2->WorldPose().Pos() - robot1->WorldPose().Pos()).Length()
+            + dst_noise(gen);
+        this->beacon_pubs[msg->destination].publish(msg2send);
       }
     }
   }
@@ -245,9 +249,11 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
         // add noise to a and b
         // combine all a b c
 
-        // TODO
-        // add estimated dist
-        // this->beacon_pubs[msg->destination]->publish(*msg);
+        mav_tunnel_nav::SrcDstMsg msg2send = *msg;
+        msg2send.estimated_distance
+          = (robot2->WorldPose().Pos() - robot1->WorldPose().Pos()).Length()
+            + dst_noise(gen);
+        this->beacon_pubs[msg->destination].publish(msg2send);
       }
     }
   }
@@ -269,9 +275,19 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
       // if the destination is in the range
       auto robot1 = this->world->ModelByName(msg->source);
       auto robot2 = this->world->ModelByName(msg->destination);
-      // TODO
-      // add estimated relative pose
-      // this->beacon_pubs[msg->destination]->publish(*msg);
+      if (this->CheckRange(robot1, robot2)
+        && this->CheckLineOfSight(robot1, robot2))
+      {
+        mav_tunnel_nav::Particles msg2send = *msg;
+        ignition::math::Vector3d diff
+          = robot2->WorldPose().Pos() - robot1->WorldPose().Pos();
+        msg2send.estimated_distance = diff.Length() + dst_noise(gen);
+        diff.Normalize();
+        msg2send.estimated_orientation.x = diff.X();
+        msg2send.estimated_orientation.y = diff.Y();
+        msg2send.estimated_orientation.z = diff.Z();
+        this->beacon_pubs[msg->destination].publish(msg2send);
+      }
     }
   }
 }
