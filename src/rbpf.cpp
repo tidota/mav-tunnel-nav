@@ -28,6 +28,9 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <mav_tunnel_nav/SrcDstMsg.h>
+#include <mav_tunnel_nav/Particles.h>
+
 #include <ros/ros.h>
 
 // #include <sensor_msgs/Imu.h>
@@ -63,6 +66,31 @@ std::map<std::string, tf::Pose> range_poses;
 std::map<std::string, double> range_buff;
 std::mutex range_mutex;
 double range_max, range_min;
+
+std::mutex beacon_mutex;
+std::mutex sync_mutex;
+std::mutex data_mutex;
+
+////////////////////////////////////////////////////////////////////////////////
+void beaconCallback(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+{
+  std::lock_guard<std::mutex> lk(beacon_mutex);
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void syncCallback(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+{
+  std::lock_guard<std::mutex> lk(sync_mutex);
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
+{
+  std::lock_guard<std::mutex> lk(data_mutex);
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -307,6 +335,24 @@ void pf_main()
 {
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
+
+  // publisher for beacon
+  std::string beacon_up_topic;
+  pnh.getParam("beacon_up_topic", beacon_up_topic);
+  ros::Publisher beacon_pub
+    = nh.advertise<mav_tunnel_nav::SrcDstMsg>(beacon_up_topic, 1);
+
+  // publisher for synchronization of exchange
+  std::string sync_up_topic;
+  pnh.getParam("sync_up_topic", sync_up_topic);
+  ros::Publisher sync_pub
+    = nh.advertise<mav_tunnel_nav::SrcDstMsg>(sync_up_topic, 1);
+
+  // publisher for data exchange
+  std::string data_up_topic;
+  pnh.getParam("data_up_topic", data_up_topic);
+  ros::Publisher data_pub
+    = nh.advertise<mav_tunnel_nav::Particles>(data_up_topic, 1);
 
   // random numbers
   std::random_device rd{};
@@ -904,6 +950,22 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "rbpf");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
+
+  // subscriber for beacon
+  std::string beacon_down_topic;
+  pnh.getParam("beacon_down_topic", beacon_down_topic);
+  ros::Subscriber beacon_sub
+    = nh.subscribe(beacon_down_topic, 1000, beaconCallback);
+  // subscriber for synchronization of exchange
+  std::string sync_down_topic;
+  pnh.getParam("sync_down_topic", sync_down_topic);
+  ros::Subscriber sync_sub
+    = nh.subscribe(sync_down_topic, 1000, syncCallback);
+  // subscriber for data exchange
+  std::string data_down_topic;
+  pnh.getParam("data_down_topic", data_down_topic);
+  ros::Subscriber data_sub
+    = nh.subscribe(data_down_topic, 1000, dataCallback);
 
   pnh.getParam("odom_topic", odom_topic);
   pnh.getParam("pc_topic", pc_topic);
