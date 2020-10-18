@@ -336,12 +336,6 @@ void pf_main()
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
-  // publisher for beacon
-  std::string beacon_up_topic;
-  pnh.getParam("beacon_up_topic", beacon_up_topic);
-  ros::Publisher beacon_pub
-    = nh.advertise<mav_tunnel_nav::SrcDstMsg>(beacon_up_topic, 1);
-
   // publisher for synchronization of exchange
   std::string sync_up_topic;
   pnh.getParam("sync_up_topic", sync_up_topic);
@@ -950,6 +944,12 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "rbpf");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
+
+  // publisher for beacon
+  std::string beacon_up_topic;
+  pnh.getParam("beacon_up_topic", beacon_up_topic);
+  ros::Publisher beacon_pub
+    = nh.advertise<mav_tunnel_nav::SrcDstMsg>(beacon_up_topic, 1);
 
   // subscriber for beacon
   std::string beacon_down_topic;

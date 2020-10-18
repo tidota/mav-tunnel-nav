@@ -17,6 +17,9 @@
 // #include <mav_msgs/default_topics.h>
 // #include <mav_msgs/RollPitchYawrateThrust.h>
 
+#include <mav_tunnel_nav/SrcDstMsg.h>
+#include <mav_tunnel_nav/Particles.h>
+
 #include <ros/ros.h>
 
 // #include <sensor_msgs/Imu.h>
@@ -42,6 +45,15 @@ double range_max, range_min;
 
 std::string enable_topic;
 bool f_enabled;
+
+std::mutex beacon_mutex;
+
+////////////////////////////////////////////////////////////////////////////////
+void beaconCallback(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+{
+  std::lock_guard<std::mutex> lk(beacon_mutex);
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 bool enableCallback(
@@ -394,6 +406,12 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "auto_control");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
+
+  // subscriber for beacon
+  std::string beacon_down_topic;
+  pnh.getParam("beacon_down_topic", beacon_down_topic);
+  ros::Subscriber beacon_sub
+    = nh.subscribe(beacon_down_topic, 1000, beaconCallback);
 
   pnh.getParam("enable_topic", enable_topic);
   f_enabled = false;
