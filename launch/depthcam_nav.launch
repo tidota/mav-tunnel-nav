@@ -12,6 +12,7 @@
   <arg name="map_filename" default=""/>
 
   <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/robots.yaml" />
+  <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/comm.yaml" />
 
   <!-- start gazebo server -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
