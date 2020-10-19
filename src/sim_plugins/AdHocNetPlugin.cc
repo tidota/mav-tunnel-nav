@@ -2,6 +2,7 @@
 #include <fstream>
 #include <random>
 #include <sstream>
+#include <thread>
 
 // #include <dynamic_reconfigure/Reconfigure.h>
 // #include <openssl/sha.h>
@@ -98,6 +99,13 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
 void AdHocNetPlugin::OnUpdate()
 {
   //this->CheckLineOfSight(tf::Vector3(0,0,1), tf::Vector3(0,0,-10));
+  std::string entityName;
+  double dist;
+  ignition::math::Vector3d start = ignition::math::Vector3d(0, 0, 1);
+  ignition::math::Vector3d end = ignition::math::Vector3d(0, 0, 20);
+  this->line_of_sight->SetPoints(start, end);
+  this->line_of_sight->GetIntersection(dist, entityName);
+  gzmsg << "hit: " << entityName << std::endl;
 
   // std::lock_guard<std::mutex> lk(this->simInfoMutex);
   //
@@ -193,7 +201,8 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
           // if the destination is in the range
           auto robot1 = this->world->ModelByName(robot);
           auto robot2 = this->world->ModelByName(msg->source);
-          if (this->CheckRange(robot1, robot2)
+          if (robot1 && robot2 &&
+            && this->CheckRange(robot1, robot2)
             && this->CheckLineOfSight(robot1, robot2))
           {
             mav_tunnel_nav::SrcDstMsg msg2send = *msg;
@@ -210,7 +219,8 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
       // if the destination is in the range
       auto robot1 = this->world->ModelByName(msg->source);
       auto robot2 = this->world->ModelByName(msg->destination);
-      if (this->CheckRange(robot1, robot2)
+      if (robot1 && robot2
+        && this->CheckRange(robot1, robot2)
         && this->CheckLineOfSight(robot1, robot2))
       {
         mav_tunnel_nav::SrcDstMsg msg2send = *msg;
@@ -238,7 +248,8 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
       // if the destination is in the range
       auto robot1 = this->world->ModelByName(msg->source);
       auto robot2 = this->world->ModelByName(msg->destination);
-      if (this->CheckRange(robot1, robot2)
+      if (robot1 && robot2
+        && this->CheckRange(robot1, robot2)
         && this->CheckLineOfSight(robot1, robot2))
       {
         // a vector from robot1 to robot2
@@ -275,7 +286,8 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
       // if the destination is in the range
       auto robot1 = this->world->ModelByName(msg->source);
       auto robot2 = this->world->ModelByName(msg->destination);
-      if (this->CheckRange(robot1, robot2)
+      if (robot1 && robot2
+        && this->CheckRange(robot1, robot2)
         && this->CheckLineOfSight(robot1, robot2))
       {
         mav_tunnel_nav::Particles msg2send = *msg;
@@ -314,7 +326,8 @@ bool AdHocNetPlugin::CheckLineOfSight(
   // entityName has a path to the collision entity
   // e.g., <model name>::<link name>::<collision name>
   // so only the model name is checked here.
-  if (entityName.substr(entityName.find(":")) == this->terrainName)
+  //if (entityName.substr(entityName.find(":")) == this->terrainName)
+  if (entityName != "")
     hit = true;
 
   return hit;
