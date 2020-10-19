@@ -93,19 +93,49 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
       physics::CollisionPtr()));
 
   this->terrainName = _sdf->Get<std::string>("terrain_name");
+
+  topo_interval = ros::Duration(0.5);
+  last_update = ros::Time::now();
+
+  // initialize topology info
+  for (unsigned int i = 0; i < this->robotList.size() - 1; ++i)
+  {
+    for (unsigned int j = i + 1; j < this->robotList.size(); ++j)
+    {
+      setTopoInfo(this->robotList[i], this->robotList[j], false);
+      setDistInfo(this->robotList[i], this->robotList[j], -1);
+    }
+  }
 }
 
 /////////////////////////////////////////////////
 void AdHocNetPlugin::OnUpdate()
 {
-  //this->CheckLineOfSight(tf::Vector3(0,0,1), tf::Vector3(0,0,-10));
-  std::string entityName;
-  double dist;
-  ignition::math::Vector3d start = ignition::math::Vector3d(0, 0, 1);
-  ignition::math::Vector3d end = ignition::math::Vector3d(0, 0, 20);
-  this->line_of_sight->SetPoints(start, end);
-  this->line_of_sight->GetIntersection(dist, entityName);
-  gzmsg << "hit: " << entityName << std::endl;
+  ros::Time current = ros::Time::now();
+  if (current - last_update > topo_interval)
+  {
+    for (unsigned int i = 0; i < this->robotList.size() - 1; ++i)
+    {
+      for (unsigned int j = i + 1; j < this->robotList.size(); ++j)
+      {
+        auto robot1 = this->world->ModelByName(this->robotList[i]);
+        auto robot2 = this->world->ModelByName(this->robotList[j]);
+        if (robot1 && robot2)
+        {
+          double dist = this->CheckRange(robot1, robot2);
+          if (dist <= this->comm_range)
+          {
+            setTopoInfo(
+              this->robotList[i], this->robotList[j],
+              this->CheckLineOfSight(robot1, robot2));
+            setDistInfo(this->robotList[i], this->robotList[j], dist);
+          }
+        }
+      }
+    }
+
+    last_update = current;
+  }
 
   // std::lock_guard<std::mutex> lk(this->simInfoMutex);
   //
@@ -199,16 +229,11 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
         if (msg->source != robot)
         {
           // if the destination is in the range
-          auto robot1 = this->world->ModelByName(robot);
-          auto robot2 = this->world->ModelByName(msg->source);
-          if (robot1 && robot2 &&
-            && this->CheckRange(robot1, robot2)
-            && this->CheckLineOfSight(robot1, robot2))
+          if (getTopoInfo(robot, msg->source))
           {
             mav_tunnel_nav::SrcDstMsg msg2send = *msg;
             msg2send.estimated_distance
-              = (robot2->WorldPose().Pos() - robot1->WorldPose().Pos()).Length()
-                + dst_noise(gen);
+              = getDistInfo(robot, msg->source) + dst_noise(gen);
             this->beacon_pubs[msg->source].publish(msg2send);
           }
         }
@@ -217,16 +242,11 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
     else if (this->beacon_pubs.count(msg->destination) > 0)
     {
       // if the destination is in the range
-      auto robot1 = this->world->ModelByName(msg->source);
-      auto robot2 = this->world->ModelByName(msg->destination);
-      if (robot1 && robot2
-        && this->CheckRange(robot1, robot2)
-        && this->CheckLineOfSight(robot1, robot2))
+      if (getTopoInfo(msg->source, msg->destination))
       {
         mav_tunnel_nav::SrcDstMsg msg2send = *msg;
         msg2send.estimated_distance
-          = (robot2->WorldPose().Pos() - robot1->WorldPose().Pos()).Length()
-            + dst_noise(gen);
+          = getDistInfo(msg->source, msg->destination) + dst_noise(gen);
         this->beacon_pubs[msg->destination].publish(msg2send);
       }
     }
@@ -246,11 +266,7 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
     if (this->sync_pubs.count(msg->destination) > 0)
     {
       // if the destination is in the range
-      auto robot1 = this->world->ModelByName(msg->source);
-      auto robot2 = this->world->ModelByName(msg->destination);
-      if (robot1 && robot2
-        && this->CheckRange(robot1, robot2)
-        && this->CheckLineOfSight(robot1, robot2))
+      if (getTopoInfo(msg->source, msg->destination))
       {
         // a vector from robot1 to robot2
         //   NOTE: maybe this vector will be w.r.t. robot1's ref frame when the
@@ -262,8 +278,7 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
 
         mav_tunnel_nav::SrcDstMsg msg2send = *msg;
         msg2send.estimated_distance
-          = (robot2->WorldPose().Pos() - robot1->WorldPose().Pos()).Length()
-            + dst_noise(gen);
+          = getDistInfo(msg->source, msg->destination) + dst_noise(gen);
         this->beacon_pubs[msg->destination].publish(msg2send);
       }
     }
@@ -284,12 +299,10 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
     if (this->data_pubs.count(msg->destination) > 0)
     {
       // if the destination is in the range
-      auto robot1 = this->world->ModelByName(msg->source);
-      auto robot2 = this->world->ModelByName(msg->destination);
-      if (robot1 && robot2
-        && this->CheckRange(robot1, robot2)
-        && this->CheckLineOfSight(robot1, robot2))
+      if (getTopoInfo(msg->source, msg->destination))
       {
+        auto robot1 = this->world->ModelByName(msg->source);
+        auto robot2 = this->world->ModelByName(msg->destination);
         mav_tunnel_nav::Particles msg2send = *msg;
         ignition::math::Vector3d diff
           = robot2->WorldPose().Pos() - robot1->WorldPose().Pos();
@@ -306,7 +319,7 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
 
 //////////////////////////////////////////////////
 bool AdHocNetPlugin::CheckLineOfSight(
-  const physics::ModelPtr& robot1, physics::ModelPtr& robot2)
+  const physics::ModelPtr& robot1, const physics::ModelPtr& robot2)
 {
   ignition::math::Vector3d start = robot1->WorldPose().Pos();
   ignition::math::Vector3d end = robot2->WorldPose().Pos();
@@ -318,34 +331,36 @@ bool AdHocNetPlugin::CheckLineOfSight(
 
   std::string entityName;
   double dist;
-  bool hit = false;
+  bool clear = false;
 
   this->line_of_sight->SetPoints(start, end);
   this->line_of_sight->GetIntersection(dist, entityName);
 
-  // entityName has a path to the collision entity
-  // e.g., <model name>::<link name>::<collision name>
-  // so only the model name is checked here.
-  //if (entityName.substr(entityName.find(":")) == this->terrainName)
-  if (entityName != "")
-    hit = true;
+  // empty string means there was no intersecting object
+  if (entityName == "")
+    clear = true;
 
-  return hit;
+  return clear;
 }
 
 //////////////////////////////////////////////////
-bool AdHocNetPlugin::CheckRange(
-  const physics::ModelPtr& robot1, physics::ModelPtr& robot2)
+double AdHocNetPlugin::CheckRange(
+  const physics::ModelPtr& robot1, const physics::ModelPtr& robot2)
 {
   ignition::math::Vector3d start = robot1->WorldPose().Pos();
   ignition::math::Vector3d end = robot2->WorldPose().Pos();
 
-  bool inRange = false;
-  if ((end - start).Length() <= this->comm_range)
-    inRange = true;
-
-  return inRange;
+  return (end - start).Length();
 }
+
+// ////////////////////////////////////////////////
+// private: inline bool CheckTopology(
+//   const std::string& robot_name1, const std::string& robot_name2)
+// {
+//   // check the topology info
+//   // TODO
+//   return false;
+// }
 
 // //////////////////////////////////////////////////
 // void AdHocNetPlugin::CheckRobotsReadyTh()

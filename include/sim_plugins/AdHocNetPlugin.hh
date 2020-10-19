@@ -1,6 +1,7 @@
 #ifndef ADHOCNETPLUGIN_HH_
 #define ADHOCNETPLUGIN_HH_
 
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -68,15 +69,24 @@ namespace gazebo
     /// \param[in] robot2 the second robot.
     /// \return True if there is no obstacle between the points.
     private: inline bool CheckLineOfSight(
-      const physics::ModelPtr& robot1, physics::ModelPtr& robot2);
+      const physics::ModelPtr& robot1, const physics::ModelPtr& robot2);
 
     /// \brief Helper function to check the two robots are in the communication
     ///        range. (obstacles between them are not checked)
     /// \param[in] robot1 the first robot.
     /// \param[in] robot2 the second robot.
-    /// \return True if they are in the communication range.
-    private: inline bool CheckRange(
-      const physics::ModelPtr& robot1, physics::ModelPtr& robot2);
+    /// \return The distance between the robots.
+    private: inline double CheckRange(
+      const physics::ModelPtr& robot1, const physics::ModelPtr& robot2);
+
+    // /// \brief Helper function to check if two robots can perform local
+    // ///        communication. It checks the topology information updated by
+    // ///        OnUpdate callback.
+    // /// \param[in] robot_name1 the first robot's name
+    // /// \param[in] robot_name2 the second robot's name
+    // /// \return True if they can communicate locally.
+    // private: inline bool CheckTopology(
+    //   const std::string& robot_name1, const std::string& robot_name2);
 
     /// \brief World pointer.
     private: physics::WorldPtr world;
@@ -133,6 +143,51 @@ namespace gazebo
 
     /// \brief the name of the terrain
     private: std::string terrainName;
+
+    private: ros::Duration topo_interval;
+    private: ros::Time current;
+    private: ros::Time last_update;
+
+    /// \brief topology information
+    private: std::map<std::pair<std::string, std::string>, bool> topoInfo;
+    private: inline void setTopoInfo(
+      const std::string& str1, const std::string& str2, const bool& flag)
+    {
+      if (str1 < str2)
+        topoInfo[std::make_pair(str1, str2)] = flag;
+      else
+        topoInfo[std::make_pair(str2, str1)] = flag;
+    }
+    private: inline bool getTopoInfo(
+      const std::string& str1, const std::string& str2)
+    {
+      bool flag;
+      if (str1 < str2)
+        flag = topoInfo[std::make_pair(str1, str2)];
+      else
+        flag = topoInfo[std::make_pair(str2, str1)];
+      return flag;
+    }
+    /// \brief distance information
+    private: std::map<std::pair<std::string, std::string>, double> distInfo;
+    private: inline void setDistInfo(
+      const std::string& str1, const std::string& str2, const double& dist)
+    {
+      if (str1 < str2)
+        topoInfo[std::make_pair(str1, str2)] = dist;
+      else
+        topoInfo[std::make_pair(str2, str1)] = dist;
+    }
+    private: inline double getDistInfo(
+      const std::string& str1, const std::string& str2)
+    {
+      double dist;
+      if (str1 < str2)
+        dist = topoInfo[std::make_pair(str1, str2)];
+      else
+        dist = topoInfo[std::make_pair(str2, str1)];
+      return dist;
+    }
   };
 }
 #endif
