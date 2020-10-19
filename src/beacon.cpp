@@ -37,7 +37,8 @@ int main(int argc, char** argv)
   ros::NodeHandle pnh("~");
 
   // get this robot's name
-  pnh.getParam("robot_name", robot_name);
+  if (!pnh.getParam("robot_name", robot_name))
+    ROS_ERROR_STREAM("no ros parameter: robot_name");
 
   // subscriber for beacon
   std::string beacon_down_topic;

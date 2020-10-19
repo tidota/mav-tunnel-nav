@@ -336,6 +336,11 @@ void pf_main()
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
+  // get this robot's name
+  std::string robot_name;
+  if (!pnh.getParam("robot_name", robot_name))
+    ROS_ERROR_STREAM("no ros parameter: robot_name");
+
   // publisher for synchronization of exchange
   std::string sync_up_topic;
   ros::Publisher sync_pub;
@@ -956,6 +961,11 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "rbpf");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
+
+  // get this robot's name
+  std::string robot_name;
+  if (!pnh.getParam("robot_name", robot_name))
+    ROS_ERROR_STREAM("no ros parameter: robot_name");
 
   // subscriber for beacon
   std::string beacon_down_topic;
