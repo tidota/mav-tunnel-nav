@@ -945,12 +945,6 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
-  // publisher for beacon
-  std::string beacon_up_topic;
-  pnh.getParam("beacon_up_topic", beacon_up_topic);
-  ros::Publisher beacon_pub
-    = nh.advertise<mav_tunnel_nav::SrcDstMsg>(beacon_up_topic, 1);
-
   // subscriber for beacon
   std::string beacon_down_topic;
   pnh.getParam("beacon_down_topic", beacon_down_topic);

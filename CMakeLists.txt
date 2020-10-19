@@ -195,6 +195,12 @@ target_link_libraries(rbpf
   ${OCTOMAP_LIBRARIES}
 )
 
+add_executable(beacon src/beacon.cpp)
+add_dependencies(beacon ${catkin_EXPORTED_TARGETS})
+target_link_libraries(beacon
+  ${catkin_LIBRARIES}
+)
+
 add_executable(map_only src/map_only.cpp)
 add_dependencies(map_only ${catkin_EXPORTED_TARGETS})
 target_link_libraries(map_only
