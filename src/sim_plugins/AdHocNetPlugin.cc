@@ -234,7 +234,7 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
             mav_tunnel_nav::SrcDstMsg msg2send = *msg;
             msg2send.estimated_distance
               = getDistInfo(robot, msg->source) + dst_noise(gen);
-            this->beacon_pubs[msg->source].publish(msg2send);
+            this->beacon_pubs[robot].publish(msg2send);
           }
         }
       }
