@@ -23,7 +23,11 @@ if __name__ == '__main__':
 	rospack = rospkg.RosPack()
 	try:
 		f = open(rospack.get_path('mav_tunnel_nav') + '/config/robot_settings/robots.yaml', 'r')
-		dict_robot = yaml.load(f.read(), Loader=yaml.FullLoader)
+		ver = [float(x) for x in yaml.__version__.split('.')]
+		if ver[0] >= 5 and ver[1] >= 1:
+			dict_robot = yaml.load(f.read(), Loader=yaml.FullLoader)
+		else:
+			dict_robot = yaml.load(f.read())
 	except Exception as e:
 		print(e)
 
