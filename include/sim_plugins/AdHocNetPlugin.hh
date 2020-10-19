@@ -149,43 +149,43 @@ namespace gazebo
     private: ros::Time last_update;
 
     /// \brief topology information
-    private: std::map<std::pair<std::string, std::string>, bool> topoInfo;
+    private: std::map<std::string, bool> topoInfo;
     private: inline void setTopoInfo(
       const std::string& str1, const std::string& str2, const bool& flag)
     {
       if (str1 < str2)
-        topoInfo[std::make_pair(str1, str2)] = flag;
+        topoInfo[str1 + str2] = flag;
       else
-        topoInfo[std::make_pair(str2, str1)] = flag;
+        topoInfo[str2 + str1] = flag;
     }
     private: inline bool getTopoInfo(
       const std::string& str1, const std::string& str2)
     {
       bool flag;
       if (str1 < str2)
-        flag = topoInfo[std::make_pair(str1, str2)];
+        flag = topoInfo[str1 + str2];
       else
-        flag = topoInfo[std::make_pair(str2, str1)];
+        flag = topoInfo[str2 + str1];
       return flag;
     }
     /// \brief distance information
-    private: std::map<std::pair<std::string, std::string>, double> distInfo;
+    private: std::map<std::string, double> distInfo;
     private: inline void setDistInfo(
       const std::string& str1, const std::string& str2, const double& dist)
     {
       if (str1 < str2)
-        topoInfo[std::make_pair(str1, str2)] = dist;
+        distInfo[str1 + str2] = dist;
       else
-        topoInfo[std::make_pair(str2, str1)] = dist;
+        distInfo[str2 + str1] = dist;
     }
     private: inline double getDistInfo(
       const std::string& str1, const std::string& str2)
     {
-      double dist;
+      double dist = -1;
       if (str1 < str2)
-        dist = topoInfo[std::make_pair(str1, str2)];
+        dist = distInfo[str1 + str2];
       else
-        dist = topoInfo[std::make_pair(str2, str1)];
+        dist = distInfo[str2 + str1];
       return dist;
     }
   };

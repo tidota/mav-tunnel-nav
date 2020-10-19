@@ -123,12 +123,17 @@ void AdHocNetPlugin::OnUpdate()
         if (robot1 && robot2)
         {
           double dist = this->CheckRange(robot1, robot2);
+          setDistInfo(this->robotList[i], this->robotList[j], dist);
           if (dist <= this->comm_range)
           {
             setTopoInfo(
               this->robotList[i], this->robotList[j],
               this->CheckLineOfSight(robot1, robot2));
-            setDistInfo(this->robotList[i], this->robotList[j], dist);
+          }
+          else
+          {
+            setTopoInfo(
+              this->robotList[i], this->robotList[j], false);
           }
         }
       }
@@ -337,7 +342,7 @@ bool AdHocNetPlugin::CheckLineOfSight(
   this->line_of_sight->GetIntersection(dist, entityName);
 
   // empty string means there was no intersecting object
-  if (entityName == "")
+  if (entityName.size() == 0)
     clear = true;
 
   return clear;
