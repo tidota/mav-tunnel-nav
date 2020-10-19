@@ -338,15 +338,27 @@ void pf_main()
 
   // publisher for synchronization of exchange
   std::string sync_up_topic;
-  pnh.getParam("sync_up_topic", sync_up_topic);
-  ros::Publisher sync_pub
-    = nh.advertise<mav_tunnel_nav::SrcDstMsg>(sync_up_topic, 1);
+  ros::Publisher sync_pub;
+  if (nh.getParam("/sync_up_topic", sync_up_topic)) // global param
+  {
+    sync_pub = nh.advertise<mav_tunnel_nav::SrcDstMsg>(sync_up_topic, 1);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: sync_up_topic");
+  }
 
   // publisher for data exchange
   std::string data_up_topic;
-  pnh.getParam("data_up_topic", data_up_topic);
-  ros::Publisher data_pub
-    = nh.advertise<mav_tunnel_nav::Particles>(data_up_topic, 1);
+  ros::Publisher data_pub;
+  if (nh.getParam("/data_up_topic", data_up_topic)) // global param
+  {
+    data_pub = nh.advertise<mav_tunnel_nav::Particles>(data_up_topic, 1);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: data_up_topic");
+  }
 
   // random numbers
   std::random_device rd{};
@@ -947,19 +959,37 @@ int main(int argc, char** argv)
 
   // subscriber for beacon
   std::string beacon_down_topic;
-  pnh.getParam("beacon_down_topic", beacon_down_topic);
-  ros::Subscriber beacon_sub
-    = nh.subscribe(beacon_down_topic, 1000, beaconCallback);
+  ros::Subscriber beacon_sub;
+  if (nh.getParam("/beacon_down_topic", beacon_down_topic)) // global param
+  {
+    beacon_sub = nh.subscribe(beacon_down_topic, 1000, beaconCallback);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: beacon_down_topic");
+  }
   // subscriber for synchronization of exchange
   std::string sync_down_topic;
-  pnh.getParam("sync_down_topic", sync_down_topic);
-  ros::Subscriber sync_sub
-    = nh.subscribe(sync_down_topic, 1000, syncCallback);
+  ros::Subscriber sync_sub;
+  if (nh.getParam("/sync_down_topic", sync_down_topic)) // global param
+  {
+    sync_sub = nh.subscribe(sync_down_topic, 1000, syncCallback);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: sync_down_topic");
+  }
   // subscriber for data exchange
   std::string data_down_topic;
-  pnh.getParam("data_down_topic", data_down_topic);
-  ros::Subscriber data_sub
-    = nh.subscribe(data_down_topic, 1000, dataCallback);
+  ros::Subscriber data_sub;
+  if (nh.getParam("/data_down_topic", data_down_topic)) // global param
+  {
+    data_sub = nh.subscribe(data_down_topic, 1000, dataCallback);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: data_down_topic");
+  }
 
   pnh.getParam("odom_topic", odom_topic);
   pnh.getParam("pc_topic", pc_topic);

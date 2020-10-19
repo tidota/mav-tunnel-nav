@@ -41,14 +41,26 @@ int main(int argc, char** argv)
 
   // subscriber for beacon
   std::string beacon_down_topic;
-  pnh.getParam("beacon_down_topic", beacon_down_topic);
-  ros::Subscriber beacon_sub
-    = nh.subscribe(beacon_down_topic, 1000, beaconCallback);
+  ros::Subscriber beacon_sub;
+  if (nh.getParam("/beacon_down_topic", beacon_down_topic)) // global param
+  {
+    beacon_sub = nh.subscribe(beacon_down_topic, 1000, beaconCallback);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: beacon_down_topic");
+  }
 
   // publisher for beacon
   std::string beacon_up_topic;
-  pnh.getParam("beacon_up_topic", beacon_up_topic);
-  beacon_pub = nh.advertise<mav_tunnel_nav::SrcDstMsg>(beacon_up_topic, 1);
+  if (nh.getParam("/beacon_up_topic", beacon_up_topic)) // global param
+  {
+    beacon_pub = nh.advertise<mav_tunnel_nav::SrcDstMsg>(beacon_up_topic, 1);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: beacon_up_topic");
+  }
 
   ros::Time last_update = ros::Time::now();
   const ros::Duration update_phase(0.1);
