@@ -11,10 +11,10 @@
   <arg name="map_filename" default=""/>
 
   <!-- robot's name used for interactions with other robots -->
-  <param name="robot_name" value="$(mav_name)"/>
+  <param name="robot_name" value="$(arg mav_name)"/>
 
   <!-- beacon -->
-  <node name="beacon" pkg="mav_tunnel_nav" type="beacon" output="screen">
+  <node name="beacon" pkg="mav_tunnel_nav" type="beacon" output="screen"/>
 
   <!-- Convert cmd_vel into pose command so as to provide the same interface -->
   <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="odometry_sensor1/pose cmd_vel command/pose"/>
