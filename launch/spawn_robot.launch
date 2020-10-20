@@ -10,6 +10,7 @@
   <arg name="map_only" default="false"/>
   <arg name="ground_truth" default="$(arg map_only)"/>
   <arg name="map_filename" default=""/>
+  <arg name="output" default="screen"/>
 
   <group ns="$(arg mav_name)">
     <include file="$(find mav_tunnel_nav)/launch/spawn_mav_model.launch">
@@ -23,6 +24,7 @@
       <arg name="y" value="$(arg y)"/>
       <arg name="z" value="$(arg z)"/>
       <arg name="Y" value="$(arg Y)"/>
+      <arg name="output" value="$(arg output)"/>
     </include>
 
     <include file="$(find mav_tunnel_nav)/launch/spawn_control_slam.launch">
@@ -33,6 +35,7 @@
       <arg name="Y" value="$(arg Y)"/>
       <arg name="map_only" value="$(arg map_only)"/>
       <arg name="map_filename" value="$(arg map_filename)"/>
+      <arg name="output" value="$(arg output)"/>
     </include>
   </group>
 

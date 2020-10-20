@@ -9,19 +9,20 @@
   <arg name="Y" default="-1.570796"/>
   <arg name="map_only" default="false"/>
   <arg name="map_filename" default=""/>
+  <arg name="output" default="screen"/>
 
   <!-- beacon -->
-  <node name="beacon" pkg="mav_tunnel_nav" type="beacon" output="screen">
+  <node name="beacon" pkg="mav_tunnel_nav" type="beacon" output="$(arg output)">
     <!-- robot's name used for interactions with other robots -->
     <param name="robot_name" value="$(arg mav_name)"/>
   </node>
 
   <!-- Convert cmd_vel into pose command so as to provide the same interface -->
-  <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="odometry_sensor1/pose cmd_vel command/pose"/>
+  <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="odometry_sensor1/pose cmd_vel command/pose" output="$(arg output)"/>
   <!-- <node name="cmdvel_transform" pkg="mav_tunnel_nav" type="cmdvel_converter.py" args="imu_odom/pose cmd_vel command/pose"/> -->
 
   <!-- Autonomous control based on ranging data -->
-  <node name="auto_control" pkg="mav_tunnel_nav" type="auto_control" output="screen">
+  <node name="auto_control" pkg="mav_tunnel_nav" type="auto_control" output="$(arg output)">
     <param name="enable_topic" value="enable"/>
     <param name="update_freq" value="50"/>
     <!-- refer to xacro for range settings -->
@@ -84,7 +85,7 @@
     <remap from="odometry" to="imu_odom/odometry" />
   </node> -->
   <!-- Spawn a position controller -->
-  <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node">
+  <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="$(arg output)">
     <rosparam command="load" file="$(find rotors_gazebo)/resource/lee_controller_iris.yaml" />
     <rosparam command="load" file="$(find rotors_gazebo)/resource/iris.yaml" />
     <remap from="odometry" to="odometry_sensor1/odometry" />
@@ -92,7 +93,7 @@
   </node>
 
   <!-- imu odometry (optional) -->
-  <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom" output="screen">
+  <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom" output="$(arg output)">
     <param name="init_Y" value="$(arg Y)"/>
     <param name="odom_reset_topic" value="odom_reset"/>
     <param name="imu_topic" value="imu"/>
@@ -104,7 +105,7 @@
 
   <!-- rbpf -->
   <group unless="$(arg map_only)">
-    <node name="rbpf" pkg="mav_tunnel_nav" type="rbpf" output="screen">
+    <node name="rbpf" pkg="mav_tunnel_nav" type="rbpf" output="$(arg output)">
       <!-- robot's name used for interactions with other robots -->
       <param name="robot_name" value="$(arg mav_name)"/>
 
@@ -168,7 +169,7 @@
   </group>
   <!-- mapping only (using the ground truth poses) -->
   <group if="$(arg map_only)">
-    <node name="map_only" pkg="mav_tunnel_nav" type="map_only" output="screen">
+    <node name="map_only" pkg="mav_tunnel_nav" type="map_only" output="$(arg output)">
       <param name="pc_topic" value="camera_ir/camera/depth/points"/>
       <param name="world_frame_id" value="world"/>
       <param name="robot_frame_id" value="$(arg mav_name)/base_link"/>
@@ -199,14 +200,14 @@
   </group>
 
   <!-- map saver -->
-  <node name="map_saver" pkg="mav_tunnel_nav" type="map_saver" output="screen">
+  <node name="map_saver" pkg="mav_tunnel_nav" type="map_saver" output="$(arg output)">
     <param name="filename" value="octomap.bt"/>
     <param name="octomap_topic" value="octomap"/>
     <param name="savemap_topic" value="savemap"/>
   </node>
 
   <!-- Given robot_description parameter and joint states, publish TF frames -->
-  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
-  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="$(arg output)"/>
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" output="$(arg output)"/>
 
 </launch>

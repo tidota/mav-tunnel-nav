@@ -14,6 +14,7 @@
   <arg name="log_file" default="$(arg mav_name)"/>
   <arg name="wait_to_record_bag" default="false"/>
   <arg name="enable_mavlink_interface" default="false"/>
+  <arg name="output" default="screen"/>
 
   <!-- send the robot XML to param server -->
   <param name="robot_description" command="
@@ -37,6 +38,6 @@
          -z $(arg z)
          -Y $(arg Y)
          -model $(arg namespace)"
-   respawn="false" output="screen">
+   respawn="false" output="$(arg output)">
   </node>
 </launch>

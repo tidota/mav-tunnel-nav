@@ -9,14 +9,16 @@ robot1:
   Y: -1.570796
   map_only: false
   map_filename: ''
+  output: log # screen, log, null
 
 robot2:
-  x: 0.0 
+  x: 0.0
   y: 0.0
   z: 0.31
   Y: 0
   map_only: false
   map_filename: ''
+  output: log
 
 robot3:
   x: -16
