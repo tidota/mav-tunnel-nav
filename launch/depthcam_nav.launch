@@ -27,7 +27,7 @@
     <arg name="gui" value="false"/>
     <arg name="headless" value="false"/>
     <arg name="debug" value="false"/>
-    <arg name="extra_gazebo_args" value="--verbose"/>
+    <arg name="extra_gazebo_args" value="" /> <!-- verbose -->
   </include>
 
   <!-- spawn robots described in the yaml file -->
