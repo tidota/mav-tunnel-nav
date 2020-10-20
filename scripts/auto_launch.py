@@ -46,10 +46,6 @@ if __name__ == '__main__':
 			'map_filename:=' + str(dict_robot[robot]['map_filename']),
 			'output:=' + str(dict_robot[robot]['output'])
 		]
-		if str(dict_robot[robot]['output']) == 'null':
-			cmd += ['output:=screen', '>/dev/null']
-		else:
-			cmd += ['output:=' + str(dict_robot[robot]['output'])]
 		cmd_list[robot] = cmd
 
 	proc_list = {}
