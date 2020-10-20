@@ -92,6 +92,7 @@
   </node>
 
   <!-- imu odometry (optional) -->
+  <!--
   <node name="imu_odom" pkg="mav_tunnel_nav" type="imu_odom" output="$(arg output)">
     <param name="init_Y" value="$(arg Y)"/>
     <param name="odom_reset_topic" value="odom_reset"/>
@@ -100,7 +101,7 @@
     <param name="odom_pose_topic" value="imu_odom/pose"/>
     <param name="world_frame_id" value="world"/>
     <param name="odom_frame_id" value="$(arg mav_name)/odom"/>
-  </node>
+  </node>-->
 
   <!-- rbpf -->
   <group unless="$(arg map_only)">
