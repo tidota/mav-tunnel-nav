@@ -142,89 +142,16 @@ void AdHocNetPlugin::OnUpdate()
 
     last_update = current;
   }
-
-  // std::lock_guard<std::mutex> lk(this->simInfoMutex);
-  //
-  // if (!this->robotsReadyToComm)
-  // {
-  //   bool flag = true;
-  //   for (std::string &robot: this->robotList)
-  //   {
-  //     auto model = this->world->ModelByName(robot);
-  //     if (!model || model->WorldPose().POS_Z < 4.9)
-  //       flag = false;
-  //   }
-  //   if (flag)
-  //   {
-  //     this->robotsReadyToComm = true;
-  //
-  //     this->StartNewTrial();
-  //   }
-  // }
-  // else
-  // {
-  //   if (this->started && !this->finished)
-  //   {
-  //     auto current = this->world->SimTime();
-  //
-  //     if (current.Double() - this->lastStatPrintTime.Double() >= 10.0)
-  //     {
-  //       // gzmsg << "===== locations =====" << std::endl;
-  //       // for (auto model : this->world->GetModels())
-  //       // {
-  //       //   auto pose = model->WorldPose();
-  //       //   gzmsg << model->GetName() << ": " << pose << std::endl;
-  //       // }
-  //       // gzmsg << "=====================" << std::endl;
-  //       this->lastStatPrintTime = current;
-  //     }
-  //
-  //     if (this->stopping)
-  //     {
-  //       std::lock_guard<std::mutex> lk(this->messageMutex);
-  //
-  //       // check if no more message is not coming.
-  //       if (current.Double() - this->lastRecvTime.Double()
-  //             > this->currentDelayTime + 1.0)
-  //       {
-  //         gzmsg << "*** Simulation period passed. Stopping ***" << std::endl;
-  //         this->listStopResponses.clear();
-  //         adhoc::msgs::SimInfo start;
-  //         start.set_state("stop");
-  //         start.set_robot_name("");
-  //         this->simCmdPub->Publish(start);
-  //         this->finished = true;
-  //
-  //         // Set the robot's speed to 0.
-  //         std_msgs::Float32 vel;
-  //         vel.data = 0;
-  //         this->navVelUpdatePub.publish(vel);
-  //       }
-  //     }
-  //     else if(current.Double() - this->startTime.Double()
-  //       >= this->simPeriod)
-  //     {
-  //       gzmsg << "*** All communication done. Stopped. ***" << std::endl;
-  //       this->listStopResponses.clear();
-  //       adhoc::msgs::SimInfo start;
-  //       start.set_state("stop_sending");
-  //       start.set_robot_name("");
-  //       this->simCmdPub->Publish(start);
-  //       this->stopping = true;
-  //     }
-  //
-  //     this->topoChangeCount += this->CheckTopoChange();
-  //   }
-  // }
 }
 
-// //////////////////////////////////////////////////
+//////////////////////////////////////////////////
 void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
   // std::lock_guard<std::mutex> lk(this->beacon_mutex);
   // this->beacon_buff(std::make_shared<mav_tunnel_nav::Beacon>(*msg));
 
   std::normal_distribution<> dst_noise(0, sigmaDst);
+  std::normal_distribution<> ori_noise(0, sigmaOri);
 
   if (this->beacon_subs.count(msg->source) > 0)
   {
@@ -238,8 +165,15 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
           if (getTopoInfo(robot, msg->source))
           {
             mav_tunnel_nav::Beacon msg2send = *msg;
-            msg2send.estimated_distance
-              = getPoseInfo(robot, msg->source).Pos().Length() + dst_noise(gen);
+            auto pos = getPoseInfo(robot, msg->source).Pos();
+            msg2send.estimated_distance = pos.Length() + dst_noise(gen);
+            pos.Normalize();
+            ignition::math::Quaternion<double>
+              rot(0, ori_noise(gen), ori_noise(gen)); // noise on pitch/yaw
+            pos = rot * pos;
+            msg2send.estimated_orientation.x = pos.X();
+            msg2send.estimated_orientation.y = pos.Y();
+            msg2send.estimated_orientation.z = pos.Z();
             this->beacon_pubs[robot].publish(msg2send);
           }
         }
@@ -251,16 +185,22 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
       if (getTopoInfo(msg->source, msg->destination))
       {
         mav_tunnel_nav::Beacon msg2send = *msg;
-        msg2send.estimated_distance
-          = getPoseInfo(msg->source, msg->destination).Pos().Length()
-          + dst_noise(gen);
+        auto pos = getPoseInfo(msg->destination, msg->source).Pos();
+        msg2send.estimated_distance = pos.Length() + dst_noise(gen);
+        pos.Normalize();
+        ignition::math::Quaternion<double>
+          rot(0, ori_noise(gen), ori_noise(gen)); // noise on pitch/yaw
+        pos = rot * pos;
+        msg2send.estimated_orientation.x = pos.X();
+        msg2send.estimated_orientation.y = pos.Y();
+        msg2send.estimated_orientation.z = pos.Z();
         this->beacon_pubs[msg->destination].publish(msg2send);
       }
     }
   }
 }
 
-// //////////////////////////////////////////////////
+//////////////////////////////////////////////////
 void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 {
   // std::lock_guard<std::mutex> lk(this->sync_mutex);
@@ -293,7 +233,7 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
   }
 }
 
-// //////////////////////////////////////////////////
+//////////////////////////////////////////////////
 void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
 {
   // std::lock_guard<std::mutex> lk(this->data_mutex);
@@ -312,13 +252,15 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
         auto robot1 = this->world->ModelByName(msg->source);
         auto robot2 = this->world->ModelByName(msg->destination);
         mav_tunnel_nav::Particles msg2send = *msg;
-        ignition::math::Vector3d diff
-          = robot2->WorldPose().Pos() - robot1->WorldPose().Pos();
-        msg2send.estimated_distance = diff.Length() + dst_noise(gen);
-        diff.Normalize();
-        msg2send.estimated_orientation.x = diff.X();
-        msg2send.estimated_orientation.y = diff.Y();
-        msg2send.estimated_orientation.z = diff.Z();
+        auto pos = getPoseInfo(msg->destination, msg->source).Pos();
+        msg2send.estimated_distance = pos.Length() + dst_noise(gen);
+        pos.Normalize();
+        ignition::math::Quaternion<double>
+          rot(0, ori_noise(gen), ori_noise(gen)); // noise on pitch/yaw
+        pos = rot * pos;
+        msg2send.estimated_orientation.x = pos.X();
+        msg2send.estimated_orientation.y = pos.Y();
+        msg2send.estimated_orientation.z = pos.Z();
         this->data_pubs[msg->destination].publish(msg2send);
       }
     }
