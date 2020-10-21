@@ -9,7 +9,7 @@
 #include <random>
 #include <vector>
 
-#include <mav_tunnel_nav/SrcDstMsg.h>
+#include <mav_tunnel_nav/Beacon.h>
 
 #include <ros/ros.h>
 
@@ -17,12 +17,12 @@ ros::Publisher beacon_pub;
 std::string robot_name;
 
 ////////////////////////////////////////////////////////////////////////////////
-void beaconCallback(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
   // if it is a broad cast from another robot, reply to it
   if (msg->destination.size() == 0 && msg->source != robot_name)
   {
-    mav_tunnel_nav::SrcDstMsg msg2send = *msg;
+    mav_tunnel_nav::Beacon msg2send = *msg;
     msg2send.source = robot_name;
     msg2send.destination = msg->source;
     beacon_pub.publish(msg2send);
@@ -56,7 +56,7 @@ int main(int argc, char** argv)
   std::string beacon_up_topic;
   if (nh.getParam("/beacon_up_topic", beacon_up_topic)) // global param
   {
-    beacon_pub = nh.advertise<mav_tunnel_nav::SrcDstMsg>(beacon_up_topic, 1);
+    beacon_pub = nh.advertise<mav_tunnel_nav::Beacon>(beacon_up_topic, 1);
   }
   else
   {
@@ -66,7 +66,7 @@ int main(int argc, char** argv)
   ros::Time last_update = ros::Time::now();
   const ros::Duration update_phase(0.1);
 
-  mav_tunnel_nav::SrcDstMsg msg;
+  mav_tunnel_nav::Beacon msg;
   msg.source = robot_name;
   msg.destination = "";
   while (ros::ok())

@@ -17,7 +17,8 @@
 // #include <mav_msgs/default_topics.h>
 // #include <mav_msgs/RollPitchYawrateThrust.h>
 
-#include <mav_tunnel_nav/SrcDstMsg.h>
+#include <mav_tunnel_nav/SrcDst.h>
+#include <mav_tunnel_nav/Beacon.h>
 #include <mav_tunnel_nav/Particles.h>
 
 #include <ros/ros.h>
@@ -49,7 +50,7 @@ bool f_enabled;
 std::mutex beacon_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
-void beaconCallback(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(beacon_mutex);
 

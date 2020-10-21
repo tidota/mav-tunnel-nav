@@ -65,7 +65,7 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
           "/" + robot + "/" + beacon_up_topic, 1000,
           &AdHocNetPlugin::OnBeaconMsg, this);
     this->beacon_pubs[robot]
-      = this->nh.advertise<mav_tunnel_nav::SrcDstMsg>(
+      = this->nh.advertise<mav_tunnel_nav::Beacon>(
           "/" + robot + "/" + beacon_down_topic, 1);
 
     this->sync_subs[robot]
@@ -73,7 +73,7 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
           "/" + robot + "/" + sync_up_topic, 1000,
           &AdHocNetPlugin::OnSyncMsg, this);
     this->sync_pubs[robot]
-      = this->nh.advertise<mav_tunnel_nav::SrcDstMsg>(
+      = this->nh.advertise<mav_tunnel_nav::SrcDst>(
           "/" + robot + "/" + sync_down_topic, 1);
 
     this->data_subs[robot]
@@ -218,10 +218,10 @@ void AdHocNetPlugin::OnUpdate()
 }
 
 // //////////////////////////////////////////////////
-void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
   // std::lock_guard<std::mutex> lk(this->beacon_mutex);
-  // this->beacon_buff(std::make_shared<mav_tunnel_nav::SrcDstMsg>(*msg));
+  // this->beacon_buff(std::make_shared<mav_tunnel_nav::Beacon>(*msg));
 
   std::normal_distribution<> dst_noise(0, sigmaDst);
 
@@ -236,7 +236,7 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
           // if the destination is in the range
           if (getTopoInfo(robot, msg->source))
           {
-            mav_tunnel_nav::SrcDstMsg msg2send = *msg;
+            mav_tunnel_nav::Beacon msg2send = *msg;
             msg2send.estimated_distance
               = getDistInfo(robot, msg->source) + dst_noise(gen);
             this->beacon_pubs[robot].publish(msg2send);
@@ -249,7 +249,7 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
       // if the destination is in the range
       if (getTopoInfo(msg->source, msg->destination))
       {
-        mav_tunnel_nav::SrcDstMsg msg2send = *msg;
+        mav_tunnel_nav::Beacon msg2send = *msg;
         msg2send.estimated_distance
           = getDistInfo(msg->source, msg->destination) + dst_noise(gen);
         this->beacon_pubs[msg->destination].publish(msg2send);
@@ -259,10 +259,10 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
 }
 
 // //////////////////////////////////////////////////
-void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 {
   // std::lock_guard<std::mutex> lk(this->sync_mutex);
-  // this->sync_buff(std::make_shared<mav_tunnel_nav::SrcDstMsg>(*msg));
+  // this->sync_buff(std::make_shared<mav_tunnel_nav::SrcDst>(*msg));
 
   std::normal_distribution<> dst_noise(0, sigmaDst);
 
@@ -281,10 +281,10 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
         // add noise to a and b
         // combine all a b c
 
-        mav_tunnel_nav::SrcDstMsg msg2send = *msg;
+        mav_tunnel_nav::SrcDst msg2send = *msg;
         msg2send.estimated_distance
           = getDistInfo(msg->source, msg->destination) + dst_noise(gen);
-        this->beacon_pubs[msg->destination].publish(msg2send);
+        this->sync_pubs[msg->destination].publish(msg2send);
       }
     }
   }
@@ -316,7 +316,7 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
         msg2send.estimated_orientation.x = diff.X();
         msg2send.estimated_orientation.y = diff.Y();
         msg2send.estimated_orientation.z = diff.Z();
-        this->beacon_pubs[msg->destination].publish(msg2send);
+        this->data_pubs[msg->destination].publish(msg2send);
       }
     }
   }

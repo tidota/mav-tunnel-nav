@@ -24,7 +24,8 @@
 
 #include <tf/transform_datatypes.h>
 
-#include <mav_tunnel_nav/SrcDstMsg.h>
+#include <mav_tunnel_nav/SrcDst.h>
+#include <mav_tunnel_nav/Beacon.h>
 #include <mav_tunnel_nav/Particles.h>
 
 namespace adhoc
@@ -53,11 +54,11 @@ namespace gazebo
 
     /// \brief Callback executed when a new beacon is received.
     /// \param[in] msg The beacon message.
-    private: void OnBeaconMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg);
+    private: void OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg);
 
     /// \brief Callback executed when a new sync message is received.
     /// \param[in] msg The synchronization message.
-    private: void OnSyncMsg(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg);
+    private: void OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg);
 
     /// \brief Callback executed when new particle data is received.
     /// \param[in] msg The particle message.
@@ -103,7 +104,7 @@ namespace gazebo
     private: std::map<std::string, ros::Publisher> beacon_pubs;
     // /// \brief buffer for beacon
     // private:
-    //   std::vector< std::shared_ptr<mav_tunnel_nav::SrcDstMsg> > beacon_buff;
+    //   std::vector< std::shared_ptr<mav_tunnel_nav::Beacon> > beacon_buff;
     // /// \brief mutex for beacon
     // private: std::mutex beacon_mutex;
 
@@ -113,7 +114,7 @@ namespace gazebo
     private: std::map<std::string, ros::Publisher> sync_pubs;
     // /// \brief buffer for sync
     // private:
-    //   std::vector< std::shared_ptr<mav_tunnel_nav::SrcDstMsg> > sync_buff;
+    //   std::vector< std::shared_ptr<mav_tunnel_nav::SrcDst> > sync_buff;
     // /// \brief mutex for sync
     // private: std::mutex beacon_sync;
 

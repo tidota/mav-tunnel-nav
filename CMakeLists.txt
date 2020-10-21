@@ -73,7 +73,8 @@ find_package(Boost REQUIRED COMPONENTS system)
 add_message_files(
   FILES
   Particles.msg
-  SrcDstMsg.msg
+  Beacon.msg
+  SrcDst.msg
 #   Message1.msg
 #   Message2.msg
 )

@@ -28,7 +28,8 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-#include <mav_tunnel_nav/SrcDstMsg.h>
+#include <mav_tunnel_nav/SrcDst.h>
+#include <mav_tunnel_nav/Beacon.h>
 #include <mav_tunnel_nav/Particles.h>
 
 #include <ros/ros.h>
@@ -72,14 +73,14 @@ std::mutex sync_mutex;
 std::mutex data_mutex;
 
 ////////////////////////////////////////////////////////////////////////////////
-void beaconCallback(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(beacon_mutex);
 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void syncCallback(const mav_tunnel_nav::SrcDstMsg::ConstPtr& msg)
+void syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(sync_mutex);
 
@@ -346,7 +347,7 @@ void pf_main()
   ros::Publisher sync_pub;
   if (nh.getParam("/sync_up_topic", sync_up_topic)) // global param
   {
-    sync_pub = nh.advertise<mav_tunnel_nav::SrcDstMsg>(sync_up_topic, 1);
+    sync_pub = nh.advertise<mav_tunnel_nav::SrcDst>(sync_up_topic, 1);
   }
   else
   {
