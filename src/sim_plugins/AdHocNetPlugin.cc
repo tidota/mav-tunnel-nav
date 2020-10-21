@@ -103,7 +103,8 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
     for (unsigned int j = i + 1; j < this->robotList.size(); ++j)
     {
       setTopoInfo(this->robotList[i], this->robotList[j], false);
-      setDistInfo(this->robotList[i], this->robotList[j], -1);
+      setPoseInfo(
+        this->robotList[i], this->robotList[j], ignition::math::Pose3d());
     }
   }
 }
@@ -122,9 +123,9 @@ void AdHocNetPlugin::OnUpdate()
         auto robot2 = this->world->ModelByName(this->robotList[j]);
         if (robot1 && robot2)
         {
-          double dist = this->CheckRange(robot1, robot2);
-          setDistInfo(this->robotList[i], this->robotList[j], dist);
-          if (dist <= this->comm_range)
+          auto diff = robot2->WorldPose() - robot1->WorldPose();
+          setPoseInfo(this->robotList[i], this->robotList[j], diff);
+          if (diff.Pos().Length() <= this->comm_range)
           {
             setTopoInfo(
               this->robotList[i], this->robotList[j],
@@ -238,7 +239,7 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
           {
             mav_tunnel_nav::Beacon msg2send = *msg;
             msg2send.estimated_distance
-              = getDistInfo(robot, msg->source) + dst_noise(gen);
+              = getPoseInfo(robot, msg->source).Pos().Length() + dst_noise(gen);
             this->beacon_pubs[robot].publish(msg2send);
           }
         }
@@ -251,7 +252,8 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
       {
         mav_tunnel_nav::Beacon msg2send = *msg;
         msg2send.estimated_distance
-          = getDistInfo(msg->source, msg->destination) + dst_noise(gen);
+          = getPoseInfo(msg->source, msg->destination).Pos().Length()
+          + dst_noise(gen);
         this->beacon_pubs[msg->destination].publish(msg2send);
       }
     }
@@ -283,7 +285,8 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 
         mav_tunnel_nav::SrcDst msg2send = *msg;
         msg2send.estimated_distance
-          = getDistInfo(msg->source, msg->destination) + dst_noise(gen);
+          = getPoseInfo(msg->source, msg->destination).Pos().Length()
+          + dst_noise(gen);
         this->sync_pubs[msg->destination].publish(msg2send);
       }
     }
@@ -349,14 +352,14 @@ bool AdHocNetPlugin::CheckLineOfSight(
 }
 
 //////////////////////////////////////////////////
-double AdHocNetPlugin::CheckRange(
-  const physics::ModelPtr& robot1, const physics::ModelPtr& robot2)
-{
-  ignition::math::Vector3d start = robot1->WorldPose().Pos();
-  ignition::math::Vector3d end = robot2->WorldPose().Pos();
-
-  return (end - start).Length();
-}
+// double AdHocNetPlugin::CheckRange(
+//   const physics::ModelPtr& robot1, const physics::ModelPtr& robot2)
+// {
+//   ignition::math::Vector3d start = robot1->WorldPose().Pos();
+//   ignition::math::Vector3d end = robot2->WorldPose().Pos();
+//
+//   return (end - start).Length();
+// }
 
 // ////////////////////////////////////////////////
 // private: inline bool CheckTopology(

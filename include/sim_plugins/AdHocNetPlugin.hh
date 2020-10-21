@@ -77,8 +77,8 @@ namespace gazebo
     /// \param[in] robot1 the first robot.
     /// \param[in] robot2 the second robot.
     /// \return The distance between the robots.
-    private: inline double CheckRange(
-      const physics::ModelPtr& robot1, const physics::ModelPtr& robot2);
+    // private: inline double CheckRange(
+    //   const physics::ModelPtr& robot1, const physics::ModelPtr& robot2);
 
     // /// \brief Helper function to check if two robots can perform local
     // ///        communication. It checks the topology information updated by
@@ -169,25 +169,26 @@ namespace gazebo
         flag = topoInfo[str2 + str1];
       return flag;
     }
-    /// \brief distance information
-    private: std::map<std::string, double> distInfo;
-    private: inline void setDistInfo(
-      const std::string& str1, const std::string& str2, const double& dist)
+    /// \brief relative pose information
+    private: std::map<std::string, ignition::math::Pose3d> poseInfo;
+    private: inline void setPoseInfo(
+      const std::string& str1, const std::string& str2,
+      const ignition::math::Pose3d& pose)
     {
       if (str1 < str2)
-        distInfo[str1 + str2] = dist;
+        poseInfo[str1 + str2] = pose;
       else
-        distInfo[str2 + str1] = dist;
+        poseInfo[str2 + str1] = pose.Inverse();
     }
-    private: inline double getDistInfo(
+    private: inline ignition::math::Pose3d getPoseInfo(
       const std::string& str1, const std::string& str2)
     {
-      double dist = -1;
+      ignition::math::Pose3d pose;
       if (str1 < str2)
-        dist = distInfo[str1 + str2];
+        pose = poseInfo[str1 + str2];
       else
-        dist = distInfo[str2 + str1];
-      return dist;
+        pose = poseInfo[str2 + str1].Inverse();
+      return pose;
     }
   };
 }
