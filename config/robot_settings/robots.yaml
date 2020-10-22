@@ -1,6 +1,7 @@
 robots:
   - robot1
   - robot2
+#  - robot3
 
 robot1:
   x: 0.0
@@ -21,9 +22,13 @@ robot2:
   output: screen
 
 robot3:
-  x: -16
-  y: -2
+  x: 2.0
+  y: 0.0
+  z: 0.31
   Y: 0
+  map_only: false
+  map_filename: ''
+  output: screen
 
 robot4:
   x: -16
