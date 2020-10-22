@@ -48,12 +48,15 @@ std::string enable_topic;
 bool f_enabled;
 
 std::mutex beacon_mutex;
+std::map<std::string, mav_tunnel_nav::Beacon> beacon_buffer;
+std::map<std::string, ros::Time> beacon_lasttime;
 
 ////////////////////////////////////////////////////////////////////////////////
 void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(beacon_mutex);
-
+  beacon_buffer[msg->source] = *msg;
+  beacon_lasttime[msg->source] = ros::Time::now();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
