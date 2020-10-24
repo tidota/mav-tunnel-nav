@@ -14,13 +14,28 @@ MAV model from [rotorS](https://github.com/ethz-asl/rotors_simulator).
 The environment model is based on the dataset of Indian Tunnel, which was originally created by CMU and is currently maintained by NASA.
 https://ti.arc.nasa.gov/dataset/caves/
 
-# System Requirements
+# Inter-robot Communication
+Multiple robots perform cooperative localization by interactions with their neighbors while each individual robot performs individual SLAM.
+
+Each robot broadcasts a beacon packet at a certain interval. Other robots receive the packet if they are in the communication range, and send a beacon packet back to the sender. This process enables the robots to know who are their neighbors.
+
+<!--
+# Cooperative Localization
+Cooperative localization
+-->
+
+# Control
+The direction of a robot to move is determined by a reactive controller. The controller is composed of multiple components each of which generates a simple behavior based on proximity sensory data.
+
+Information in a beacon packet is also used. It contains the relative location of the neighbor with respect to the robot. If it tells that the robot is too close to the neighbor compared to a certain range, the robot tries to move away. If it is farther away, on the other hand, it tries to go toward the neighbor.
+
+# Installation
+
+**System Requirements**
 
 - Ubuntu 18.04 Bionic
 - ROS Melodic
 - Gazebo9
-
-# Installation
 
 If you do not have wstool,
 ```
@@ -55,7 +70,7 @@ download [libmav_msgs.so](https://drive.google.com/open?id=1VtutTPUiwGTCpCeF32B7
 /opt/ros/melodic/lib/
 ```
 
-# Setup of the Simulation Environments
+## Setup of the Simulation Environments
 
 To run a simulation, you need world models.
 
@@ -112,7 +127,7 @@ cd ../bin
 Then, it will display the map.
 ![](./img/octovis.png)
 
-### Mapping only
+## Mapping only
 This will only perform mapping while taking the ground truth trajectory.
 ```
 roslaunch mav_tunnel_nav depthcam_nav.launch map_only:=true
@@ -124,7 +139,7 @@ roslaunch mav_tunnel_nav depthcam_nav.launch map_only:=true map_filename=<path t
 ```
 Replace `<path to the file>` with the actual path.
 
-### Manual control
+## Manual control
 The drone can be controlled by a joypad (`/dev/input/js0`).
 
 Note that it is configured for Sanwa's gamepad (JY-P70UR) in default.
@@ -142,7 +157,10 @@ to
 <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/logitech_f310.yaml" />
 ```
 
+# Network settings
+
 ## Running on multiple machines
+
 This repo contains a bash script to run the ROS nodes on multiple machines:
 `src/mav-tunnel-nav/scripts/network_setup.sh`
 This will set environment variables required for network settings of ROS and
