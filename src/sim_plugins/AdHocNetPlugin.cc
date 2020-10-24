@@ -164,6 +164,8 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
           // if the destination is in the range
           if (getTopoInfo(robot, msg->source))
           {
+            // NOTE: a beacon packet provides the relative location of the
+            //       sender with respect to the receiver.
             mav_tunnel_nav::Beacon msg2send = *msg;
             auto pos = getPoseInfo(robot, msg->source).Pos();
             msg2send.estimated_distance = pos.Length() + dst_noise(gen);
@@ -215,14 +217,6 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
       // if the destination is in the range
       if (getTopoInfo(msg->source, msg->destination))
       {
-        // a vector from robot1 to robot2
-        //   NOTE: maybe this vector will be w.r.t. robot1's ref frame when the
-        //         orientation is taken into account.
-        // get yaw and pitch
-        // axis b from yaw, axis a from b and pitch, axis c from yaw and pitch
-        // add noise to a and b
-        // combine all a b c
-
         mav_tunnel_nav::SrcDst msg2send = *msg;
         msg2send.estimated_distance
           = getPoseInfo(msg->source, msg->destination).Pos().Length()
@@ -249,10 +243,20 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
       // if the destination is in the range
       if (getTopoInfo(msg->source, msg->destination))
       {
-        auto robot1 = this->world->ModelByName(msg->source);
-        auto robot2 = this->world->ModelByName(msg->destination);
+        // auto robot1 = this->world->ModelByName(msg->source);
+        // auto robot2 = this->world->ModelByName(msg->destination);
+
+        // NOTE: A particles packet provides a relative pose of the receiver
+        //       with respect to the sender.
         mav_tunnel_nav::Particles msg2send = *msg;
-        auto pos = getPoseInfo(msg->destination, msg->source).Pos();
+        auto pos = getPoseInfo(msg->source, msg->destination).Pos();
+
+        // NOTE: Simple loc w/o orientation. The reference frame is rotated to
+        //       be aligned with the global reference frame so that only
+        //       the location can be used without the orientation.
+        pos = this->world->ModelByName(msg->source)->WorldPose().Rot().Inverse()
+              * pos;
+
         msg2send.estimated_distance = pos.Length() + dst_noise(gen);
         pos.Normalize();
         ignition::math::Quaternion<double>
