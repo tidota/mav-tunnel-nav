@@ -65,6 +65,10 @@
     <!-- communication -->
     <plugin name="adhocnet_plugin" filename="libAdHocNetPlugin.so">
       <terrain_name>indian_tunnel</terrain_name>
+      <base_station>
+        <name>base</name>
+        <x>0</x><y>0</y><z>0</z>
+      </base_station>
     </plugin>
   </world>
 </sdf>

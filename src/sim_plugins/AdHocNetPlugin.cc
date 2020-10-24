@@ -93,8 +93,15 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
       physics::CollisionPtr()));
 
   this->terrainName = _sdf->Get<std::string>("terrain_name");
+  auto base_elem = _sdf->GetElement("base_station");
+  this->base_name = base_elem->Get<std::string>("name");
+  this->base_pose = ignition::math::Pose3d(
+                      base_elem->Get<double>("x"),
+                      base_elem->Get<double>("y"),
+                      base_elem->Get<double>("z"),
+                      0, 0, 0);
 
-  topo_interval = ros::Duration(0.5);
+  topo_interval = ros::Duration(0.1);
   last_update = ros::Time::now();
 
   // initialize topology info
@@ -106,6 +113,11 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
       setPoseInfo(
         this->robotList[i], this->robotList[j], ignition::math::Pose3d());
     }
+  }
+  for (auto robot_name: this->robotList)
+  {
+    setTopoInfo(base_name, robot_name, false);
+    setPoseInfo(base_name, robot_name, ignition::math::Pose3d());
   }
 }
 
@@ -123,19 +135,41 @@ void AdHocNetPlugin::OnUpdate()
         auto robot2 = this->world->ModelByName(this->robotList[j]);
         if (robot1 && robot2)
         {
-          auto diff = robot2->WorldPose() - robot1->WorldPose();
+          auto robot1_pose = robot1->WorldPose();
+          auto robot2_pose = robot2->WorldPose();
+          auto diff = robot2_pose - robot1_pose;
           setPoseInfo(this->robotList[i], this->robotList[j], diff);
           if (diff.Pos().Length() <= this->comm_range)
           {
             setTopoInfo(
               this->robotList[i], this->robotList[j],
-              this->CheckLineOfSight(robot1, robot2));
+              this->CheckLineOfSight(robot1_pose.Pos(), robot2_pose.Pos()));
           }
           else
           {
             setTopoInfo(
               this->robotList[i], this->robotList[j], false);
           }
+        }
+      }
+    }
+
+    // checking intercations with the base station
+    for (auto robot_name: this->robotList)
+    {
+      auto robot = this->world->ModelByName(robot_name);
+      if (robot)
+      {
+        auto diff = robot->WorldPose() - base_pose;
+        setPoseInfo(base_name, robot_name, diff);
+        if (diff.Pos().Length() <= this->comm_range)
+        {
+          setTopoInfo(base_name, robot_name,
+            this->CheckLineOfSight(base_pose.Pos(), robot->WorldPose().Pos()));
+        }
+        else
+        {
+          setTopoInfo(base_name, robot_name, false);
         }
       }
     }
@@ -179,6 +213,24 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
             this->beacon_pubs[robot].publish(msg2send);
           }
         }
+      }
+      // for interactions with the base station
+      if (getTopoInfo(msg->source, base_name))
+      {
+        // the plugin replies to those broadcasting beacon packets directly.
+        mav_tunnel_nav::Beacon msg2send = *msg;
+        msg2send.source = base_name;
+        msg2send.destination = msg->source;
+        auto pos = getPoseInfo(msg->source, base_name).Pos();
+        msg2send.estimated_distance = pos.Length() + dst_noise(gen);
+        pos.Normalize();
+        ignition::math::Quaternion<double>
+          rot(0, ori_noise(gen), ori_noise(gen)); // noise on pitch/yaw
+        pos = rot * pos;
+        msg2send.estimated_orientation.x = pos.X();
+        msg2send.estimated_orientation.y = pos.Y();
+        msg2send.estimated_orientation.z = pos.Z();
+        this->beacon_pubs[msg->source].publish(msg2send);
       }
     }
     else if (this->beacon_pubs.count(msg->destination) > 0)
@@ -273,24 +325,21 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
 
 //////////////////////////////////////////////////
 bool AdHocNetPlugin::CheckLineOfSight(
-  const physics::ModelPtr& robot1, const physics::ModelPtr& robot2)
+  const ignition::math::Vector3d& start, const ignition::math::Vector3d& end)
 {
-  ignition::math::Vector3d start = robot1->WorldPose().Pos();
-  ignition::math::Vector3d end = robot2->WorldPose().Pos();
   ignition::math::Vector3d diff = end - start;
   diff.Normalize();
-  // move them for .5 meter toward the other robot
-  start = start + diff * 0.5;
-  end = end - diff * 0.5;
 
+  // move start/end for .5 meter toward the other robot
+  this->line_of_sight->SetPoints(
+    start + diff * 0.5, end - diff * 0.5);
+  // check the intersection
   std::string entityName;
   double dist;
-  bool clear = false;
-
-  this->line_of_sight->SetPoints(start, end);
   this->line_of_sight->GetIntersection(dist, entityName);
 
   // empty string means there was no intersecting object
+  bool clear = false;
   if (entityName.size() == 0)
     clear = true;
 

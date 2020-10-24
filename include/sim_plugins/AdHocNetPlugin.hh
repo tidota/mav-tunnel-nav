@@ -66,11 +66,12 @@ namespace gazebo
 
     /// \brief Helper function to check the line of sight condition of the given
     ///        two robots.
-    /// \param[in] robot1 the first robot.
-    /// \param[in] robot2 the second robot.
+    /// \param[in] start The pose on which the line starts.
+    /// \param[in] end The pose on which the line ends.
     /// \return True if there is no obstacle between the points.
     private: inline bool CheckLineOfSight(
-      const physics::ModelPtr& robot1, const physics::ModelPtr& robot2);
+      const ignition::math::Vector3d& start,
+      const ignition::math::Vector3d& end);
 
     /// \brief Helper function to check the two robots are in the communication
     ///        range. (obstacles between them are not checked)
@@ -148,6 +149,10 @@ namespace gazebo
     private: ros::Duration topo_interval;
     private: ros::Time current;
     private: ros::Time last_update;
+
+    /// \brief the base lander information
+    private: std::string base_name;
+    private: ignition::math::Pose3d base_pose;
 
     /// \brief topology information
     private: std::map<std::string, bool> topoInfo;
