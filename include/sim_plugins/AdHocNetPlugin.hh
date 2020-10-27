@@ -42,7 +42,7 @@ namespace gazebo
   /// \brief A plugin that controls ad hoc communications.
   class AdHocNetPlugin : public WorldPlugin
   {
-    /// \breif. Constructor.
+    /// \breif Constructor.
     public: AdHocNetPlugin()
     {}
 
