@@ -76,8 +76,11 @@
     <param name="max_linear_y" value="0.3"/>
     <param name="max_linear_z" value="0.5"/>
 
-    <param name="distance_to_neighbor" value="6.0"/>
+    <param name="distance_to_neighbor" value="10.0"/>
     <param name="rel_pose_expiration" value="3.0" />
+
+    <param name="beacon_down_topic" value="beacon_down_topic"/>
+    <param name="base_station_name" value="base"/>
   </node>
 
   <!-- Sends motor commands based given commanded rates for roll/pitch/yaw and thrust -->

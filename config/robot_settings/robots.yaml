@@ -1,22 +1,23 @@
 robots:
   - robot1
-  - robot2
+#  - robot2
 #  - robot3
 
 robot1:
   x: 0.0
-  y: -2.0
-  z: 0.31
-  Y: -1.570796
+  y: -8.0
+  z: 1.2
+  Y: 0.0
+  #Y: -1.570796
   map_only: false
   map_filename: ''
   output: screen # screen, log
 
 robot2:
   x: 0.0
-  y: 0.0
-  z: 0.31
-  Y: 0
+  y: -5.0
+  z: 0.5
+  Y: 0.0
   map_only: false
   map_filename: ''
   output: screen

@@ -57,9 +57,12 @@ ros::Duration rel_pose_expiration;
 ////////////////////////////////////////////////////////////////////////////////
 void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
-  std::lock_guard<std::mutex> lk(beacon_mutex);
-  beacon_buffer[msg->source] = *msg;
-  beacon_lasttime[msg->source] = ros::Time::now();
+  if (msg->destination.size() > 0)
+  {
+    std::lock_guard<std::mutex> lk(beacon_mutex);
+    beacon_buffer[msg->source] = *msg;
+    beacon_lasttime[msg->source] = ros::Time::now();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,6 +165,9 @@ void control_main()
   double max_linear_z;
   pnh.getParam("max_linear_z", max_linear_z);
 
+  std::string base_station_name;
+  pnh.getParam("base_station_name", base_station_name);
+
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
@@ -200,6 +206,9 @@ void control_main()
               double f
                 = (msg.estimated_distance - distance_to_neighbor)
                   / distance_to_neighbor;
+              if (base_station_name == msg.source &&
+                  msg.estimated_orientation.x > 0)
+                f = std::fabs(f);
               tf::Vector3 v(
                 msg.estimated_orientation.x,
                 msg.estimated_orientation.y,
@@ -224,7 +233,8 @@ void control_main()
           // moves the robot forward.
           {
             ROS_DEBUG("STRAIGHT");
-            control_msg.linear.x = straight_rate * force_rel.x();
+            if (force_rel.x() > 0.1)
+              control_msg.linear.x = straight_rate * force_rel.x();
           }
 
           // ===================== steering =================================== //
@@ -449,7 +459,7 @@ int main(int argc, char** argv)
   pnh.getParam("distance_to_neighbor", distance_to_neighbor);
   double dur;
   pnh.getParam("rel_pose_expiration", dur);
-  rel_pose_expiration = ros::Duration(rel_pose_expiration);
+  rel_pose_expiration = ros::Duration(dur);
 
   pnh.getParam("range_max", range_max);
   pnh.getParam("range_min", range_min);
