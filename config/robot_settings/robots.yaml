@@ -1,6 +1,6 @@
 robots:
   - robot1
-#  - robot2
+  - robot2
 #  - robot3
 
 robot1:
@@ -14,7 +14,7 @@ robot1:
   output: screen # screen, log
 
 robot2:
-  x: 0.0
+  x: -2.0
   y: -5.0
   z: 0.5
   Y: 0.0
