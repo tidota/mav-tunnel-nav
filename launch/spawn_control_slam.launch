@@ -63,7 +63,7 @@
     <param name="ALT_THRESH" value="0.05"/>
     <param name="OBS_THRESH" value="0.2"/>
 
-    <param name="straight_rate" value="2.0"/>
+    <param name="straight_rate" value="0.3"/>
     <param name="steering_yaw_rate" value="1.0"/>
     <param name="mid_open" value="0.8"/>
     <param name="middle_line_rate" value="2.0"/>
