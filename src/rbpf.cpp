@@ -518,26 +518,9 @@ void pf_main()
   // the main loop
   while (ros::ok())
   {
-    // === Update PF ===
     ros::Time now = ros::Time::now();
     if (now > last_update + update_phase)
     {
-      ROS_DEBUG("rbpf: new iteration");
-
-      // { // just for debugging
-      //   // it shows the frames on the world frame.
-      //   for (auto range_topic: range_topics)
-      //   {
-      //
-      //     tf::StampedTransform tf_stamped(
-      //       range_poses[range_topic], now,
-      //       world_frame_id, range_topic);
-      //     tf_broadcaster.sendTransform(tf_stamped);
-      //   }
-      // }
-
-      // calculate the delta T
-      //const double deltaT = (now - last_update).toSec();
       // initialize the time step
       last_update = now;
 
@@ -585,9 +568,6 @@ void pf_main()
       // Odometry data
       tf::Transform diff_pose;
       {
-        // TODO:
-        // get the relative pose from the previous step
-        // then, reset it to 0
         std::lock_guard<std::mutex> lk(odom_mutex);
         tf::Vector3 pos(
           odom_buff.pose.pose.position.x,
@@ -602,17 +582,6 @@ void pf_main()
         pose_curr.setRotation(dir);
         diff_pose = pose_prev.inverse() * pose_curr;
         pose_prev = pose_curr;
-        // tf::Vector3 vel_lin(
-        //   odom_buff.twist.twist.linear.x,
-        //   odom_buff.twist.twist.linear.y,
-        //   odom_buff.twist.twist.linear.z);
-        // tf::Quaternion vel_ang;
-        // vel_ang.setRPY(
-        //   odom_buff.twist.twist.angular.x,
-        //   odom_buff.twist.twist.angular.y,
-        //   odom_buff.twist.twist.angular.z);
-        // vel.setOrigin(vel_lin);
-        // vel.setRotation(vel_ang);
       }
 
       int index_best = 0;
@@ -634,20 +603,8 @@ void pf_main()
         for (auto p: particles)
         {
           // move the particle
-          // TODO:
           // call predict with the relative pose.
-          p->predict(delta_pos, delta_rot,
-            // tf::Vector3(
-            //   odom_buff.twist.twist.linear.x,
-            //   odom_buff.twist.twist.linear.y,
-            //   odom_buff.twist.twist.linear.z),
-            // tf::Quaternion(
-            //   odom_buff.pose.pose.orientation.x,
-            //   odom_buff.pose.pose.orientation.y,
-            //   odom_buff.pose.pose.orientation.z,
-            //   odom_buff.pose.pose.orientation.w),
-            //deltaT,
-            gen);
+          p->predict(delta_pos, delta_rot, gen);
         }
 
         ROS_DEBUG("rbpf: evaluate");
@@ -746,7 +703,6 @@ void pf_main()
       else if (octocloud.size() > 0)
       {
         // mapping only at the beginning
-        ROS_DEBUG("rbpf: mapping only");
         for (auto p: particles)
         {
           p->update_map(octocloud);
@@ -780,17 +736,6 @@ void pf_main()
         z += buff.z()/n_particles;
       }
       tf::Vector3 average_loc(x, y, z);
-      // x = 0;
-      // y = 0;
-      // z = 0;
-      // for (int i = 0; i < n_particles; ++i)
-      // {
-      //   tf::Vector3 buff = particles[i]->getVel();
-      //   x += buff.x()/n_particles;
-      //   y += buff.y()/n_particles;
-      //   z += buff.z()/n_particles;
-      // }
-      // tf::Vector3 average_vel(x, y, z);
 
       // publish data
       if (counts_publish >= publish_interval)
@@ -816,7 +761,7 @@ void pf_main()
         ++counts_publish;
       }
 
-      if (counts_locdata >= locdata_interval)// && max_weight > 1.0/n_particles * 3.0)
+      if (counts_locdata >= locdata_interval)
       {
         nav_msgs::Odometry locdata;
         locdata.header.frame_id = world_frame_id;
@@ -825,9 +770,9 @@ void pf_main()
         locdata.pose.pose.position.x = average_loc.x();
         locdata.pose.pose.position.y = average_loc.y();
         locdata.pose.pose.position.z = average_loc.z();
-        locdata.twist.twist.linear.x = 0;//average_vel.x();
-        locdata.twist.twist.linear.y = 0;//average_vel.y();
-        locdata.twist.twist.linear.z = 0;//average_vel.z();
+        locdata.twist.twist.linear.x = 0;
+        locdata.twist.twist.linear.y = 0;
+        locdata.twist.twist.linear.z = 0;
         odom_reset_pub.publish(locdata);
         ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight << " | UPDATE!!!!!!!!!");
         ROS_DEBUG("vx: %7.2f, vy: %7.2f, vz: %7.2f",
@@ -839,8 +784,6 @@ void pf_main()
       else
       {
         ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight << " | no update");
-        // tf::Vector3 buff = particles[index_best]->getVel();
-        // ROS_DEBUG("vx: %7.2f, vy: %7.2f, vz: %7.2f", buff.x(), buff.y(), buff.z());
         ++counts_locdata;
       }
 
