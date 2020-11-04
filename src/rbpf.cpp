@@ -519,7 +519,10 @@ void pf_main()
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
-    if (now > last_update + update_phase)
+
+    // TODO add a process for mutual localization
+
+    if (now > last_update + update_phase) // Individual SLAM
     {
       // initialize the time step
       last_update = now;
@@ -589,6 +592,9 @@ void pf_main()
       double weight_sum = 0;
       if (now > initial_update + phase_pose_adjust + phase_only_mapping)
       {
+        // ===== update on the particles ===== //
+        // - individual SLAM: update based on local sensory data.
+
         // initialize weights and errors
         for (int i = 0; i < n_particles; ++i)
         {
