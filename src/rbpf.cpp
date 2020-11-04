@@ -69,28 +69,61 @@ std::mutex range_mutex;
 double range_max, range_min;
 
 std::mutex beacon_mutex;
+std::map<std::string, mav_tunnel_nav::Beacon> beacon_buffer;
+std::map<std::string, ros::Time> beacon_lasttime;
+
 std::mutex sync_mutex;
+std::string last_sync_src;
+
 std::mutex data_mutex;
+std::map<std::string, mav_tunnel_nav::Particles> data_buffer;
+std::map<std::string, ros::Time> data_lasttime;
+std::string last_data_src;
+enum INTERACT_STATE
+  { LocalSLAM, SyncInit, DataSending, SyncReact, DataWaiting, Update };
+INTERACT_STATE state = LocalSLAM;
 
 ////////////////////////////////////////////////////////////////////////////////
 void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
-  std::lock_guard<std::mutex> lk(beacon_mutex);
-
+  if (msg->destination.size() > 0)
+  {
+    std::lock_guard<std::mutex> lk(beacon_mutex);
+    beacon_buffer[msg->source] = *msg;
+    beacon_lasttime[msg->source] = ros::Time::now();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 {
-  std::lock_guard<std::mutex> lk(sync_mutex);
-
+  if (state == LocalSLAM)
+  {
+    std::lock_guard<std::mutex> lk(sync_mutex);
+    state = SyncReact;
+    last_sync_src = msg->source;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
 {
-  std::lock_guard<std::mutex> lk(data_mutex);
+  if (state == SyncInit || state == DataWaiting)
+  {
+    std::lock_guard<std::mutex> lk(data_mutex);
+    data_buffer[msg->source] = *msg;
+    data_lasttime[msg->source] = ros::Time::now();
+    last_data_src = msg->source;
 
+    if (state == SyncInit)
+    {
+      state = DataSending;
+    }
+    else if (state == DataWaiting)
+    {
+      state = Update;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -520,9 +553,25 @@ void pf_main()
   {
     ros::Time now = ros::Time::now();
 
-    // TODO add a process for mutual localization
+    if (state == SyncReact)
+    {
+      //TODO send data to the other
 
-    if (now > last_update + update_phase) // Individual SLAM
+      state = DataWaiting;
+    }
+    else if (state == DataSending)
+    {
+      // TODO send data to the other
+
+      state = Update;
+    }
+    else if (state == Update)
+    {
+      // TODO main part of cooperative localization
+
+      state = LocalSLAM;
+    }
+    else if (now > last_update + update_phase) // Local SLAM
     {
       // initialize the time step
       last_update = now;
