@@ -548,6 +548,19 @@ void pf_main()
     }
   }
 
+  // TODO: should be parameters
+  const double conserv_omega = 0.6;
+  const double sigma_kde = 0.3;
+
+  // For data exchange.
+  const double sigma_kde_squared_x2 = 2 * sigma_kde * sigma_kde;
+  mav_tunnel_nav::Particles data_msg;
+  data_msg.source = robot_name;
+  data_msg.particles.resize(n_particles);
+  data_msg.weights.resize(n_particles);
+  std::vector<double> cumul_weights(n_particles);
+  std::vector<double> cumul_weights_comp(n_particles);
+
   // the main loop
   while (ros::ok())
   {
@@ -555,7 +568,63 @@ void pf_main()
 
     if (state == SyncReact)
     {
-      //TODO send data to the other
+      // set the destination
+      data_msg.destination = last_sync_src;
+
+      // calculate the weights
+      for (int i = 0; i < n_particles; ++i)
+      {
+        cumul_weights[i] = 1.0;
+      }
+      for (int i = 0; i < n_particles; ++i)
+      {
+        // KDE: kernel density estimation.
+        // estimate the value on the point of the probability distribution
+        for (int j = i + 1; j < n_particles; ++j)
+        {
+          double diff
+            = (particles[i]->getPose().getOrigin()
+              - particles[j]->getPose().getOrigin()).length();
+          double val = exp(-diff*diff/sigma_kde_squared_x2);
+          cumul_weights[i] += val;
+          cumul_weights[j] += val;
+        }
+        double buff = pow(cumul_weights[i], conserv_omega);
+
+        // p^omega / p = p^(omega - 1)
+        cumul_weights[i] = buff / cumul_weights[i];
+        if (i > 0)
+        {
+          cumul_weights[i] += cumul_weights[i-1];
+        }
+        // p^(1-omega) / p = p^(-omega) = 1 / p^omega
+        cumul_weights_comp[i] = 1.0 / buff;
+        if (i > 0)
+        {
+          cumul_weights_comp[i] += cumul_weights_comp[i-1];
+        }
+      }
+      for (int i = 0; i < n_particles; ++i)
+      {
+        data_msg.weights[i] = cumul_weights_comp[i];
+      }
+
+      // set the particle's poses.
+      for (int i = 0; i < n_particles; ++i)
+      {
+        tf::Vector3 pos = particles[i]->getPose().getOrigin();
+        tf::Quaternion rot = particles[i]->getPose().getRotation();
+        data_msg.particles[i].position.x = pos.x();
+        data_msg.particles[i].position.y = pos.y();
+        data_msg.particles[i].position.z = pos.z();
+        data_msg.particles[i].orientation.w = rot.w();
+        data_msg.particles[i].orientation.x = rot.x();
+        data_msg.particles[i].orientation.y = rot.y();
+        data_msg.particles[i].orientation.z = rot.z();
+      }
+
+      // send data to the other
+      data_pub.publish(data_msg);
 
       state = DataWaiting;
     }
