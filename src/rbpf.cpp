@@ -365,6 +365,71 @@ void Particle::compress_map()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+inline void prepareDataMsg(
+  mav_tunnel_nav::Particles& data_msg, std::string& last_sync_src,
+  std::vector<double>& cumul_weights, std::vector<double>& cumul_weights_comp,
+  const double& conserv_omega, const double& sigma_kde_squared_x2,
+  const std::vector< std::shared_ptr<Particle> >& particles)
+{
+  const int n_particles = particles.size();
+
+  // set the destination
+  data_msg.destination = last_sync_src;
+
+  // calculate the weights
+  for (int i = 0; i < n_particles; ++i)
+  {
+    cumul_weights[i] = 1.0;
+  }
+  for (int i = 0; i < n_particles; ++i)
+  {
+    // KDE: kernel density estimation.
+    // estimate the value on the point of the probability distribution
+    for (int j = i + 1; j < n_particles; ++j)
+    {
+      double diff
+        = (particles[i]->getPose().getOrigin()
+          - particles[j]->getPose().getOrigin()).length();
+      double val = exp(-diff*diff/sigma_kde_squared_x2);
+      cumul_weights[i] += val;
+      cumul_weights[j] += val;
+    }
+    double buff = pow(cumul_weights[i], conserv_omega);
+
+    // p^omega / p = p^(omega - 1)
+    cumul_weights[i] = buff / cumul_weights[i];
+    if (i > 0)
+    {
+      cumul_weights[i] += cumul_weights[i-1];
+    }
+    // p^(1-omega) / p = p^(-omega) = 1 / p^omega
+    cumul_weights_comp[i] = 1.0 / buff;
+    if (i > 0)
+    {
+      cumul_weights_comp[i] += cumul_weights_comp[i-1];
+    }
+  }
+  for (int i = 0; i < n_particles; ++i)
+  {
+    data_msg.weights[i] = cumul_weights_comp[i];
+  }
+
+  // set the particle's poses.
+  for (int i = 0; i < n_particles; ++i)
+  {
+    tf::Vector3 pos = particles[i]->getPose().getOrigin();
+    tf::Quaternion rot = particles[i]->getPose().getRotation();
+    data_msg.particles[i].position.x = pos.x();
+    data_msg.particles[i].position.y = pos.y();
+    data_msg.particles[i].position.z = pos.z();
+    data_msg.particles[i].orientation.w = rot.w();
+    data_msg.particles[i].orientation.x = rot.x();
+    data_msg.particles[i].orientation.y = rot.y();
+    data_msg.particles[i].orientation.z = rot.z();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void pf_main()
 {
   ros::NodeHandle nh;
@@ -412,7 +477,8 @@ void pf_main()
 
   std::string octomap_topic;
   pnh.getParam("octomap_topic", octomap_topic);
-  ros::Publisher map_pub = nh.advertise<octomap_msgs::Octomap>(octomap_topic, 1);
+  ros::Publisher map_pub
+    = nh.advertise<octomap_msgs::Octomap>(octomap_topic, 1);
   ros::Publisher marker_occupied_pub
     = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
   ros::Publisher vis_poses_pub
@@ -566,62 +632,19 @@ void pf_main()
   {
     ros::Time now = ros::Time::now();
 
-    if (state == SyncReact)
+    if (state == SyncInit)
     {
-      // set the destination
-      data_msg.destination = last_sync_src;
+      // TODO:
+      // if time out, state = LocalSLAM
 
-      // calculate the weights
-      for (int i = 0; i < n_particles; ++i)
-      {
-        cumul_weights[i] = 1.0;
-      }
-      for (int i = 0; i < n_particles; ++i)
-      {
-        // KDE: kernel density estimation.
-        // estimate the value on the point of the probability distribution
-        for (int j = i + 1; j < n_particles; ++j)
-        {
-          double diff
-            = (particles[i]->getPose().getOrigin()
-              - particles[j]->getPose().getOrigin()).length();
-          double val = exp(-diff*diff/sigma_kde_squared_x2);
-          cumul_weights[i] += val;
-          cumul_weights[j] += val;
-        }
-        double buff = pow(cumul_weights[i], conserv_omega);
-
-        // p^omega / p = p^(omega - 1)
-        cumul_weights[i] = buff / cumul_weights[i];
-        if (i > 0)
-        {
-          cumul_weights[i] += cumul_weights[i-1];
-        }
-        // p^(1-omega) / p = p^(-omega) = 1 / p^omega
-        cumul_weights_comp[i] = 1.0 / buff;
-        if (i > 0)
-        {
-          cumul_weights_comp[i] += cumul_weights_comp[i-1];
-        }
-      }
-      for (int i = 0; i < n_particles; ++i)
-      {
-        data_msg.weights[i] = cumul_weights_comp[i];
-      }
-
-      // set the particle's poses.
-      for (int i = 0; i < n_particles; ++i)
-      {
-        tf::Vector3 pos = particles[i]->getPose().getOrigin();
-        tf::Quaternion rot = particles[i]->getPose().getRotation();
-        data_msg.particles[i].position.x = pos.x();
-        data_msg.particles[i].position.y = pos.y();
-        data_msg.particles[i].position.z = pos.z();
-        data_msg.particles[i].orientation.w = rot.w();
-        data_msg.particles[i].orientation.x = rot.x();
-        data_msg.particles[i].orientation.y = rot.y();
-        data_msg.particles[i].orientation.z = rot.z();
-      }
+      // NOTE: the state is switched to DataSending by the callback once the
+      //       data from the other robot is received.
+    }
+    else if (state == SyncReact)
+    {
+      prepareDataMsg(
+        data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
+        conserv_omega, sigma_kde_squared_x2, particles);
 
       // send data to the other
       data_pub.publish(data_msg);
@@ -630,9 +653,21 @@ void pf_main()
     }
     else if (state == DataSending)
     {
-      // TODO send data to the other
+      prepareDataMsg(
+        data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
+        conserv_omega, sigma_kde_squared_x2, particles);
+
+      // send data to the other
+      data_pub.publish(data_msg);
 
       state = Update;
+    }
+    else if (state == DataWaiting)
+    {
+      // NOTE: do nothing in the main loop.
+
+      // NOTE: the state is switched to Update by the callback once the
+      //       data from the other robot is received.
     }
     else if (state == Update)
     {
@@ -640,7 +675,15 @@ void pf_main()
 
       state = LocalSLAM;
     }
-    else if (now > last_update + update_phase) // Local SLAM
+    else if (now <= last_update + update_phase) // in the default state
+    {
+      // TODO: decide if it should initiate interactions with a neighbor.
+
+      // TODO: randomly select a neighbor to interact.
+
+      // TODO: send a sync packet.
+    }
+    else // perform the local SLAM
     {
       // initialize the time step
       last_update = now;
