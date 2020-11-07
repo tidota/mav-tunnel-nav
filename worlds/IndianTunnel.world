@@ -44,16 +44,96 @@
       <gravity>0 0 -9.81</gravity>
     </physics>
 
-    <light type="directional" name="directional_light_1">
+    <light type="directional" name="directional_light">
       <pose>0 20 20 0.1 0.1 0</pose>
-      <diffuse>1 1 1 1</diffuse>
-      <specular>1 1 1 1</specular>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+      <specular>0.75 0.75 0.75 1</specular>
       <attenuation>
         <range>300</range>
       </attenuation>
       <direction>0.1 0.1 -1</direction>
       <cast_shadows>false</cast_shadows>
     </light>
+<!-- 
+    <light type="point" name="light1">
+      <pose>0 0 5.10 0 0 0</pose>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+      <specular>1 1 1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.20</constant>
+        <linear>0.01</linear>
+        <quadratic>0.01</quadratic>
+      </attenuation>
+      <direction>0.1 0.1 -1</direction>
+      <cast_shadows>false</cast_shadows>
+    </light>
+    <light type="point" name="light2">
+      <pose>11.13 11.88 2.00 0 0 0</pose>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+      <specular>1 1 1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.20</constant>
+        <linear>0.01</linear>
+        <quadratic>0.01</quadratic>
+      </attenuation>
+      <direction>0.1 0.1 -1</direction>
+      <cast_shadows>false</cast_shadows>
+    </light>
+    <light type="point" name="light3">
+      <pose>13.83 27.60 0.00 0 0 0</pose>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+      <specular>1 1 1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.20</constant>
+        <linear>0.01</linear>
+        <quadratic>0.01</quadratic>
+      </attenuation>
+      <direction>0.1 0.1 -1</direction>
+      <cast_shadows>false</cast_shadows>
+    </light>
+    <light type="point" name="light4">
+      <pose>11.36 40.24 -0.52 0 0 0</pose>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+      <specular>1 1 1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.20</constant>
+        <linear>0.01</linear>
+        <quadratic>0.01</quadratic>
+      </attenuation>
+      <direction>0.1 0.1 -1</direction>
+      <cast_shadows>false</cast_shadows>
+    </light>
+    <light type="point" name="light5">
+      <pose>0.92 54.21 -1.00 0 0 0</pose>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+      <specular>1 1 1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.20</constant>
+        <linear>0.01</linear>
+        <quadratic>0.01</quadratic>
+      </attenuation>
+      <direction>0.1 0.1 -1</direction>
+      <cast_shadows>false</cast_shadows>
+    </light>
+    <light type="point" name="light6">
+      <pose>-6.00 71.78 -0.65 0 0 0</pose>
+      <diffuse>0.75 0.75 0.75 1</diffuse>
+      <specular>1 1 1 1</specular>
+      <attenuation>
+        <range>20</range>
+        <constant>0.20</constant>
+        <linear>0.01</linear>
+        <quadratic>0.01</quadratic>
+      </attenuation>
+      <direction>0.1 0.1 -1</direction>
+      <cast_shadows>false</cast_shadows>
+    </light>
+-->
 
     <include>
       <uri>model://indian_tunnel</uri>
