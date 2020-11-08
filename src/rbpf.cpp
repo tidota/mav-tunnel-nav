@@ -411,7 +411,7 @@ inline void prepareDataMsg(
   }
   for (int i = 0; i < n_particles; ++i)
   {
-    data_msg.weights[i] = cumul_weights_comp[i];
+    data_msg.cumul_weights[i] = cumul_weights_comp[i];
   }
 
   // set the particle's poses.
@@ -623,7 +623,7 @@ void pf_main()
   mav_tunnel_nav::Particles data_msg;
   data_msg.source = robot_name;
   data_msg.particles.resize(n_particles);
-  data_msg.weights.resize(n_particles);
+  data_msg.cumul_weights.resize(n_particles);
   std::vector<double> cumul_weights(n_particles);
   std::vector<double> cumul_weights_comp(n_particles);
 
@@ -671,7 +671,24 @@ void pf_main()
     }
     else if (state == Update)
     {
+      mav_tunnel_nav::Particles msg;
+      {
+        std::lock_guard<std::mutex> lk(data_mutex);
+        msg = data_buffer[last_data_src];
+        //data_lasttime[last_data_src]
+      }
       // TODO main part of cooperative localization
+      // so what it has at this point?
+      // cumul_weights
+      // msg.estimated_distance
+      // msg.estimated_orientation
+      // msg.cumul_weights
+      // msg.particles
+
+      // calculate weights for resampling:
+      //   multiply each pair
+
+      // resampling
 
       state = LocalSLAM;
     }
