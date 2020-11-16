@@ -30,7 +30,7 @@ def spawn(req):
 	finally:
 		p.wait()
 
-	return SpawnRobot(true)
+	return SpawnRobot(True)
 
 if __name__ == '__main__':
 	# Filter out any special ROS remapping arguments.

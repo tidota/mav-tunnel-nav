@@ -7,13 +7,15 @@
 // #include <dynamic_reconfigure/Reconfigure.h>
 // #include <openssl/sha.h>
 
-#include <ignition/math.hh>
-
-#include <ros/master.h>
-
 #include <gazebo/common/Assert.hh>
 #include <gazebo/common/Events.hh>
 #include <gazebo/physics/physics.hh>
+
+#include <ignition/math.hh>
+
+#include <mav_tunnel_nav/SpawnRobot.h>
+
+#include <ros/master.h>
 
 #include <sim_plugins/AdHocNetPlugin.hh>
 
@@ -85,6 +87,12 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
           "/" + robot + "/" + data_down_topic, 1);
   }
 
+  // TODO: parameterize this.
+  this->spawnDist = 8.0;
+  this->spawning = false;
+  this->robot_spawner_client
+    = this->nh.serviceClient<mav_tunnel_nav::SpawnRobot>("spawn_robot");
+
   this->updateConnection = event::Events::ConnectWorldUpdateBegin(
     std::bind(&AdHocNetPlugin::OnUpdate, this));
 
@@ -127,35 +135,36 @@ void AdHocNetPlugin::OnUpdate()
   ros::Time current = ros::Time::now();
   if (current - last_update > topo_interval)
   {
-    for (unsigned int i = 0; i < this->robotList.size() - 1; ++i)
+    // check interactions of each pair of robots.
+    for (unsigned int i = 0; i < this->spawnedList.size() - 1; ++i)
     {
-      for (unsigned int j = i + 1; j < this->robotList.size(); ++j)
+      for (unsigned int j = i + 1; j < this->spawnedList.size(); ++j)
       {
-        auto robot1 = this->world->ModelByName(this->robotList[i]);
-        auto robot2 = this->world->ModelByName(this->robotList[j]);
+        auto robot1 = this->world->ModelByName(this->spawnedList[i]);
+        auto robot2 = this->world->ModelByName(this->spawnedList[j]);
         if (robot1 && robot2)
         {
           auto robot1_pose = robot1->WorldPose();
           auto robot2_pose = robot2->WorldPose();
           auto diff = robot2_pose - robot1_pose;
-          setPoseInfo(this->robotList[i], this->robotList[j], diff);
+          setPoseInfo(this->spawnedList[i], this->spawnedList[j], diff);
           if (diff.Pos().Length() <= this->comm_range)
           {
             setTopoInfo(
-              this->robotList[i], this->robotList[j],
+              this->spawnedList[i], this->spawnedList[j],
               this->CheckLineOfSight(robot1_pose.Pos(), robot2_pose.Pos()));
           }
           else
           {
             setTopoInfo(
-              this->robotList[i], this->robotList[j], false);
+              this->spawnedList[i], this->spawnedList[j], false);
           }
         }
       }
     }
 
-    // checking intercations with the base station
-    for (auto robot_name: this->robotList)
+    // check intercations with the base station
+    for (auto robot_name: this->spawnedList)
     {
       auto robot = this->world->ModelByName(robot_name);
       if (robot)
@@ -171,6 +180,47 @@ void AdHocNetPlugin::OnUpdate()
         {
           setTopoInfo(base_name, robot_name, false);
         }
+      }
+    }
+
+    if (this->spawning)
+    {
+      if (this->world->ModelByName(this->robotList[this->spawnedList.size()]))
+      {
+        this->spawnedList.push_back(
+          this->robotList[this->spawnedList.size()]);
+        this->spawning = false;
+      }
+    }
+    else
+    {
+      // check if the next robot is to be spawned.
+      bool toSpawn = false;
+      if (this->spawnedList.size() == 0)
+      {
+        toSpawn = true;
+      }
+      else if (this->spawnedList.size() != this->robotList.size())
+      {
+        // check if the last robot is far away from the base.
+        auto robot = this->world->ModelByName(
+              this->spawnedList[this->spawnedList.size() - 1]);
+        if (robot->WorldPose().Pos().Length() > this->spawnDist)
+          toSpawn = true;
+      }
+
+      if (toSpawn)
+      {
+        // call the ROS service.
+        mav_tunnel_nav::SpawnRobot srv;
+        srv.request.x = this->initLoc.getX();
+        srv.request.y = this->initLoc.getY();
+        srv.request.z = this->initLoc.getZ();
+        srv.request.Y = this->initOri;
+        srv.request.robot = this->robotList[this->spawnedList.size()];
+        this->robot_spawner_client.call(srv);
+
+        this->spawning = true;
       }
     }
 
@@ -191,7 +241,7 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
   {
     if (msg->destination.size() == 0)
     {
-      for (auto robot: this->robotList)
+      for (auto robot: this->spawnedList)
       {
         if (msg->source != robot)
         {
@@ -345,387 +395,3 @@ bool AdHocNetPlugin::CheckLineOfSight(
 
   return clear;
 }
-
-//////////////////////////////////////////////////
-// double AdHocNetPlugin::CheckRange(
-//   const physics::ModelPtr& robot1, const physics::ModelPtr& robot2)
-// {
-//   ignition::math::Vector3d start = robot1->WorldPose().Pos();
-//   ignition::math::Vector3d end = robot2->WorldPose().Pos();
-//
-//   return (end - start).Length();
-// }
-
-// ////////////////////////////////////////////////
-// private: inline bool CheckTopology(
-//   const std::string& robot_name1, const std::string& robot_name2)
-// {
-//   // check the topology info
-//   // TODO
-//   return false;
-// }
-
-// //////////////////////////////////////////////////
-// void AdHocNetPlugin::CheckRobotsReadyTh()
-// {
-//   while (ros::ok())
-//   {
-//     ros::master::V_TopicInfo master_topics;
-//     ros::master::getTopics(master_topics);
-//
-//     bool allReady = true;
-//     for (auto name: this->robotList)
-//     {
-//       int counts = 0;
-//       for (auto it = master_topics.begin(); it != master_topics.end(); it++)
-//       {
-//         const ros::master::TopicInfo& info = *it;
-//         if (
-//           info.name == "/" + name + "/controller/velocity/x/state" ||
-//           info.name == "/" + name + "/controller/velocity/y/state" ||
-//           info.name == "/" + name + "/controller/velocity/z/state" ||
-//           info.name == "/" + name + "/controller/attitude/roll/state" ||
-//           info.name == "/" + name + "/controller/attitude/pitch/state" ||
-//           info.name == "/" + name + "/controller/attitude/yawrate/state")
-//         {
-//           counts++;
-//         }
-//       }
-//       if (counts < 6)
-//       {
-//         allReady = false;
-//       }
-//     }
-//     if (allReady)
-//     {
-//       gzmsg << "ALL READY!" << std::endl;
-//       for (auto robotName: this->robotList)
-//       {
-//         this->initPoseList[robotName]
-//           = this->world->ModelByName(robotName)->WorldPose();
-//       }
-//       break;
-//     }
-//     ros::Duration(0.1).sleep();
-//   }
-//
-//   if (ros::ok())
-//   {
-//     ros::Duration(2).sleep();
-//     std_msgs::Bool start;
-//     start.data = true;
-//     this->startFlyingPub.publish(start);
-//   }
-// }
-//
-// /////////////////////////////////////////////////
-// void AdHocNetPlugin::OnMessage(
-//   const boost::shared_ptr<adhoc::msgs::Datagram const> &_req)
-// {
-//   // Once a packet is received, it is instantaneously processed.
-//   std::lock_guard<std::mutex> lk(this->messageMutex);
-//   this->lastRecvTime = this->world->SimTime();
-//
-//   physics::ModelPtr sender = this->world->ModelByName(_req->robot_name());
-//   this->totalSentPackets++;
-//
-//   if (sender)
-//   {
-//     for (int i = 1; i <= 10; ++i)
-//     {
-//       std::string name = "robot" + std::to_string(i);
-//
-//       if (name == sender->GetName())
-//         continue;
-//
-//       physics::ModelPtr robot = this->world->ModelByName(name);
-//
-//       if (robot)
-//       {
-//         // forward the message if the robot is within the range of the sender.
-//         auto diffVec
-//           = robot->WorldPose().CoordPositionSub(sender->WorldPose());
-//         double length = fabs(diffVec.Length());
-//
-//         if (length <= this->commRange)
-//         {
-//           this->pubMap[robot->GetName()]->Publish(*_req);
-//           unsigned char hash[SHA256_DIGEST_LENGTH];
-//           this->CalcHash(*_req, hash);
-//           if (!this->HasHash(hash))
-//             this->RegistHash(hash);
-//           this->totalRecvPackets++;
-//         }
-//       }
-//     }
-//   }
-// }
-//
-// //////////////////////////////////////////////////
-// void AdHocNetPlugin::OnSimCmdResponse(
-//   const boost::shared_ptr<adhoc::msgs::SimInfo const> &_res)
-// {
-//   std::lock_guard<std::mutex> lk(this->simInfoMutex);
-//
-//   if (_res->state() == "started")
-//   {
-//     gzmsg << "response (started) from " << _res->robot_name() << std::endl;
-//
-//     if (std::find(
-//         this->listStartResponses.begin(), this->listStartResponses.end(), _res)
-//           == this->listStartResponses.end())
-//       this->listStartResponses.push_back(_res);
-//
-//     // if all started.
-//     if (this->listStartResponses.size() == this->robotList.size())
-//     {
-//       this->CheckTopoChange();
-//       this->startTime = this->world->SimTime();
-//       this->lastStatPrintTime = this->world->SimTime();
-//       this->started = true;
-//
-//       // start recording
-//       gzmsg << "Network started" << std::endl;
-//     }
-//   }
-//   else if (_res->state() == "stopped")
-//   {
-//     gzmsg << "response (stopped) from " << _res->robot_name() << std::endl;
-//
-//     if (std::find(
-//         this->listStopResponses.begin(), this->listStopResponses.end(), _res)
-//           == this->listStopResponses.end())
-//       this->listStopResponses.push_back(_res);
-//
-//     // if all are done.
-//     if (this->listStopResponses.size() == this->robotList.size())
-//     {
-//       common::Time current = this->world->SimTime();
-//       double elapsed = current.Double() - this->startTime.Double();
-//
-//       int sentMessageCount = 0;
-//       int recvMessageCount = 0;
-//       int totalHops = 0;
-//       double totalRoundTripTime = 0;
-//
-//       double totalDistComm = 0;
-//       double totalDistMotion = 0;
-//
-//       for (auto res: this->listStopResponses)
-//       {
-//         sentMessageCount += res->sent_message_count();
-//         recvMessageCount += res->recv_message_count();
-//         totalHops += res->total_hops();
-//         totalRoundTripTime += res->total_round_trip_time();
-//
-//         totalDistComm += res->total_dist_comm();
-//         totalDistMotion += res->total_dist_motion();
-//       }
-//
-//       // finish recording
-//       std::stringstream ss;
-//       ss << "--- Network ---" << std::endl;
-//       ss << "Time," << elapsed << std::endl;
-//       ss << "Total # of Sent Packets," << this->totalSentPackets << std::endl;
-//       ss << "Total # of Recv Packets," << this->totalRecvPackets << std::endl;
-//       ss << "Total # of Message," << this->hashSet.size() << std::endl;
-//       ss << "Avg # of Packets per Sent Message,"
-//          << ((double)this->totalSentPackets)/this->hashSet.size() << std::endl;
-//       ss << "Avg # of Packets per Recv Message,"
-//          << ((double)this->totalRecvPackets)/this->hashSet.size() << std::endl;
-//       ss << "Total # of Topology Changes,"
-//          << this->topoChangeCount << std::endl;
-//       ss << "Frequency of Topology Change,"
-//          << this->topoChangeCount / elapsed << std::endl;
-//
-//       ss << "--- Client ---" << std::endl;
-//       ss << "Robot Speed," << this->currentRobotSpeed << std::endl;
-//       ss << "Time of hop to delay," << this->currentDelayTime << std::endl;
-//       ss << "Total # of Sent Messages," << sentMessageCount << std::endl;
-//       ss << "Total # of Received Messages," << recvMessageCount << std::endl;
-//       ss << "Total # of Hops," << totalHops << std::endl;
-//       ss << "Avg # of hops per Message,"
-//          << ((double)totalHops)/recvMessageCount << std::endl;
-//       ss << "Total Round Trip Time," << totalRoundTripTime << std::endl;
-//       ss << "Avg Round Trip Time per Message,"
-//          << totalRoundTripTime/recvMessageCount << std::endl;
-//       ss << "Total Distance of Communication," << totalDistComm << std::endl;
-//       ss << "Avg Distance of Communicaiton Taken by a Packet,"
-//          << totalDistComm/recvMessageCount << std::endl;
-//       ss << "Total Distance of Motion," << totalDistMotion << std::endl;
-//       ss << "Avg Distance of Motion Taken by a Packet,"
-//          << totalDistMotion/recvMessageCount << std::endl;
-//
-//       gzmsg << ss.str();
-//
-//       std::stringstream filename;
-//       filename << "Simulation_d" << this->currentDelayTime
-//                << "_s" << this->currentRobotSpeed
-//                << "_" << current.FormattedString() << ".csv";
-//       std::fstream fs;
-//       fs.open(filename.str(), std::fstream::out);
-//       fs << ss.str();
-//       fs.close();
-//
-//       // Reset the robot's pose.
-//       for (auto robotName: this->robotList)
-//       {
-//         auto model = this->world->ModelByName(robotName);
-//         for (auto link: model->GetLinks())
-//         {
-//           link->ResetPhysicsStates();
-//         }
-//         model->SetWorldPose(this->initPoseList[robotName]);
-//         //model->Reset();
-//       }
-//       // Once the flag is set to false, the plugin starts to check the robot's
-//       // pose and start the next simulation trial when they reach the specific
-//       // altitude.
-//       this->robotsReadyToComm = false;
-//     }
-//   }
-// }
-//
-// //////////////////////////////////////////////////
-// void AdHocNetPlugin::CalcHash(
-//   const adhoc::msgs::Datagram &_msg, unsigned char *_hash)
-// {
-//   std::string input
-//     = std::to_string(_msg.src_address()) + std::to_string(_msg.dst_address())
-//     + std::to_string(_msg.index()) + _msg.data();
-//
-//   SHA256((unsigned char*)input.c_str(), input.length(), _hash);
-// }
-//
-// //////////////////////////////////////////////////
-// bool AdHocNetPlugin::HasHash(const unsigned char *_hash)
-// {
-//   std::string buff;
-//   buff.assign((const char*)_hash, SHA256_DIGEST_LENGTH);
-//
-//   if (this->hashSet.count(buff) != 0)
-//       return true;
-//   else
-//       return false;
-// }
-//
-// //////////////////////////////////////////////////
-// void AdHocNetPlugin::RegistHash(const unsigned char *_hash)
-// {
-//   std::string str;
-//   str.assign((const char*)_hash, SHA256_DIGEST_LENGTH);
-//   this->hashSet.insert(str);
-// }
-//
-// //////////////////////////////////////////////////
-// int AdHocNetPlugin::CheckTopoChange()
-// {
-//   int count = 0;
-//   for (int i = 1; i <= 9; ++i)
-//   {
-//     for (int j = i + 1; j <= 10; ++j)
-//     {
-//       physics::ModelPtr robot1
-//         = this->world->ModelByName("robot" + std::to_string(i));
-//       physics::ModelPtr robot2
-//         = this->world->ModelByName("robot" + std::to_string(j));
-//
-//       if (!robot1 || !robot2)
-//         continue;
-//
-//       auto diffVec
-//         = robot1->WorldPose().CoordPositionSub(robot2->WorldPose());
-//       double length = fabs(diffVec.Length());
-//
-//       bool inRange = (length <= this->commRange);
-//       if (inRange != this->topoList[std::to_string(i)+":"+std::to_string(j)])
-//       {
-//         count++;
-//         this->topoList[std::to_string(i)+":"+std::to_string(j)] = inRange;
-//         //if (inRange)
-//         //  gzdbg << i << ":" << j << ", connected" << std::endl;
-//         //else
-//         //  gzdbg << i << ":" << j << ", disconnected" << std::endl;
-//       }
-//     }
-//   }
-//
-//   return count;
-// }
-//
-// //////////////////////////////////////////////////
-// void AdHocNetPlugin::StartNewTrial()
-// {
-//   if (this->settingList.size() > 0)
-//   {
-//     gzmsg << "StartNewTrial" << std::endl;
-//     std::string settingName = this->settingList.front();
-//     this->settingList.pop();
-//
-//     gzmsg << "getting setting: " << settingName << std::endl;
-//     std::map<std::string, double> settingMap;
-//     this->n.param(settingName, settingMap, settingMap);
-//
-//     this->started = false;
-//     this->stopping = false;
-//     this->finished = false;
-//
-//     this->totalSentPackets = 0;
-//     this->totalRecvPackets = 0;
-//     this->topoChangeCount = 0;
-//
-//     gzmsg << "Net: clearing hashSet" << std::endl;
-//     this->hashSet.clear();
-//     gzmsg << "Net: done" << std::endl;
-//
-//     this->n.getParam("simulation_period", this->simPeriod);
-//     this->n.getParam("communication_range", this->commRange);
-//
-//     if (settingMap.count("simulation_period") > 0)
-//       this->simPeriod = settingMap["simulation_period"];
-//     if (settingMap.count("communication_range") > 0)
-//       this->commRange = settingMap["communication_range"];
-//
-//     gzmsg << "publishing new velocity" << std::endl;
-//
-//     std_msgs::Float32 vel;
-//     this->currentRobotSpeed = settingMap["robot_speed"];
-//     vel.data = this->currentRobotSpeed;
-//     this->navVelUpdatePub.publish(vel);
-//
-//     gzmsg << std::endl
-//           << "===================================================" << std::endl
-//           << "===================================================" << std::endl
-//           << "Trial: " << settingName << std::endl
-//           << "simulation period: " << this->simPeriod << std::endl
-//           << "communicaiton range: " << this->commRange << std::endl
-//           << "robot speed: " << vel.data << std::endl
-//           << "===================================================" << std::endl
-//           << "===================================================" << std::endl;
-//
-//     for (int i = 1; i <= 9; ++i)
-//     {
-//       for (int j = i + 1; j <= 10; ++j)
-//       {
-//         this->topoList[std::to_string(i)+":"+std::to_string(j)] = false;
-//       }
-//     }
-//
-//     this->currentDelayTime = settingMap["delay_time"];
-//
-//     this->listStartResponses.clear();
-//     adhoc::msgs::SimInfo start;
-//     start.set_state("start");
-//     start.set_robot_name("");
-//     start.set_delay_time(this->currentDelayTime);
-//     this->simCmdPub->Publish(start);
-//   }
-//   else
-//   {
-//     gzmsg << "Simulation done: " << std::endl
-//           << this->world->SimTime().FormattedString() << " (Sim Time)"
-//           << std::endl
-//           << this->world->RealTime().FormattedString() << " (Real Time)"
-//           << std::endl;
-//   }
-// }

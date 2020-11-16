@@ -132,6 +132,26 @@ namespace gazebo
     /// \brief list of robot names.
     private: std::vector<std::string> robotList;
 
+    /// \brief list of spawned robots.
+    private: std::vector<std::string> spawnedList;
+
+    /// \brief If the last spawned robot reached this distance from the base,
+    ///        spawn a new robot.
+    private: double spawnDist;
+
+    /// \brief If true, the ROS service has been called to spawn a new robot and
+    ///        it is waiting for the robot to be spawned.
+    private: bool spawning;
+
+    /// \brief The robot initial location when it is spawn.
+    private: tf::Vector3 initLoc;
+
+    /// \brief The robot initial orientation (Yaw) when it is spawn.
+    private: double initOri;
+
+    /// \brief ROS service client to spawn a robot.
+    private: ros::ServiceClient robot_spawner_client;
+
     /// \brief communication range
     private: double comm_range;
 
