@@ -166,6 +166,36 @@ void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+inline int drawIndex(
+  const std::vector<double>& cumul_weights, std::mt19937& gen)
+{
+  std::uniform_real_distribution<>
+    dist(0, cumul_weights[cumul_weights.size() - 1]);
+
+  double val = dist(gen);
+  int lo = 0;
+  int hi = cumul_weights.size() - 1;
+
+  while (lo < hi - 1)
+  {
+    int mid = (hi + lo)/2;
+
+    if (val > cumul_weights[mid])
+    {
+      lo = mid;
+    }
+    else
+    {
+      hi = mid;
+    }
+  }
+  int indx = hi;
+  if (val <= cumul_weights[lo])
+    indx = lo;
+  return indx;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 Particle::Particle(
   const double &init_x, const double &init_y, const double &init_z,
   const double &init_Y, const double &resol,
@@ -617,6 +647,13 @@ void pf_main()
   // TODO: should be parameters
   const double conserv_omega = 0.6;
   const double sigma_kde = 0.3;
+  const int Nref = 10;
+  const int seed = 1000;
+  const double sigmaMutualLocR = 0.5;
+  const double sigmaMutualLocT = 0.1;
+
+  std::mt19937 gen_cooploc;
+  gen_cooploc.seed(seed);
 
   // For data exchange.
   const double sigma_kde_squared_x2 = 2 * sigma_kde * sigma_kde;
@@ -677,7 +714,7 @@ void pf_main()
         msg = data_buffer[last_data_src];
         //data_lasttime[last_data_src]
       }
-      // TODO main part of cooperative localization
+      // === calculate weights for resampling === //
       // so what it has at this point?
       // cumul_weights
       // msg.estimated_distance
@@ -685,10 +722,89 @@ void pf_main()
       // msg.cumul_weights
       // msg.particles
 
-      // calculate weights for resampling:
-      //   multiply each pair
+      // convert geometry_msgs::Point to tf::Vector3.
+      tf::Vector3 msg_estimated_orientation(
+        msg.estimated_orientation.x,
+        msg.estimated_orientation.y,
+        msg.estimated_orientation.z);
+
+      // cumulative weights for resampling.
+      std::vector<double> cumul_weights_update;
+
+      // for all particles
+      for (int ip = 0; ip < n_particles; ++ip)
+      {
+        // initialize the wegith
+        cumul_weights_update[ip] = 0;
+        // get the particle's pose
+        tf::Pose robot_pose = particles[ip]->getPose();
+        // for Nref
+        for (int i = 0; i < Nref; ++i)
+        {
+          // get a particle of the other robot by msg.cumul_weights
+          auto neighbor_pose_msg
+            = msg.particles[drawIndex(msg.cumul_weights, gen_cooploc)];
+          tf::Pose neighbor_pose(
+            tf::Quaternion(
+              neighbor_pose_msg.orientation.x,
+              neighbor_pose_msg.orientation.y,
+              neighbor_pose_msg.orientation.z,
+              neighbor_pose_msg.orientation.w),
+            tf::Vector3(
+              neighbor_pose_msg.position.x,
+              neighbor_pose_msg.position.y,
+              neighbor_pose_msg.position.z));
+          // simulate a measurement based on the sampled poses.
+          tf::Vector3 sampled_loc = (robot_pose * neighbor_pose.inverse()).getOrigin();
+          double sampled_range = sampled_loc.length();
+          tf::Vector3 sampled_orientation = sampled_loc / sampled_range;
+
+          // difference from the actual sensory data
+          double diff_range = sampled_range - msg.estimated_distance;
+          double diff_rad
+            = std::acos(sampled_orientation.dot(msg_estimated_orientation));
+
+          // calculate weight and add it
+          cumul_weights_update[ip]
+            += std::exp(
+                -diff_range*diff_range/sigmaMutualLocR/sigmaMutualLocR
+                -diff_rad*diff_rad/sigmaMutualLocT/sigmaMutualLocT);
+        }
+
+        //   multiply with the original weights
+        cumul_weights_update[ip]
+          *= ((ip > 0)? cumul_weights[ip] - cumul_weights[ip-1]:
+                        cumul_weights[0]);
+
+        // make it cumuluative
+        if (ip > 0)
+          cumul_weights_update[ip] += cumul_weights_update[ip - 1];
+      }
 
       // resampling
+      std::vector<int> indx_list(n_particles);
+      for (int ip = 0; ip < n_particles; ++ip)
+      {
+        indx_list[ip] = drawIndex(cumul_weights_update, gen_cooploc);
+      }
+
+      std::vector< std::shared_ptr<Particle> > new_generation;
+      std::vector<int> indx_unused(n_particles, -1);
+      for (int ip = 0; ip < n_particles; ++ip)
+      {
+        const int prev_indx = indx_unused[indx_list[ip]];
+        if (prev_indx == -1)
+        {
+          new_generation.push_back(std::move(particles[indx_list[ip]]));
+          indx_unused[indx_list[ip]] = ip;
+        }
+        else
+        {
+          new_generation.push_back(
+            std::make_shared<Particle>(*new_generation[prev_indx]));
+        }
+      }
+      std::swap(particles, new_generation);
 
       state = LocalSLAM;
     }
