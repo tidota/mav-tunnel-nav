@@ -648,12 +648,21 @@ void pf_main()
   const double conserv_omega = 0.6;
   const double sigma_kde = 0.3;
   const int Nref = 10;
-  const int seed = 1000;
+  const int seed_cooploc = 1000;
   const double sigmaMutualLocR = 0.5;
   const double sigmaMutualLocT = 0.1;
 
+  const ros::Duration beacon_lifetime(1.0);
+  const ros::Duration cooploc_phase(3.0);
+  const ros::Duration syncinit_timeout(0.5);
+
   std::mt19937 gen_cooploc;
-  gen_cooploc.seed(seed);
+  gen_cooploc.seed(seed_cooploc);
+
+  std::default_random_engine gen_cooploc_select;
+
+  ros::Time last_cooploc = ros::Time::now();
+  ros::Time last_syncinit;
 
   // For data exchange.
   const double sigma_kde_squared_x2 = 2 * sigma_kde * sigma_kde;
@@ -664,6 +673,10 @@ void pf_main()
   std::vector<double> cumul_weights(n_particles);
   std::vector<double> cumul_weights_comp(n_particles);
 
+  // For synchronization
+  mav_tunnel_nav::SrcDst sync_msg;
+  sync_msg.source = robot_name;
+
   // the main loop
   while (ros::ok())
   {
@@ -671,11 +684,13 @@ void pf_main()
 
     if (state == SyncInit)
     {
-      // TODO:
-      // if time out, state = LocalSLAM
-
-      // NOTE: the state is switched to DataSending by the callback once the
-      //       data from the other robot is received.
+      // NOTE: If timed out, it will switch back to LocalSLAM. Otherwise, the
+      //       state is switched to DataSending by the callback once the data
+      //       from the other robot is received.
+      if (now >= last_syncinit + syncinit_timeout)
+      {
+        state = LocalSLAM;
+      }
     }
     else if (state == SyncReact)
     {
@@ -755,7 +770,8 @@ void pf_main()
               neighbor_pose_msg.position.y,
               neighbor_pose_msg.position.z));
           // simulate a measurement based on the sampled poses.
-          tf::Vector3 sampled_loc = (robot_pose * neighbor_pose.inverse()).getOrigin();
+          tf::Vector3 sampled_loc
+            = (robot_pose * neighbor_pose.inverse()).getOrigin();
           double sampled_range = sampled_loc.length();
           tf::Vector3 sampled_orientation = sampled_loc / sampled_range;
 
@@ -806,15 +822,37 @@ void pf_main()
       }
       std::swap(particles, new_generation);
 
+      last_cooploc = now;
       state = LocalSLAM;
     }
     else if (now <= last_update + update_phase) // in the default state
     {
-      // TODO: decide if it should initiate interactions with a neighbor.
+      // decide if it should initiate interactions with a neighbor.
+      if (now >= last_cooploc + cooploc_phase)
+      {
+        // list up candidates to sync.
+        std::vector<std::string> candidates;
+        for (auto p: beacon_lasttime)
+        {
+          if (now <= p.second + beacon_lifetime)
+          {
+            candidates.push_back(p.first);
+          }
+        }
 
-      // TODO: randomly select a neighbor to interact.
+        if (candidates.size() > 0)
+        {
+          // randomly select a neighbor to interact.
+          std::uniform_int_distribution<int> dist(0, candidates.size() - 1);
 
-      // TODO: send a sync packet.
+          // send a sync packet.
+          sync_msg.destination = candidates[dist(gen_cooploc_select)];
+          sync_pub.publish(sync_msg);
+
+          last_syncinit = now;
+          state = SyncInit;
+        }
+      }
     }
     else // perform the local SLAM
     {
