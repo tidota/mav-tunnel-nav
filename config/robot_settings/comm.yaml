@@ -7,3 +7,8 @@ sync_up_topic: sync_up_topic
 sync_down_topic: sync_down_topic
 data_up_topic: data_up_topic
 data_down_topic: data_down_topic
+
+# The distance of the last robot from the base divided by comm_range
+# Once the ratio reaches this value, a new robot is spawned.
+ratio_spawn_comm: 0.5
+

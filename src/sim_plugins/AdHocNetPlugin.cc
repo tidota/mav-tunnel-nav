@@ -87,8 +87,9 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
           "/" + robot + "/" + data_down_topic, 1);
   }
 
-  // TODO: parameterize this.
-  this->spawnDist = 8.0;
+  double ratio_spawn_comm;
+  this->nh.param("ratio_spawn_comm", ratio_spawn_comm, ratio_spawn_comm);
+  this->spawnDist = this->comm_range * ratio_spawn_comm;
   this->spawning = false;
   this->robot_spawner_client
     = this->nh.serviceClient<mav_tunnel_nav::SpawnRobot>("spawn_robot");

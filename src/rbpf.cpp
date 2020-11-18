@@ -259,21 +259,9 @@ void Particle::initOrientation(const tf::Quaternion &orientation)
 ////////////////////////////////////////////////////////////////////////////////
 void Particle::predict(
   const tf::Vector3 &delta_pos, const tf::Quaternion &delta_rot,
-  //const double &deltaT,
   std::mt19937 &gen)
 {
-  // TODO:
-  // apply the relative pose from the previous step with some noise.
   std::normal_distribution<> motion_noise_lin(0, 0.05);
-  // this->vel_linear = tf::Vector3(
-  //   vel.x() + motion_noise_lin(gen),
-  //   vel.y() + motion_noise_lin(gen),
-  //   vel.z() + motion_noise_lin(gen));
-  // tf::Vector3 new_pos = this->pose.getOrigin()
-  //                     + tf::Vector3(
-  //                         this->vel_linear.x() * deltaT,
-  //                         this->vel_linear.y() * deltaT,
-  //                         this->vel_linear.z() * deltaT);
   tf::Vector3 delta_pos_noise(
     delta_pos.x() + motion_noise_lin(gen),
     delta_pos.y() + motion_noise_lin(gen),
@@ -644,17 +632,40 @@ void pf_main()
     }
   }
 
-  // TODO: should be parameters
-  const double conserv_omega = 0.6;
-  const double sigma_kde = 0.3;
-  const int Nref = 10;
-  const int seed_cooploc = 1000;
-  const double sigmaMutualLocR = 0.5;
-  const double sigmaMutualLocT = 0.1;
+  // parameters for cooperative localization
 
-  const ros::Duration beacon_lifetime(1.0);
-  const ros::Duration cooploc_phase(3.0);
-  const ros::Duration syncinit_timeout(0.5);
+  int param_buf_int;
+  if (!pnh.getParam("Nref", param_buf_int))
+    ROS_ERROR_STREAM("no param: Nref");
+  const int Nref = param_buf_int;
+  if (!pnh.getParam("seed_cooploc", param_buf_int))
+    ROS_ERROR_STREAM("no param: seed_cooploc");
+  const int seed_cooploc = param_buf_int;
+
+  int param_buf_double;
+  if (!pnh.getParam("conserv_omega", param_buf_int))
+    ROS_ERROR_STREAM("no param: conserv_omega");
+  const double conserv_omega = param_buf_double;
+  if (!pnh.getParam("sigma_kde", param_buf_double))
+    ROS_ERROR_STREAM("no param: sigma_kde");
+  const double sigma_kde = param_buf_double;
+
+  if (!pnh.getParam("sigmaMutualLocR", param_buf_double))
+    ROS_ERROR_STREAM("no param: sigmaMutualLocR");
+  const double sigmaMutualLocR = param_buf_double;
+  if (!pnh.getParam("sigmaMutualLocT", param_buf_double))
+    ROS_ERROR_STREAM("no param: sigmaMutualLocT");
+  const double sigmaMutualLocT = param_buf_double;
+
+  if (!pnh.getParam("beacon_lifetime", param_buf_double))
+    ROS_ERROR_STREAM("no param: beacon_lifetime");
+  const ros::Duration beacon_lifetime(param_buf_double);
+  if (!pnh.getParam("cooploc_phase", param_buf_double))
+    ROS_ERROR_STREAM("no param: cooploc_phase");
+  const ros::Duration cooploc_phase(param_buf_double);
+  if (!pnh.getParam("syncinit_timeout", param_buf_double))
+    ROS_ERROR_STREAM("no param: syncinit_timeout");
+  const ros::Duration syncinit_timeout(param_buf_double);
 
   std::mt19937 gen_cooploc;
   gen_cooploc.seed(seed_cooploc);
