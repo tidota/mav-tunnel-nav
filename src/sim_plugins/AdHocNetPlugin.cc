@@ -114,7 +114,7 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
   last_update = ros::Time::now();
 
   // initialize topology info
-  for (unsigned int i = 0; i < this->robotList.size() - 1; ++i)
+  for (unsigned int i = 0; i < this->robotList.size(); ++i)
   {
     for (unsigned int j = i + 1; j < this->robotList.size(); ++j)
     {
@@ -137,7 +137,7 @@ void AdHocNetPlugin::OnUpdate()
   if (current - last_update > topo_interval)
   {
     // check interactions of each pair of robots.
-    for (unsigned int i = 0; i < this->spawnedList.size() - 1; ++i)
+    for (unsigned int i = 0; i < this->spawnedList.size(); ++i)
     {
       for (unsigned int j = i + 1; j < this->spawnedList.size(); ++j)
       {

@@ -10,6 +10,7 @@
   <arg name="map_only" default="false"/>
   <arg name="ground_truth" default="$(arg map_only)"/>
   <arg name="map_filename" default=""/>
+  <arg name="extra_gazebo_args" default="--verbose"/>
 
   <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/robots.yaml" />
   <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/comm.yaml" />
@@ -27,7 +28,7 @@
     <arg name="gui" value="false"/>
     <arg name="headless" value="false"/>
     <arg name="debug" value="false"/>
-    <arg name="extra_gazebo_args" value="" /> <!-- verbose -->
+    <arg name="extra_gazebo_args" value="$(arg extra_gazebo_args)" /> <!-- verbose -->
   </include>
 
   <!-- spawn robots described in the yaml file -->
