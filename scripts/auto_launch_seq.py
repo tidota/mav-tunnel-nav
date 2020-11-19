@@ -7,6 +7,8 @@ import random
 import subprocess
 import sys
 
+from mav_tunnel_nav.srv import SpawnRobot,SpawnRobotResponse
+
 import rospkg
 import yaml
 
@@ -30,7 +32,7 @@ def spawn(req):
 	finally:
 		p.wait()
 
-	return SpawnRobot(True)
+	return SpawnRobotResponse(True)
 
 if __name__ == '__main__':
 	# Filter out any special ROS remapping arguments.
