@@ -571,8 +571,6 @@ void pf_main()
   }
   std::vector<double> weights(n_particles);
   std::vector<double> errors(n_particles);
-  const ros::Time initial_update = ros::Time::now();
-  ros::Time last_update = initial_update;
 
   tf::Pose pose_prev;
   tf::Pose pose_curr;
@@ -593,6 +591,8 @@ void pf_main()
 
   std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
 
+  ros::Time initial_update = ros::Time::now();
+  ros::Time last_update = initial_update;
   // initialize the estimated pose
   while (ros::ok())
   {
@@ -634,14 +634,18 @@ void pf_main()
           // pose_prev = pose_curr;
         }
 
-        // update the estimated poses with the odometry data.
-        for (auto p: particles)
+        if (orientation.x() != 0 || orientation.y() != 0 ||
+            orientation.z() != 0 || orientation.w() != 0)
         {
-          p->initPosition(position);
-          p->initOrientation(orientation);
-        }
+          // update the estimated poses with the odometry data.
+          for (auto p: particles)
+          {
+            p->initPosition(position);
+            p->initOrientation(orientation);
+          }
 
-        break;
+          break;
+        }
       }
     }
   }
@@ -705,22 +709,8 @@ void pf_main()
   mav_tunnel_nav::SrcDst sync_msg;
   sync_msg.source = robot_name;
 
-  // auto enable: call the ROS service to fly.
-  bool auto_enable_by_slam;
-  if (!pnh.getParam("auto_enable_by_slam", auto_enable_by_slam))
-    auto_enable_by_slam = false;
-  if (auto_enable_by_slam)
-  {
-    ros::ServiceClient srv_client
-      = nh.serviceClient<std_srvs::SetBool>("/" + robot_name + "/enable");
-    std_srvs::SetBool srv;
-    srv.request.data = true;
-    srv_client.call(srv);
-  }
-
-  // set the state
-  state = LocalSLAM;
-
+  initial_update = ros::Time::now();
+  last_update = initial_update;
   // the main loop
   while (ros::ok())
   {
@@ -869,7 +859,7 @@ void pf_main()
       last_cooploc = now;
       state = LocalSLAM;
     }
-    else if (now <= last_update + update_phase) // in the default state
+    else if (state == LocalSLAM && now <= last_update + update_phase) // in the default state
     {
       // decide if it should initiate interactions with a neighbor.
       if (now >= last_cooploc + cooploc_phase)
@@ -937,6 +927,23 @@ void pf_main()
                 octomap::point3d(point.x(), point.y(), point.z()));
             // }
           }
+          // std::vector<int> indices;
+          // pcl::removeNaNFromPointCloud(*depth_cam_pc, *depth_cam_pc, indices);
+          //
+          // for (unsigned int i = 0; i < indices.size(); ++i)
+          // {
+          //   // if (pcl_isfinite(depth_cam_pc->points[i].x) &&
+          //   //     pcl_isfinite(depth_cam_pc->points[i].y) &&
+          //   //     pcl_isfinite(depth_cam_pc->points[i].z))
+          //   // {
+          //     tf::Vector3 point = camera_pose * tf::Vector3(
+          //                                 depth_cam_pc->points[indices[i]].x,
+          //                                 depth_cam_pc->points[indices[i]].y,
+          //                                 depth_cam_pc->points[indices[i]].z);
+          //     octocloud.push_back(
+          //       octomap::point3d(point.x(), point.y(), point.z()));
+          //   // }
+          // }
           ROS_DEBUG_STREAM(
             "depth_cam_pc(" << depth_cam_pc->points.size() << ") => " <<
             "octocloud(" << octocloud.size() << ")");
@@ -966,8 +973,35 @@ void pf_main()
       int index_best = 0;
       double max_weight = 0;
       double weight_sum = 0;
-      if (now > initial_update + phase_pose_adjust + phase_only_mapping)
+      if (state == LocalSLAM ||
+        now > initial_update + phase_pose_adjust + phase_only_mapping)
       {
+        if (state == Init)
+        {
+          // if (robot_name == "robot2")
+          // {
+          //   ROS_INFO("start local SLAM!!!!");
+          //   ROS_INFO_STREAM("now: " << now);
+          //   ROS_INFO_STREAM("initial_update: " << initial_update);
+          //   ROS_INFO_STREAM("the time limit: " << (initial_update + phase_pose_adjust + phase_only_mapping));
+          //   ROS_INFO_STREAM("phase_only_mapping: " << phase_only_mapping.toSec());
+          //   exit(-100);
+          // }
+          // auto enable: call the ROS service to fly.
+          bool auto_enable_by_slam;
+          if (!pnh.getParam("auto_enable_by_slam", auto_enable_by_slam))
+            auto_enable_by_slam = false;
+          if (auto_enable_by_slam)
+          {
+            ros::ServiceClient srv_client
+              = nh.serviceClient<std_srvs::SetBool>("/" + robot_name + "/enable");
+            std_srvs::SetBool srv;
+            srv.request.data = true;
+            srv_client.call(srv);
+          }
+
+          state = LocalSLAM;
+        }
         // ===== update on the particles ===== //
         // - individual SLAM: update based on local sensory data.
 
