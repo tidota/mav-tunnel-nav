@@ -12,7 +12,10 @@ from mav_tunnel_nav.srv import SpawnRobot,SpawnRobotResponse
 import rospkg
 import yaml
 
+proc_list = []
+
 def spawn(req):
+	global proc_list
 	try:
 		cmd = [
 			'roslaunch',
@@ -25,12 +28,11 @@ def spawn(req):
 			'Y:=' + str(req.Y)
 		]
 		print('Running command: ' + ' '.join(cmd))
-		p = subprocess.Popen(cmd)
-		p.wait()
+		proc_list += [subprocess.Popen(cmd)]
 	except KeyboardInterrupt:
 		pass
 	finally:
-		p.wait()
+		pass
 
 	return SpawnRobotResponse(True)
 
@@ -42,6 +44,21 @@ if __name__ == '__main__':
 
 	rospy.init_node('robot_sequence_spawner')
 
-	s = rospy.Service('spawn_robot', SpawnRobot, spawn)
+	rospack = rospkg.RosPack()
+	try:
+		f = open(rospack.get_path('mav_tunnel_nav') + '/config/robot_settings/comm.yaml', 'r')
+		ver = [float(x) for x in yaml.__version__.split('.')]
+		if ver[0] >= 5 and ver[1] >= 1:
+			dict_comm = yaml.load(f.read(), Loader=yaml.FullLoader)
+		else:
+			dict_comm = yaml.load(f.read())
+	except Exception as e:
+		print(e)
+
+	s = rospy.Service(dict_comm['spawn_service_name'], SpawnRobot, spawn)
 
 	rospy.spin()
+
+	for p in proc_list:
+		p.wait()
+
