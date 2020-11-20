@@ -392,7 +392,7 @@ void Particle::compress_map()
 
 ////////////////////////////////////////////////////////////////////////////////
 inline void prepareDataMsg(
-  mav_tunnel_nav::Particles& data_msg, std::string& last_sync_src,
+  mav_tunnel_nav::Particles& data_msg, std::string& destination,
   std::vector<double>& cumul_weights, std::vector<double>& cumul_weights_comp,
   const double& conserv_omega, const double& sigma_kde_squared_x2,
   const std::vector< std::shared_ptr<Particle> >& particles)
@@ -400,7 +400,7 @@ inline void prepareDataMsg(
   const int n_particles = particles.size();
 
   // set the destination
-  data_msg.destination = last_sync_src;
+  data_msg.destination = destination;
 
   // calculate the weights
   for (int i = 0; i < n_particles; ++i)
@@ -747,7 +747,7 @@ void pf_main()
     else if (state == DataSending)
     {
       prepareDataMsg(
-        data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
+        data_msg, last_data_src, cumul_weights, cumul_weights_comp,
         conserv_omega, sigma_kde_squared_x2, particles);
 
       // send data to the other
