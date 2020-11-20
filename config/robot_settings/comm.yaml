@@ -9,6 +9,7 @@ data_up_topic: data_up_topic
 data_down_topic: data_down_topic
 
 spawn_service_name: spawn_robot
+auto_enable_by_slam: True
 
 # The distance of the last robot from the base divided by comm_range
 # Once the ratio reaches this value, a new robot is spawned.

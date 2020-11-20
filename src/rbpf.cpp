@@ -41,6 +41,8 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/ColorRGBA.h>
 
+#include <std_srvs/SetBool.h>
+
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
@@ -699,6 +701,19 @@ void pf_main()
   // For synchronization
   mav_tunnel_nav::SrcDst sync_msg;
   sync_msg.source = robot_name;
+
+  // auto enable: call the ROS service to fly.
+  bool auto_enable_by_slam;
+  if (!nh.getParam("/auto_enable_by_slam", auto_enable_by_slam))
+    auto_enable_by_slam = false;
+  if (auto_enable_by_slam)
+  {
+    ros::ServiceClient srv_client
+      = pnh.serviceClient<std_srvs::SetBool>("enable");
+    std_srvs::SetBool srv;
+    srv.request.data = true;
+    srv_client.call(srv);
+  }
 
   // set the state
   state = LocalSLAM;
