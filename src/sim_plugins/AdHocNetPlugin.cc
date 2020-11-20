@@ -91,8 +91,17 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
   this->nh.param("ratio_spawn_comm", ratio_spawn_comm, ratio_spawn_comm);
   this->spawnDist = this->comm_range * ratio_spawn_comm;
   this->spawning = false;
+  auto init_robot_elem = _sdf->GetElement("init_robot_loc");
+  this->initLoc = tf::Vector3(
+                    init_robot_elem->Get<double>("x"),
+                    init_robot_elem->Get<double>("y"),
+                    init_robot_elem->Get<double>("z"));
+  this->initOri = init_robot_elem->Get<double>("ori");
+  std::string service_name;
+  this->nh.param("spawn_service_name", service_name, service_name);
   this->robot_spawner_client
-    = this->nh.serviceClient<mav_tunnel_nav::SpawnRobot>("spawn_robot");
+    = this->nh.serviceClient<mav_tunnel_nav::SpawnRobot>(service_name);
+  gzmsg << "ROS service name: " << service_name << std::endl;
 
   this->updateConnection = event::Events::ConnectWorldUpdateBegin(
     std::bind(&AdHocNetPlugin::OnUpdate, this));
@@ -219,7 +228,9 @@ void AdHocNetPlugin::OnUpdate()
         srv.request.z = this->initLoc.getZ();
         srv.request.Y = this->initOri;
         srv.request.robot = this->robotList[this->spawnedList.size()];
+        gzmsg << "calling the ROS service" << std::endl;
         this->robot_spawner_client.call(srv);
+        gzmsg << "calling the ROS service: done" << std::endl;
 
         this->spawning = true;
       }

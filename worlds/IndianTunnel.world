@@ -149,6 +149,9 @@
         <name>base</name>
         <x>0</x><y>0</y><z>0</z>
       </base_station>
+      <init_robot_loc>
+        <x>0</x><y>-1</y><z>0.5</z><ori>0</ori>
+      </init_robot_loc>
     </plugin>
   </world>
 </sdf>
