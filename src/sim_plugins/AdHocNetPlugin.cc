@@ -327,12 +327,55 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
   // this->sync_buff(std::make_shared<mav_tunnel_nav::SrcDst>(*msg));
 
   std::normal_distribution<> dst_noise(0, sigmaDst);
+  std::normal_distribution<> ori_noise(0, sigmaOri);
 
   if (this->sync_subs.count(msg->source) > 0)
   {
-    if (this->sync_pubs.count(msg->destination) > 0)
+    if (msg->destination == this->base_name)
     {
-      // if the destination is in the range
+      // if the packet is for the base, just send data to the source.
+
+      if (getTopoInfo(msg->source, this->base_name))
+      {
+        mav_tunnel_nav::Particles msg2send;
+        msg2send.source = this->base_name;
+        msg2send.destination = msg->source;
+        {
+          ignition::math::Vector3d pos = this->base_pose.Pos();
+          ignition::math::Quaternion<double> rot = this->base_pose.Rot();
+          geometry_msgs::Pose pose_msg;
+          pose_msg.position.x = pos.X();
+          pose_msg.position.y = pos.Y();
+          pose_msg.position.z = pos.Z();
+          pose_msg.orientation.w = rot.W();
+          pose_msg.orientation.x = rot.X();
+          pose_msg.orientation.y = rot.Y();
+          pose_msg.orientation.z = rot.Z();
+          msg2send.particles.push_back(pose_msg);
+        }
+        msg2send.cumul_weights.push_back(1.0);
+        auto pos = getPoseInfo(this->base_name, msg->source).Pos();
+
+        // assume it can get absolute bearing infor.
+        pos = this->base_pose.Rot().Inverse() * pos;
+
+        msg2send.estimated_distance = pos.Length() + dst_noise(gen);
+        pos.Normalize();
+        ignition::math::Quaternion<double>
+          rot(0, ori_noise(gen), ori_noise(gen)); // noise on pitch/yaw
+        pos = rot * pos;
+        msg2send.estimated_orientation.x = pos.X();
+        msg2send.estimated_orientation.y = pos.Y();
+        msg2send.estimated_orientation.z = pos.Z();
+
+        this->data_pubs[msg->source].publish(msg2send);
+      }
+    }
+    else if (this->sync_pubs.count(msg->destination) > 0)
+    {
+      // if the packet is for another robot, just send the packe to
+      // the destination.
+
       if (getTopoInfo(msg->source, msg->destination))
       {
         mav_tunnel_nav::SrcDst msg2send = *msg;
