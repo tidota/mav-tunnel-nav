@@ -785,7 +785,7 @@ void pf_main()
         msg.estimated_orientation.z);
 
       // cumulative weights for resampling.
-      std::vector<double> cumul_weights_update;
+      std::vector<double> cumul_weights_update(n_particles);
 
       // for all particles
       for (int ip = 0; ip < n_particles; ++ip)
