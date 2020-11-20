@@ -702,22 +702,17 @@ void pf_main()
   mav_tunnel_nav::SrcDst sync_msg;
   sync_msg.source = robot_name;
 
-  // the whole system is manually started by setting this parameter.
-  bool start_operation;
-  if (nh.getParam("/start_operation", start_operation))
+  // auto enable: call the ROS service to fly.
+  bool auto_enable_by_slam;
+  if (!pnh.getParam("auto_enable_by_slam", auto_enable_by_slam))
+    auto_enable_by_slam = false;
+  if (auto_enable_by_slam)
   {
-    // auto enable: call the ROS service to fly.
-    bool auto_enable_by_slam;
-    if (!nh.getParam("/auto_enable_by_slam", auto_enable_by_slam))
-      auto_enable_by_slam = false;
-    if (auto_enable_by_slam)
-    {
-      ros::ServiceClient srv_client
-        = nh.serviceClient<std_srvs::SetBool>("/" + robot_name + "/enable");
-      std_srvs::SetBool srv;
-      srv.request.data = true;
-      srv_client.call(srv);
-    }
+    ros::ServiceClient srv_client
+      = nh.serviceClient<std_srvs::SetBool>("/" + robot_name + "/enable");
+    std_srvs::SetBool srv;
+    srv.request.data = true;
+    srv_client.call(srv);
   }
 
   // set the state

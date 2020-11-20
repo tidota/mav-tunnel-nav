@@ -227,6 +227,10 @@ void AdHocNetPlugin::OnUpdate()
         srv.request.y = this->initLoc.getY();
         srv.request.z = this->initLoc.getZ();
         srv.request.Y = this->initOri;
+        if (this->spawnedList.size() == 0)
+          srv.request.auto_enable_by_slam = false;
+        else
+          srv.request.auto_enable_by_slam = true;
         srv.request.robot = this->robotList[this->spawnedList.size()];
         gzmsg << "calling the ROS service" << std::endl;
         this->robot_spawner_client.call(srv);

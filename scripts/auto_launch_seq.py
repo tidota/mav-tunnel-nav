@@ -27,6 +27,10 @@ def spawn(req):
 			'z:=' + str(req.z),
 			'Y:=' + str(req.Y)
 		]
+		if req.auto_enable_by_slam:
+			cmd += ['auto_enable_by_slam:=true']
+		else:
+			cmd += ['auto_enable_by_slam:=false']
 		print('Running command: ' + ' '.join(cmd))
 		proc_list += [subprocess.Popen(cmd)]
 	except KeyboardInterrupt:
