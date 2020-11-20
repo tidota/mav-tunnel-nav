@@ -80,13 +80,13 @@ std::map<std::string, mav_tunnel_nav::Particles> data_buffer;
 std::map<std::string, ros::Time> data_lasttime;
 std::string last_data_src;
 enum INTERACT_STATE
-  { LocalSLAM, SyncInit, DataSending, SyncReact, DataWaiting, Update };
-INTERACT_STATE state = LocalSLAM;
+  { Init, LocalSLAM, SyncInit, DataSending, SyncReact, DataWaiting, Update };
+INTERACT_STATE state = Init;
 
 ////////////////////////////////////////////////////////////////////////////////
 void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
-  if (msg->destination.size() > 0)
+  if (state != Init && msg->destination.size() > 0)
   {
     std::lock_guard<std::mutex> lk(beacon_mutex);
     beacon_buffer[msg->source] = *msg;
@@ -699,6 +699,9 @@ void pf_main()
   // For synchronization
   mav_tunnel_nav::SrcDst sync_msg;
   sync_msg.source = robot_name;
+
+  // set the state
+  state = LocalSLAM;
 
   // the main loop
   while (ros::ok())
