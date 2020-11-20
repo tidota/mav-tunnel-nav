@@ -648,38 +648,39 @@ void pf_main()
 
   // parameters for cooperative localization
 
-  int param_buf_int;
-  if (!pnh.getParam("Nref", param_buf_int))
+  int Nref;
+  if (!pnh.getParam("Nref", Nref))
     ROS_ERROR_STREAM("no param: Nref");
-  const int Nref = param_buf_int;
-  if (!pnh.getParam("seed_cooploc", param_buf_int))
+  int seed_cooploc;
+  if (!pnh.getParam("seed_cooploc", seed_cooploc))
     ROS_ERROR_STREAM("no param: seed_cooploc");
-  const int seed_cooploc = param_buf_int;
 
-  int param_buf_double;
-  if (!pnh.getParam("conserv_omega", param_buf_int))
+  double conserv_omega;
+  if (!pnh.getParam("conserv_omega", conserv_omega))
     ROS_ERROR_STREAM("no param: conserv_omega");
-  const double conserv_omega = param_buf_double;
-  if (!pnh.getParam("sigma_kde", param_buf_double))
+  double sigma_kde;
+  if (!pnh.getParam("sigma_kde", sigma_kde))
     ROS_ERROR_STREAM("no param: sigma_kde");
-  const double sigma_kde = param_buf_double;
 
-  if (!pnh.getParam("sigmaMutualLocR", param_buf_double))
+  double sigmaMutualLocR;
+  if (!pnh.getParam("sigmaMutualLocR", sigmaMutualLocR))
     ROS_ERROR_STREAM("no param: sigmaMutualLocR");
-  const double sigmaMutualLocR = param_buf_double;
-  if (!pnh.getParam("sigmaMutualLocT", param_buf_double))
+  double sigmaMutualLocT;
+  if (!pnh.getParam("sigmaMutualLocT", sigmaMutualLocT))
     ROS_ERROR_STREAM("no param: sigmaMutualLocT");
-  const double sigmaMutualLocT = param_buf_double;
 
-  if (!pnh.getParam("beacon_lifetime", param_buf_double))
+  double beacon_lifetime_buff;
+  if (!pnh.getParam("beacon_lifetime", beacon_lifetime_buff))
     ROS_ERROR_STREAM("no param: beacon_lifetime");
-  const ros::Duration beacon_lifetime(param_buf_double);
-  if (!pnh.getParam("cooploc_phase", param_buf_double))
+  const ros::Duration beacon_lifetime(beacon_lifetime_buff);
+  double cooploc_phase_buff;
+  if (!pnh.getParam("cooploc_phase", cooploc_phase_buff))
     ROS_ERROR_STREAM("no param: cooploc_phase");
-  const ros::Duration cooploc_phase(param_buf_double);
-  if (!pnh.getParam("syncinit_timeout", param_buf_double))
+  const ros::Duration cooploc_phase(cooploc_phase_buff);
+  double syncinit_timeout_buff;
+  if (!pnh.getParam("syncinit_timeout", syncinit_timeout_buff))
     ROS_ERROR_STREAM("no param: syncinit_timeout");
-  const ros::Duration syncinit_timeout(param_buf_double);
+  const ros::Duration syncinit_timeout(syncinit_timeout_buff);
 
   std::mt19937 gen_cooploc;
   gen_cooploc.seed(seed_cooploc);
@@ -689,7 +690,9 @@ void pf_main()
   ros::Time last_cooploc = ros::Time::now();
   ros::Time last_syncinit;
 
-  // For data exchange.
+  // === For data exchange. ==
+  // 95 % of difference should be in approx. 2.7 * sigma_kde
+  // https://stats.stackexchange.com/questions/35012/mahalanobis-distance-and-percentage-of-the-distribution-represented
   const double sigma_kde_squared_x2 = 2 * sigma_kde * sigma_kde;
   mav_tunnel_nav::Particles data_msg;
   data_msg.source = robot_name;
