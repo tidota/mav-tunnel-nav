@@ -251,6 +251,12 @@ const octomap::OcTree* Particle::getMap()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void Particle::initPosition(const tf::Vector3 &position)
+{
+  this->pose.setOrigin(position);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Particle::initOrientation(const tf::Quaternion &orientation)
 {
   this->pose.setRotation(orientation);
@@ -597,6 +603,7 @@ void pf_main()
       if (now > initial_update + phase_pose_adjust)
       {
         // Odometry data
+        tf::Vector3 position;
         tf::Quaternion orientation;
         //tf::Transform diff_pose;
         {
@@ -612,6 +619,10 @@ void pf_main()
           //   odom_buff.pose.pose.orientation.w);
           // pose_curr.setOrigin(pos);
           // pose_curr.setRotation(dir);
+          position = tf::Vector3(
+            odom_buff.pose.pose.position.x,
+            odom_buff.pose.pose.position.y,
+            odom_buff.pose.pose.position.z);
           orientation = tf::Quaternion(
             odom_buff.pose.pose.orientation.x,
             odom_buff.pose.pose.orientation.y,
@@ -624,6 +635,7 @@ void pf_main()
         // update the estimated poses with the odometry data.
         for (auto p: particles)
         {
+          p->initPosition(position);
           p->initOrientation(orientation);
         }
 
