@@ -709,7 +709,7 @@ void pf_main()
   if (auto_enable_by_slam)
   {
     ros::ServiceClient srv_client
-      = pnh.serviceClient<std_srvs::SetBool>("enable");
+      = nh.serviceClient<std_srvs::SetBool>("/" + robot_name + "/enable");
     std_srvs::SetBool srv;
     srv.request.data = true;
     srv_client.call(srv);
