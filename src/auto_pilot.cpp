@@ -1,4 +1,4 @@
-// auto_control.cpp
+// auto_pilot.cpp
 // 200120
 // reactive control
 
@@ -442,7 +442,7 @@ void control_main()
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "auto_control");
+  ros::init(argc, argv, "auto_pilot");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 

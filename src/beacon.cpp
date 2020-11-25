@@ -32,7 +32,7 @@ void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "auto_control");
+  ros::init(argc, argv, "beacon");
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 

@@ -182,9 +182,9 @@ target_link_libraries(${adhocnet_plugin_name}
 add_dependencies(${adhocnet_plugin_name}
   ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_executable(auto_control src/auto_control.cpp)
-add_dependencies(auto_control ${catkin_EXPORTED_TARGETS})
-target_link_libraries(auto_control ${catkin_LIBRARIES})
+add_executable(auto_pilot src/auto_pilot.cpp)
+add_dependencies(auto_pilot ${catkin_EXPORTED_TARGETS})
+target_link_libraries(auto_pilot ${catkin_LIBRARIES})
 
 add_executable(imu_odom src/imu_odom.cpp)
 add_dependencies(imu_odom ${catkin_EXPORTED_TARGETS})
