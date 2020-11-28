@@ -168,6 +168,9 @@ void control_main()
   std::string base_station_name;
   pnh.getParam("base_station_name", base_station_name);
 
+  std::string auto_pilot_type;
+  pnh.getParam("auto_pilot_type", auto_pilot_type);
+
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
@@ -233,8 +236,21 @@ void control_main()
           // moves the robot forward.
           {
             ROS_DEBUG("STRAIGHT");
-            if (force_rel.x() > 0.1)
-              control_msg.linear.x = straight_rate * force_rel.x();
+            if (auto_pilot_type == "default")
+            {
+              control_msg.linear.x = straight_rate;
+            }
+            else if (auto_pilot_type == "line")
+            {
+              if (force_rel.x() > 0.1)
+              {
+                control_msg.linear.x = straight_rate * force_rel.x();
+              }
+            }
+            else
+            {
+              ROS_ERROR_STREAM("invalid auto_pilot_type: " << auto_pilot_type);
+            }
           }
 
           // ===================== steering =================================== //

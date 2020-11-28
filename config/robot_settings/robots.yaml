@@ -3,7 +3,7 @@ auto_pilot_type: line # default, line, mesh
 robots:
   - robot1
   - robot2
-#  - robot3
+  - robot3
 
 robot1:
   x: 0.0
