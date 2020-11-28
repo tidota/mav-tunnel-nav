@@ -1,3 +1,5 @@
+auto_pilot: line # default, line, mesh
+
 robots:
   - robot1
   - robot2

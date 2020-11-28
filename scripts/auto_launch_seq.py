@@ -13,9 +13,13 @@ import rospkg
 import yaml
 
 proc_list = []
+dict_robot = {}
+dict_comm = {}
 
 def spawn(req):
 	global proc_list
+	global dict_robot
+	global dict_comm
 	try:
 		cmd = [
 			'roslaunch',
@@ -25,7 +29,11 @@ def spawn(req):
 			'x:=' + str(req.x),
 			'y:=' + str(req.y),
 			'z:=' + str(req.z),
-			'Y:=' + str(req.Y)
+			'Y:=' + str(req.Y),
+			'map_only:=' + str(dict_robot[req.robot]['map_only']),
+			'map_filename:=' + str(dict_robot[req.robot]['map_filename']),
+			'output:=' + str(dict_robot[req.robot]['output']),
+			'control:=' + str(dict_robot['control'])
 		]
 		if req.auto_enable_by_slam:
 			cmd += ['auto_enable_by_slam:=true']
@@ -59,10 +67,19 @@ if __name__ == '__main__':
 	except Exception as e:
 		print(e)
 
+	try:
+		f = open(rospack.get_path('mav_tunnel_nav') + '/config/robot_settings/robots.yaml', 'r')
+		ver = [float(x) for x in yaml.__version__.split('.')]
+		if ver[0] >= 5 and ver[1] >= 1:
+			dict_robot = yaml.load(f.read(), Loader=yaml.FullLoader)
+		else:
+			dict_robot = yaml.load(f.read())
+	except Exception as e:
+		print(e)
+
 	s = rospy.Service(dict_comm['spawn_service_name'], SpawnRobot, spawn)
 
 	rospy.spin()
 
 	for p in proc_list:
 		p.wait()
-
