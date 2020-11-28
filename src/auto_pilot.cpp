@@ -197,26 +197,63 @@ void control_main()
         }
 
         // get relative pose data
+        bool has_dist_front = false;
+        bool has_dist_back = false;
+        bool has_base = false;
+        double dist_front = 0;
+        double dist_back = 0;
+        double dist_base_x = 0;
+        double dist_base = 0;
         tf::Vector3 force_rel;
         {
           auto now = ros::Time::now();
           std::lock_guard<std::mutex> lk(beacon_mutex);
+          double min_y_dist_front;
+          double min_y_dist_back;
           for (auto p: beacon_buffer)
           {
             if (now - beacon_lasttime[p.first] < rel_pose_expiration)
             {
               auto msg = p.second;
-              double f
-                = (msg.estimated_distance - distance_to_neighbor)
-                  / distance_to_neighbor;
-              if (base_station_name == msg.source &&
-                  msg.estimated_orientation.x > 0)
-                f = std::fabs(f);
-              tf::Vector3 v(
-                msg.estimated_orientation.x,
-                msg.estimated_orientation.y,
-                msg.estimated_orientation.z);
-              force_rel += f * v;
+              if (auto_pilot_type == "line")
+              {
+                auto ori = msg.estimated_orientation;
+                if (msg.source == base_station_name)
+                {
+                  has_base = true;
+                  dist_base = msg.estimated_distance;
+                  dist_base_x = ori.x * msg.estimated_distance;
+                }
+                else if (ori.x > 0) // front
+                {
+                  if (!has_dist_front || ori.y < min_y_dist_front)
+                  {
+                    has_dist_front = true;
+                    min_y_dist_front = ori.y;
+                    dist_front = ori.x * msg.estimated_distance;
+                  }
+                }
+                else if (ori.x < 0) // back
+                {
+                  if (!has_dist_back || ori.y < min_y_dist_back)
+                  {
+                    has_dist_back = true;
+                    min_y_dist_back = ori.y;
+                    dist_back = -ori.x * msg.estimated_distance;
+                  }
+                }
+                // double f
+                //   = (msg.estimated_distance - distance_to_neighbor)
+                //     / distance_to_neighbor;
+                // if (base_station_name == msg.source &&
+                //     msg.estimated_orientation.x > 0)
+                //   f = std::fabs(f);
+                // tf::Vector3 v(
+                //   msg.estimated_orientation.x,
+                //   msg.estimated_orientation.y,
+                //   msg.estimated_orientation.z);
+                // force_rel += f * v;
+              }
             }
           }
         }
@@ -232,7 +269,7 @@ void control_main()
 
         try // for std::out_of_range of range_data
         {
-          // ===================== going_straight ============================= //
+          // ===================== going_straight =========================== //
           // moves the robot forward.
           {
             ROS_DEBUG("STRAIGHT");
@@ -242,10 +279,101 @@ void control_main()
             }
             else if (auto_pilot_type == "line")
             {
-              if (force_rel.x() > 0.1)
+              if (has_dist_front && has_dist_back)
               {
-                control_msg.linear.x = straight_rate * force_rel.x();
+                // calc balance
+                double balance = (dist_back)/(dist_front + dist_back);
+                if (balance > 0.55) // too close to the front
+                {
+                  control_msg.linear.x
+                    = -straight_rate * (balance - 0.55)/0.1;
+                }
+                else if (balance < 0.45) // too close to the back
+                {
+                  control_msg.linear.x
+                    = straight_rate * (0.45 - balance)/0.1;
+                }
+                else if (has_base)
+                {
+                  control_msg.linear.x
+                    = straight_rate * 0.3;
+                }
               }
+              else if (has_dist_back)
+              {
+                if (dist_back < distance_to_neighbor * 0.8)
+                {
+                  // too close to the back
+                  control_msg.linear.x
+                    = straight_rate
+                      * (distance_to_neighbor * 0.8 - dist_back)
+                      / (distance_to_neighbor * 0.3);
+                }
+                else if (dist_back > distance_to_neighbor * 0.9)
+                {
+                  // too far from the back
+                  control_msg.linear.x
+                    = -straight_rate
+                      * (dist_back - distance_to_neighbor * 0.9)
+                      / (distance_to_neighbor * 0.3);
+                }
+              }
+              else if (has_dist_front
+                  && dist_front < distance_to_neighbor * 0.4)
+              {
+                // too close to the front
+                control_msg.linear.x
+                  = -straight_rate
+                    * (distance_to_neighbor * 0.4 - dist_front)
+                    / (distance_to_neighbor * 0.3);
+              }
+              else if (has_base)
+              {
+                //     X----
+                //    /   |
+                //   /    | dist_base_x
+                //  /     |
+                // base ----
+                if (dist_base_x < distance_to_neighbor * 0.7)
+                {
+                  // should go forward
+                  control_msg.linear.x
+                    = straight_rate
+                      * (distance_to_neighbor * 0.7 - dist_base_x)
+                      / (distance_to_neighbor * 0.3);
+                }
+                else if (dist_base > distance_to_neighbor * 0.8)
+                {
+                  // should go backward
+                  control_msg.linear.x
+                    = -straight_rate
+                      * (dist_base - distance_to_neighbor * 0.8)
+                      / (distance_to_neighbor * 0.3);
+                }
+              }
+              else if (has_dist_front
+                  && dist_front > distance_to_neighbor * 0.8)
+              {
+                // too far from the front
+                control_msg.linear.x
+                  = straight_rate
+                    * (dist_front - distance_to_neighbor * 0.8)
+                    / (distance_to_neighbor * 0.3);
+              }
+              else if (!has_dist_back && !has_dist_front && !has_base)
+              {
+                // it is alone possibly because the connection is lost.
+                // so it will just retrieve back to the previous place.
+                control_msg.linear.x = -0.1 * straight_rate;
+              }
+              // if (force_rel.x() > 0.1)
+              // {
+              //   control_msg.linear.x = straight_rate * force_rel.x();
+              // }
+              if (control_msg.linear.x > straight_rate)
+                control_msg.linear.x = straight_rate;
+              if (control_msg.linear.x < -straight_rate)
+                control_msg.linear.x = -straight_rate;
             }
             else
             {
