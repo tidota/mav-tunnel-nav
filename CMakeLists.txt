@@ -171,27 +171,27 @@ catkin_package(
 # Create the libAdHocNetPlugin.so library.
 set(adhocnet_plugin_name AdHocNetPlugin)
 add_library(${adhocnet_plugin_name} src/sim_plugins/AdHocNetPlugin.cc)
-target_include_directories(${adhocnet_plugin_name}
-  PRIVATE ${CATKIN_DEVEL_PREFIX}/include)
-target_include_directories(${adhocnet_plugin_name}
-  PRIVATE src/sim_plugins)
+add_dependencies(${adhocnet_plugin_name}
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${adhocnet_plugin_name}
   ${catkin_LIBRARIES}
   ${ignition-transport4_LIBRARIES}
 )
-add_dependencies(${adhocnet_plugin_name}
-  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_executable(auto_pilot src/auto_pilot.cpp)
-add_dependencies(auto_pilot ${catkin_EXPORTED_TARGETS})
-target_link_libraries(auto_pilot ${catkin_LIBRARIES})
+add_dependencies(auto_pilot
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(auto_pilot
+  ${catkin_LIBRARIES}
+)
 
 add_executable(imu_odom src/imu_odom.cpp)
 add_dependencies(imu_odom ${catkin_EXPORTED_TARGETS})
 target_link_libraries(imu_odom ${catkin_LIBRARIES})
 
 add_executable(rbpf src/rbpf.cpp)
-add_dependencies(rbpf ${catkin_EXPORTED_TARGETS})
+add_dependencies(rbpf
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(rbpf
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
@@ -199,7 +199,8 @@ target_link_libraries(rbpf
 )
 
 add_executable(beacon src/beacon.cpp)
-add_dependencies(beacon ${catkin_EXPORTED_TARGETS})
+add_dependencies(beacon
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(beacon
   ${catkin_LIBRARIES}
 )
