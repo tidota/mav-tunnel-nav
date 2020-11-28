@@ -12,7 +12,7 @@
   <arg name="map_filename" default=""/>
   <arg name="output" default="screen"/>
   <arg name="auto_enable_by_slam" default="false"/>
-  <arg name="control" default="default"/>
+  <arg name="auto_pilot_type" default="default"/>
 
   <group ns="$(arg mav_name)">
     <include file="$(find mav_tunnel_nav)/launch/spawn_mav_model.launch">
@@ -39,7 +39,7 @@
       <arg name="map_filename" value="$(arg map_filename)"/>
       <arg name="output" value="$(arg output)"/>
       <arg name="auto_enable_by_slam" value="$(arg auto_enable_by_slam)"/>
-      <arg name="control" value="$(arg control)"/>
+      <arg name="auto_pilot_type" value="$(arg auto_pilot_type)"/>
     </include>
   </group>
 

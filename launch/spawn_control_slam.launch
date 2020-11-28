@@ -10,7 +10,7 @@
   <arg name="map_filename" default=""/>
   <arg name="output" default="screen"/>
   <arg name="auto_enable_by_slam" default="false"/>
-  <arg name="control" default="default"/>
+  <arg name="auto_pilot_type" default="default"/>
 
   <!-- beacon -->
   <node name="beacon" pkg="mav_tunnel_nav" type="beacon" output="$(arg output)">
@@ -84,7 +84,7 @@
     <param name="beacon_down_topic" value="beacon_down_topic"/>
     <param name="base_station_name" value="base"/>
 
-    <param name="control" value="$(arg control)"/>
+    <param name="auto_pilot_type" value="$(arg auto_pilot_type)"/>
   </node>
 
   <!-- Sends motor commands based given commanded rates for roll/pitch/yaw and thrust -->

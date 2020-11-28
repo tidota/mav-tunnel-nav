@@ -1,4 +1,4 @@
-auto_pilot: line # default, line, mesh
+auto_pilot_type: line # default, line, mesh
 
 robots:
   - robot1

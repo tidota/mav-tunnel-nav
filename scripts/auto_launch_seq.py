@@ -33,7 +33,7 @@ def spawn(req):
 			'map_only:=' + str(dict_robot[req.robot]['map_only']),
 			'map_filename:=' + str(dict_robot[req.robot]['map_filename']),
 			'output:=' + str(dict_robot[req.robot]['output']),
-			'control:=' + str(dict_robot['control'])
+			'auto_pilot_type:=' + str(dict_robot['auto_pilot_type'])
 		]
 		if req.auto_enable_by_slam:
 			cmd += ['auto_enable_by_slam:=true']

@@ -45,7 +45,7 @@ if __name__ == '__main__':
 			'map_only:=' + str(dict_robot[robot]['map_only']),
 			'map_filename:=' + str(dict_robot[robot]['map_filename']),
 			'output:=' + str(dict_robot[robot]['output']),
-			'control:=' + str(dict_robot['control'])
+			'auto_pilot_type:=' + str(dict_robot['auto_pilot_type'])
 		]
 		cmd_list[robot] = cmd
 
