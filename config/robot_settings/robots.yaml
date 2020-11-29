@@ -37,33 +37,54 @@ robot4:
   x: -16
   y: 2
   Y: -3.14159265
+  map_only: false
+  map_filename: ''
+  output: screen
 
 robot5:
   x: -8
   y: 2
   Y: 3.14159265
+  map_only: false
+  map_filename: ''
+  output: screen
 
 robot6:
   x: 0
   y: 2
   Y: 3.14159265
+  map_only: false
+  map_filename: ''
+  output: screen
 
 robot7:
   x: 8
   y: 2
   Y: 3.14159265
+  map_only: false
+  map_filename: ''
+  output: screen
 
 robot8:
   x: 16
   y: 2
   Y: 3.14159265
+  map_only: false
+  map_filename: ''
+  output: screen
 
 robot9:
   x: 16
   y: -2
   Y: 0
+  map_only: false
+  map_filename: ''
+  output: screen
 
 robot10:
   x: 8
   y: -2
   Y: 0
+  map_only: false
+  map_filename: ''
+  output: screen
