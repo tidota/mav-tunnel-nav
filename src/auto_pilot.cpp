@@ -230,7 +230,7 @@ void control_main()
                   {
                     has_dist_front = true;
                     min_y_dist_front = ori.y;
-                    dist_front = ori.x * msg.estimated_distance;
+                    dist_front = msg.estimated_distance;
                   }
                 }
                 else if (ori.x < 0) // back
@@ -239,7 +239,7 @@ void control_main()
                   {
                     has_dist_back = true;
                     min_y_dist_back = ori.y;
-                    dist_back = -ori.x * msg.estimated_distance;
+                    dist_back = msg.estimated_distance;
                   }
                 }
                 // double f
@@ -283,15 +283,20 @@ void control_main()
               {
                 // calc balance
                 double balance = (dist_back)/(dist_front + dist_back);
-                if (balance > 0.55) // too close to the front
+                double obj_balance;
+                if (dist_front + dist_back < distance_to_neighbor * 1.5)
+                  obj_balance = 0.66;
+                else
+                  obj_balance = 0.5;
+                if (balance > obj_balance + 0.05) // too close to the front
                 {
                   control_msg.linear.x
-                    = -straight_rate * (balance - 0.55)/0.1;
+                    = -straight_rate * (balance - obj_balance - 0.05)/0.05;
                 }
-                else if (balance < 0.45) // too close to the back
+                else if (balance < obj_balance - 0.05) // too close to the back
                 {
                   control_msg.linear.x
-                    = straight_rate * (0.45 - balance)/0.1;
+                    = straight_rate * (obj_balance - 0.05 - balance)/0.05;
                 }
                 else if (has_base)
                 {
@@ -307,7 +312,7 @@ void control_main()
                   control_msg.linear.x
                     = straight_rate
                       * (distance_to_neighbor * 0.8 - dist_back)
-                      / (distance_to_neighbor * 0.3);
+                      / (distance_to_neighbor * 0.2);
                 }
                 else if (dist_back > distance_to_neighbor * 0.9)
                 {
@@ -315,7 +320,7 @@ void control_main()
                   control_msg.linear.x
                     = -straight_rate
                       * (dist_back - distance_to_neighbor * 0.9)
-                      / (distance_to_neighbor * 0.3);
+                      / (distance_to_neighbor * 0.2);
                 }
               }
               else if (has_dist_front
@@ -325,7 +330,7 @@ void control_main()
                 control_msg.linear.x
                   = -straight_rate
                     * (distance_to_neighbor * 0.4 - dist_front)
-                    / (distance_to_neighbor * 0.3);
+                    / (distance_to_neighbor * 0.2);
               }
               else if (has_base)
               {
@@ -340,7 +345,7 @@ void control_main()
                   control_msg.linear.x
                     = straight_rate
                       * (distance_to_neighbor * 0.7 - dist_base_x)
-                      / (distance_to_neighbor * 0.3);
+                      / (distance_to_neighbor * 0.2);
                 }
                 else if (dist_base > distance_to_neighbor * 0.8)
                 {
@@ -348,7 +353,7 @@ void control_main()
                   control_msg.linear.x
                     = -straight_rate
                       * (dist_base - distance_to_neighbor * 0.8)
-                      / (distance_to_neighbor * 0.3);
+                      / (distance_to_neighbor * 0.2);
                 }
               }
               else if (has_dist_front
@@ -358,7 +363,7 @@ void control_main()
                 control_msg.linear.x
                   = straight_rate
                     * (dist_front - distance_to_neighbor * 0.8)
-                    / (distance_to_neighbor * 0.3);
+                    / (distance_to_neighbor * 0.2);
               }
               else if (!has_dist_back && !has_dist_front && !has_base)
               {
