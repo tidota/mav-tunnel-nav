@@ -401,8 +401,11 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
   {
     if (this->data_pubs.count(msg->destination) > 0)
     {
-      // if the destination is in the range
-      if (getTopoInfo(msg->source, msg->destination))
+      // NOTE: it used to check the connectivity here, but it no longer does.
+      //       This is because the connection is supposed to be established
+      //       once the sync packet is received.
+      // // if the destination is in the range
+      // if (getTopoInfo(msg->source, msg->destination))
       {
         // auto robot1 = this->world->ModelByName(msg->source);
         // auto robot2 = this->world->ModelByName(msg->destination);

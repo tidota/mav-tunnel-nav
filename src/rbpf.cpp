@@ -466,6 +466,10 @@ void pf_main()
   if (!pnh.getParam("robot_name", robot_name))
     ROS_ERROR_STREAM("no ros parameter: robot_name");
 
+  double comm_range;
+  if (!nh.getParam("/comm_range", comm_range))
+    ROS_ERROR_STREAM("no parameter for rbpf: comm_range");
+
   // publisher for synchronization of exchange
   std::string sync_up_topic;
   ros::Publisher sync_pub;
@@ -868,7 +872,10 @@ void pf_main()
         std::vector<std::string> candidates;
         for (auto p: beacon_lasttime)
         {
-          if (now <= p.second + beacon_lifetime)
+          // NOTE: add an candiate if the packet is "fresh" enough and it is
+          //       within 90% of comm range.
+          if (now <= p.second + beacon_lifetime
+            && beacon_buffer[p.first].estimated_distance < 0.9 * comm_range)
           {
             candidates.push_back(p.first);
           }
