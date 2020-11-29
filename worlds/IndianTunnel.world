@@ -54,7 +54,7 @@
       <direction>0.1 0.1 -1</direction>
       <cast_shadows>false</cast_shadows>
     </light>
-<!-- 
+<!--
     <light type="point" name="light1">
       <pose>0 0 5.10 0 0 0</pose>
       <diffuse>0.75 0.75 0.75 1</diffuse>
@@ -150,7 +150,7 @@
         <x>0</x><y>0</y><z>0</z>
       </base_station>
       <init_robot_loc>
-        <x>0</x><y>-1</y><z>0.5</z><ori>0</ori>
+        <x>2</x><y>-2</y><z>0.5</z><ori>0</ori>
       </init_robot_loc>
     </plugin>
   </world>
