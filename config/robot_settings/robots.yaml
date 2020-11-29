@@ -4,6 +4,9 @@ robots:
   - robot1
   - robot2
   - robot3
+  - robot4
+  - robot5
+  - robot6
 
 robot1:
   x: 0.0
