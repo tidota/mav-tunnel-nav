@@ -172,7 +172,8 @@ void control_main()
   std::string auto_pilot_type;
   pnh.getParam("auto_pilot_type", auto_pilot_type);
 
-  // DEBUG
+  // DEBUG: this publish a message corressponding to the straight command of the
+  //        ``line'' auto-pilot.
   ros::Publisher debug_pub
     = nh.advertise<std_msgs::String>("auto_pilot_debug", 1);
 
@@ -213,8 +214,6 @@ void control_main()
         {
           auto now = ros::Time::now();
           std::lock_guard<std::mutex> lk(beacon_mutex);
-          double min_y_dist_front;
-          double min_y_dist_back;
           for (auto p: beacon_buffer)
           {
             if (now - beacon_lasttime[p.first] < rel_pose_expiration)
@@ -231,19 +230,17 @@ void control_main()
                 }
                 else if (ori.x > 0) // front
                 {
-                  if (!has_dist_front || ori.y < min_y_dist_front)
+                  if (!has_dist_front || msg.estimated_distance < dist_front)
                   {
                     has_dist_front = true;
-                    min_y_dist_front = ori.y;
                     dist_front = msg.estimated_distance;
                   }
                 }
                 else if (ori.x < 0) // back
                 {
-                  if (!has_dist_back || ori.y < min_y_dist_back)
+                  if (!has_dist_back || msg.estimated_distance < dist_back)
                   {
                     has_dist_back = true;
-                    min_y_dist_back = ori.y;
                     dist_back = msg.estimated_distance;
                   }
                 }
@@ -285,58 +282,11 @@ void control_main()
             else if (auto_pilot_type == "line")
             {
               std_msgs::String debug_msg;
-              if (has_dist_front && (has_dist_back || has_base))
+              if (has_dist_front && dist_front < 10)
               {
-                // calc balance
-                double balance;
-                double criteria;
-                if (has_dist_back)
-                {
-                  balance = (dist_back)/(dist_front + dist_back);
-                  criteria = distance_to_neighbor * 1.9;
-                }
-                else
-                {
-                  if (dist_base_x > 0)
-                  {
-                    // the base is ahead
-                    balance
-                      = (distance_to_neighbor)
-                        /(dist_front + distance_to_neighbor);
-                    criteria = 0;
-                  }
-                  else if (dist_base < distance_to_neighbor * 0.4)
-                  {
-                    // the base is near
-                    balance = (-dist_base_x)/(dist_front - dist_base_x);
-                    criteria = distance_to_neighbor * 1.2;
-                  }
-                  else
-                  {
-                    // the base is behind and far enough
-                    balance = (dist_base)/(dist_front + dist_base);
-                    criteria = distance_to_neighbor * 1.2;
-                  }
-                }
-                double obj_balance;
-                if (dist_front + dist_back < criteria)
-                  obj_balance = 0.55;
-                else
-                  obj_balance = 0.5;
-                if (balance > obj_balance + 0.05) // too close to the front
-                {
-                  control_msg.linear.x
-                    = -straight_rate * (balance - obj_balance - 0.05)/0.025;
-                  debug_msg.data = "line control: backward (detected both)";
-                }
-                else if (balance < obj_balance - 0.05) // too close to the back
-                {
-                  control_msg.linear.x
-                    = straight_rate * (obj_balance - 0.05 - balance)/0.025;
-                  debug_msg.data = "line control: forward (detected both)";
-                }
-                else
-                  debug_msg.data = "line control: balanced (detected both)";
+                // too close to the front
+                control_msg.linear.x = 0;
+                debug_msg.data = "line control: stay (detected front)";
               }
               else if (has_dist_back)
               {
@@ -349,77 +299,65 @@ void control_main()
                       / (distance_to_neighbor * 0.01);
                   debug_msg.data = "line control: go forward (detected back)";
                 }
-                else if (dist_back > distance_to_neighbor * 0.95)
+                else if (dist_back > distance_to_neighbor * 0.9)
                 {
                   // too far from the back
                   control_msg.linear.x
                     = -straight_rate
-                      * (dist_back - distance_to_neighbor * 0.95)
+                      * (dist_back - distance_to_neighbor * 0.9)
                       / (distance_to_neighbor * 0.04);
-                  debug_msg.data = "line control: go backward (detected back) dist_back = " + std::to_string(dist_back);
+                  debug_msg.data = "line control: go backward (detected back)";
                 }
                 else
+                {
+                  control_msg.linear.x = 0;
                   debug_msg.data = "line control: balanced (detected back)";
-              }
-              else if (has_dist_front)
-              {
-                if (dist_front < distance_to_neighbor * 0.4)
-                {
-                  // too close to the front
-                  control_msg.linear.x
-                    = -straight_rate
-                      * (distance_to_neighbor * 0.4 - dist_front)
-                      / (distance_to_neighbor * 0.03);
-                  debug_msg.data = "line control: go backward (detected front)";
                 }
-                else if (dist_front > distance_to_neighbor * 0.8)
-                {
-                  // too far from the front
-                  control_msg.linear.x
-                    = straight_rate
-                      * (dist_front - distance_to_neighbor * 0.8)
-                      / (distance_to_neighbor * 0.03);
-                  debug_msg.data = "line control: go forward (detected front)";
-                }
-                else
-                  debug_msg.data = "line control: balanced (detected front)";
               }
               else if (has_base)
               {
-                if (dist_base_x < 0 && dist_base > distance_to_neighbor * 0.5)
+                if (dist_base_x < 0 && dist_base > distance_to_neighbor * 0.9)
                 {
                   // base is behind and too far
                   // should go backward
                   control_msg.linear.x
                     = -straight_rate
-                      * (dist_base - distance_to_neighbor * 0.8)
+                      * (dist_base - distance_to_neighbor * 0.9)
                       / (distance_to_neighbor * 0.02);
                   debug_msg.data = "line control: go backward (wrt base)";
                 }
-                else if (
-                  dist_base_x > 0 || dist_base < distance_to_neighbor * 0.4)
+                else if (dist_base_x > 0)
+                {
+                  // base is ahead
+                  // should go forward
+                  control_msg.linear.x = straight_rate * 0.3;
+                  debug_msg.data = "line control: go forward (base ahead)";
+                }
+                else if (dist_base < distance_to_neighbor * 0.8)
                 {
                   // base is ahead or it is so close
                   // should go forward
                   control_msg.linear.x
                     = straight_rate
-                      * (distance_to_neighbor * 0.7 - dist_base_x)
+                      * (distance_to_neighbor * 0.8 - dist_base)
                       / (distance_to_neighbor * 0.03);
                   debug_msg.data = "line control: go forward (wrt base)";
                 }
                 else
                   debug_msg.data = "line control: balanced (wrt base)";
               }
-              else if (!has_dist_back && !has_dist_front && !has_base)
+              else
               {
-                // it is alone possibly because the connection is lost.
+                // the previous robot or the base is lost.
                 // so it will just retrieve back to the previous place.
                 control_msg.linear.x = -0.1 * straight_rate;
-                debug_msg.data = "line control: alone...";
+                if (!has_base)
+                  debug_msg.data = "line control: alone...";
+                else
+                  debug_msg.data = "line control: -_-";
               }
-              else
-                debug_msg.data = "line control: -_-";
 
+              // DEBUG: publish the debug info
               debug_pub.publish(debug_msg);
 
               // if (force_rel.x() > 0.1)
