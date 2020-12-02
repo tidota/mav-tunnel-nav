@@ -240,6 +240,24 @@ void AdHocNetPlugin::OnUpdate()
       }
     }
 
+    // for publishing the ground truth trajectory
+    auto now = ros::Time::now();
+    for (auto robot_name: this->spawnedList)
+    {
+      auto robot = this->world->ModelByName(robot_name);
+      if (robot)
+      {
+        auto pose = robot->WorldPose();
+        tf::Vector3 pos(pose.Pos().X(), pose.Pos().Y(), pose.Pos().Z());
+        tf::Quaternion rot(
+          pose.Rot().X(), pose.Rot().Y(), pose.Rot().Z(), pose.Rot().W());
+        tf::StampedTransform tf_stamped(
+          tf::Transform(rot, pos), now,
+          "world", robot_name + "_groundtruth");
+        this->tf_broadcaster.sendTransform(tf_stamped);
+      }
+    }
+
     last_update = current;
   }
 }

@@ -22,6 +22,7 @@
 
 #include <sim_plugins/CommonTypes.hh>
 
+#include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
 #include <mav_tunnel_nav/SrcDst.h>
@@ -98,6 +99,9 @@ namespace gazebo
 
     /// \brief ROS node handler
     private: ros::NodeHandle nh;
+
+    /// \brief TF broadcaster (for ground truth trajectory)
+    private: tf::TransformBroadcaster tf_broadcaster;
 
     /// \brief subscribers for beacon
     private: std::map<std::string, ros::Subscriber> beacon_subs;
