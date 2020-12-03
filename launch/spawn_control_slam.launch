@@ -11,6 +11,7 @@
   <arg name="output" default="screen"/>
   <arg name="auto_enable_by_slam" default="false"/>
   <arg name="auto_pilot_type" default="default"/>
+  <arg name="save_traj" default="false"/>
 
   <!-- beacon -->
   <node name="beacon" pkg="mav_tunnel_nav" type="beacon" output="$(arg output)">
@@ -189,6 +190,8 @@
       <param name="syncinit_timeout" value="0.5"/>
 
       <param name="auto_enable_by_slam" value="$(arg auto_enable_by_slam)"/>
+
+      <param name="save_traj" value="$(arg save_traj)"/>
     </node>
   </group>
   <!-- mapping only (using the ground truth poses) -->

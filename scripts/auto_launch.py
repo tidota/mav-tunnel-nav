@@ -47,6 +47,8 @@ if __name__ == '__main__':
 			'output:=' + str(dict_robot[robot]['output']),
 			'auto_pilot_type:=' + str(dict_robot['auto_pilot_type'])
 		]
+		if 'save_traj' in dict_robot[robot] and dict_robot[robot]['save_traj']:
+			cmd += ['save_traj:=true']
 		cmd_list[robot] = cmd
 
 	proc_list = {}

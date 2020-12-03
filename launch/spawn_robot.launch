@@ -13,6 +13,7 @@
   <arg name="output" default="screen"/>
   <arg name="auto_enable_by_slam" default="false"/>
   <arg name="auto_pilot_type" default="default"/>
+  <arg name="save_traj" default="false"/>
 
   <group ns="$(arg mav_name)">
     <include file="$(find mav_tunnel_nav)/launch/spawn_mav_model.launch">
@@ -40,6 +41,7 @@
       <arg name="output" value="$(arg output)"/>
       <arg name="auto_enable_by_slam" value="$(arg auto_enable_by_slam)"/>
       <arg name="auto_pilot_type" value="$(arg auto_pilot_type)"/>
+      <arg name="save_traj" value="$(arg save_traj)"/>
     </include>
   </group>
 

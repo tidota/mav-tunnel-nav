@@ -17,6 +17,7 @@ robot1:
   map_only: false
   map_filename: ''
   output: screen # screen, log
+  save_traj: true
 
 robot2:
   x: -2.0

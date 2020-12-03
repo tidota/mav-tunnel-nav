@@ -35,6 +35,8 @@ def spawn(req):
 			'output:=' + str(dict_robot[req.robot]['output']),
 			'auto_pilot_type:=' + str(dict_robot['auto_pilot_type'])
 		]
+		if 'save_traj' in dict_robot[req.robot] and dict_robot[req.robot]['save_traj']:
+			cmd += ['save_traj:=true']
 		if req.auto_enable_by_slam:
 			cmd += ['auto_enable_by_slam:=true']
 		else:

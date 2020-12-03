@@ -4,11 +4,12 @@
 
 #include <algorithm>
 #include <cmath>
-#include <string>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <random>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -45,6 +46,7 @@
 
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
+#include <tf/transform_listener.h>
 
 #include <visualization_msgs/MarkerArray.h>
 
@@ -585,6 +587,22 @@ void pf_main()
   rotation.setRPY(-PI/2.0, 0, -PI/2.0);
   //const tf::Pose camera_pose(rotation, tf::Vector3(0, 0, 0));
   const tf::Pose camera_pose(rotation, tf::Vector3(0.03, 0, -0.06));
+
+  std::shared_ptr<tf::TransformListener> tf_listener
+    = std::make_shared<tf::TransformListener>();
+  bool save_traj = false;
+  std::string traj_filename;
+  if (pnh.getParam("save_traj", save_traj))
+  {
+    traj_filename
+      = "./" + robot_name + "_"
+        + std::to_string((int)(ros::WallTime::now().toSec()))
+        + "_traj.txt";
+  }
+  else
+  {
+    save_traj = false;
+  }
 
   int counts_publish = 0;
   int counts_visualize_map = 0;
@@ -1178,6 +1196,46 @@ void pf_main()
           world_frame_id, robot_frame_id);
         tf_broadcaster.sendTransform(tf_stamped);
         counts_publish = 0;
+
+        if (save_traj)
+        {
+          std::fstream
+            fin(traj_filename, std::fstream::out | std::fstream::app);
+          if (!fin)
+          {
+            ROS_ERROR_STREAM("FILE NOT OPEN: " << traj_filename);
+          }
+          else
+          {
+            // save ground truth x, y, z
+            tf::StampedTransform ground_truth_tf;
+            try
+            {
+              tf_listener->waitForTransform(
+                world_frame_id, robot_name + "_groundtruth",
+                ros::Time(0), ros::Duration(1));
+              tf_listener->lookupTransform(
+                world_frame_id, robot_name + "_groundtruth",
+                ros::Time(0), ground_truth_tf);
+              tf::Vector3 loc = ground_truth_tf.getOrigin();
+              fin << loc.x() << " "
+                  << loc.y() << " "
+                  << loc.z() << " ";
+            }
+            catch (tf::TransformException ex)
+            {
+              ROS_ERROR_STREAM(
+                "Transfrom from " << robot_name + "_groundtruth" <<
+                " to " << world_frame_id << " is not available yet.");
+              fin << "0 0 0 ";
+            }
+            // save estimated loc x, y, z
+            fin << average_loc.x() << " "
+                << average_loc.y() << " "
+                << average_loc.z() << std::endl;
+            fin.close();
+          }
+        }
       }
       else
       {
