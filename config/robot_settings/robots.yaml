@@ -1,3 +1,6 @@
+# default: flies along the wall independently
+# line: flies along the wall but manages the distances of the neighbors.
+# mesh: (not implemented yet)
 auto_pilot_type: line # default, line, mesh
 
 robots:
@@ -36,6 +39,7 @@ robot3:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
 
 robot4:
   x: -16

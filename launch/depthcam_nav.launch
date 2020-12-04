@@ -11,6 +11,7 @@
   <arg name="ground_truth" default="$(arg map_only)"/>
   <arg name="map_filename" default=""/>
   <arg name="extra_gazebo_args" default="--verbose"/>
+  <arg name="batch_spawn" default="false"/>
 
   <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/robots.yaml" />
   <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/comm.yaml" />
@@ -32,7 +33,13 @@
   </include>
 
   <!-- spawn robots described in the yaml file -->
-  <node pkg="mav_tunnel_nav" type="auto_launch_seq.py" name="robot_sequence_spawner" output="screen"/>
-  <!--<node pkg="mav_tunnel_nav" type="auto_launch.py" name="robot_team_spawner" output="screen"/>-->
+  <group if="$(arg batch_spawn)">
+    <!-- spawn the robots at once -->
+    <node pkg="mav_tunnel_nav" type="auto_launch.py" name="robot_team_spawner" output="screen"/>
+  </group>
+  <group unless="$(arg batch_spawn)">
+    <!-- spawn the robot sequentially (it spawns each one once the previous one goes away) -->
+    <node pkg="mav_tunnel_nav" type="auto_launch_seq.py" name="robot_sequence_spawner" output="screen"/>
+  </group>
 
 </launch>
