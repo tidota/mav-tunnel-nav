@@ -178,6 +178,16 @@ target_link_libraries(${adhocnet_plugin_name}
   ${ignition-transport4_LIBRARIES}
 )
 
+# Create the libdrift_odometry_plugin.so library.
+set(drift_odometry_plugin_name drift_odometry_plugin)
+add_library(${drift_odometry_plugin_name} src/sim_plugins/drift_odometry_plugin.cpp)
+add_dependencies(${drift_odometry_plugin_name}
+  ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${drift_odometry_plugin_name}
+  ${catkin_LIBRARIES}
+  ${ignition-transport4_LIBRARIES}
+)
+
 add_executable(auto_pilot src/auto_pilot.cpp)
 add_dependencies(auto_pilot
   ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
