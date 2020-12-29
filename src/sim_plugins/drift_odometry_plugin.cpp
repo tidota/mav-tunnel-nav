@@ -16,16 +16,22 @@
 //#include "TransformStampedWithFrameIds.pb.h"
 //#include "Vector3dStamped.pb.h"
 
-namespace gazebo {
+#include <mav_tunnel_nav/protobuf/ConnectGazeboToRosTopic.pb.h>
+#include <mav_tunnel_nav/protobuf/Odometry.pb.h>
+#include <mav_tunnel_nav/protobuf/PoseWithCovarianceStamped.pb.h>
+#include <mav_tunnel_nav/protobuf/Vector3dStamped.pb.h>
+#include <mav_tunnel_nav/protobuf/TransformStamped.pb.h>
+#include <mav_tunnel_nav/protobuf/TransformStampedWithFrameIds.pb.h>
 
-DriftOdometryPlugin::~DriftOdometryPlugin() {
-}
+namespace gazebo
+{
 
-void DriftOdometryPlugin::Load(physics::ModelPtr _model,
-                                sdf::ElementPtr _sdf) {
-  if (kPrintOnPluginLoad) {
-    gzdbg << __FUNCTION__ << "() called." << std::endl;
-  }
+void DriftOdometryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
+{
+  // if (kPrintOnPluginLoad)
+  // {
+  //   gzdbg << __FUNCTION__ << "() called." << std::endl;
+  // }
 
   // Store the pointer to the model
   model_ = _model;
@@ -62,7 +68,8 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model,
     gzthrow("[gazebo_odometry_plugin] Couldn't find specified link \""
             << link_name_ << "\".");
 
-  if (_sdf->HasElement("covarianceImage")) {
+  if (_sdf->HasElement("covarianceImage"))
+  {
     std::string image_name =
         _sdf->GetElement("covarianceImage")->Get<std::string>();
     covariance_image_ = cv::imread(image_name, cv::IMREAD_GRAYSCALE);
@@ -74,10 +81,13 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model,
             << std::endl;
   }
 
-  if (_sdf->HasElement("randomEngineSeed")) {
+  if (_sdf->HasElement("randomEngineSeed"))
+  {
     random_generator_.seed(
         _sdf->GetElement("randomEngineSeed")->Get<unsigned int>());
-  } else {
+  }
+  else
+  {
     random_generator_.seed(
         std::chrono::system_clock::now().time_since_epoch().count());
   }
@@ -120,7 +130,8 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model,
                       covariance_image_scale_);
 
   parent_link_ = world_->EntityByName(parent_frame_id_);
-  if (parent_link_ == NULL && parent_frame_id_ != kDefaultParentFrameId) {
+  if (parent_link_ == NULL && parent_frame_id_ != kDefaultParentFrameId)
+  {
     gzthrow("[gazebo_odometry_plugin] Couldn't find specified parent link \""
             << parent_frame_id_ << "\".");
   }
@@ -209,12 +220,15 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model,
 }
 
 // This gets called by the world update start event.
-void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
-  if (kPrintOnUpdates) {
+void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info)
+{
+  if (kPrintOnUpdates)
+  {
     gzdbg << __FUNCTION__ << "() called." << std::endl;
   }
 
-  if (!pubs_and_subs_created_) {
+  if (!pubs_and_subs_created_)
+  {
     CreatePubsAndSubs();
     pubs_and_subs_created_ = true;
   }
@@ -229,7 +243,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
   ignition::math::Vector3d gazebo_angular_velocity = C_angular_velocity_W_C;
   ignition::math::Pose3d gazebo_pose = W_pose_W_C;
 
-  if (parent_frame_id_ != kDefaultParentFrameId) {
+  if (parent_frame_id_ != kDefaultParentFrameId)
+  {
     ignition::math::Pose3d W_pose_W_P = parent_link_->WorldPose();
     ignition::math::Vector3d P_linear_velocity_W_P = parent_link_->RelativeLinearVel();
     ignition::math::Vector3d P_angular_velocity_W_P =
@@ -259,7 +274,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
   bool publish_odometry = true;
 
   // First, determine whether we should publish a odometry.
-  if (covariance_image_.data != NULL) {
+  if (covariance_image_.data != NULL)
+  {
     // We have an image.
 
     // Image is always centered around the origin:
@@ -272,7 +288,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
                 std::floor(gazebo_pose.Pos().Y() / covariance_image_scale_)) +
             height / 2;
 
-    if (x >= 0 && x < width && y >= 0 && y < height) {
+    if (x >= 0 && x < width && y >= 0 && y < height)
+    {
       uint8_t pixel_value = covariance_image_.at<uint8_t>(y, x);
       if (pixel_value == 0) {
         publish_odometry = false;
@@ -282,7 +299,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
     }
   }
 
-  if (gazebo_sequence_ % measurement_divisor_ == 0) {
+  if (gazebo_sequence_ % measurement_divisor_ == 0)
+  {
     gz_geometry_msgs::Odometry odometry;
     odometry.mutable_header()->set_frame_id(parent_frame_id_);
     odometry.mutable_header()->mutable_stamp()->set_sec(
@@ -327,7 +345,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
   }
 
   // Is it time to publish the front element?
-  if (gazebo_sequence_ == odometry_queue_.front().first) {
+  if (gazebo_sequence_ == odometry_queue_.front().first)
+  {
     // Copy the odometry message that is on the queue
     gz_geometry_msgs::Odometry odometry_msg(odometry_queue_.front().second);
 
@@ -399,23 +418,27 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
     angular_velocity->set_z(angular_velocity->z() + angular_velocity_n[2]);
 
     odometry_msg.mutable_pose()->mutable_covariance()->Clear();
-    for (int i = 0; i < pose_covariance_matrix_.size(); i++) {
+    for (int i = 0; i < pose_covariance_matrix_.size(); i++)
+    {
       odometry_msg.mutable_pose()->mutable_covariance()->Add(
           pose_covariance_matrix_[i]);
     }
 
     odometry_msg.mutable_twist()->mutable_covariance()->Clear();
-    for (int i = 0; i < twist_covariance_matrix_.size(); i++) {
+    for (int i = 0; i < twist_covariance_matrix_.size(); i++)
+    {
       odometry_msg.mutable_twist()->mutable_covariance()->Add(
           twist_covariance_matrix_[i]);
     }
 
     // Publish all the topics, for which the topic name is specified.
-    if (pose_pub_->HasConnections()) {
+    if (pose_pub_->HasConnections())
+    {
       pose_pub_->Publish(odometry_msg.pose().pose());
     }
 
-    if (pose_with_covariance_stamped_pub_->HasConnections()) {
+    if (pose_with_covariance_stamped_pub_->HasConnections())
+    {
       gz_geometry_msgs::PoseWithCovarianceStamped
           pose_with_covariance_stamped_msg;
 
@@ -428,7 +451,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
           pose_with_covariance_stamped_msg);
     }
 
-    if (position_stamped_pub_->HasConnections()) {
+    if (position_stamped_pub_->HasConnections())
+    {
       gz_geometry_msgs::Vector3dStamped position_stamped_msg;
       position_stamped_msg.mutable_header()->CopyFrom(odometry_msg.header());
       position_stamped_msg.mutable_position()->CopyFrom(
@@ -437,7 +461,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
       position_stamped_pub_->Publish(position_stamped_msg);
     }
 
-    if (transform_stamped_pub_->HasConnections()) {
+    if (transform_stamped_pub_->HasConnections())
+    {
       gz_geometry_msgs::TransformStamped transform_stamped_msg;
 
       transform_stamped_msg.mutable_header()->CopyFrom(odometry_msg.header());
@@ -453,7 +478,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
       transform_stamped_pub_->Publish(transform_stamped_msg);
     }
 
-    if (odometry_pub_->HasConnections()) {
+    if (odometry_pub_->HasConnections())
+    {
       // DEBUG
       odometry_pub_->Publish(odometry_msg);
     }
@@ -488,7 +514,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info) {
   ++gazebo_sequence_;
 }
 
-void DriftOdometryPlugin::CreatePubsAndSubs() {
+void DriftOdometryPlugin::CreatePubsAndSubs()
+{
   // Create temporary "ConnectGazeboToRosTopic" publisher and message
   gazebo::transport::PublisherPtr connect_gazebo_to_ros_topic_pub =
       node_handle_->Advertise<gz_std_msgs::ConnectGazeboToRosTopic>(

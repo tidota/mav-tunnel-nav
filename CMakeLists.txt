@@ -168,6 +168,16 @@ catkin_package(
     ${PROJECT_NAME}-extras.cmake
 )
 
+# Create a static library with the Protobuf messages used internally.
+set(protobuf_lib_name MavTunnelNavProtobuf)
+add_subdirectory(src/protobuf)
+set_source_files_properties(${PROTO_SOURCES} ${PROTO_HEADERS}
+                            PROPERTIES GENERATED TRUE)
+add_library(${protobuf_lib_name} STATIC ${PROTO_SOURCES})
+add_dependencies(${protobuf_lib_name} protobuf_compilation)
+set_target_properties(${protobuf_lib_name}
+  PROPERTIES POSITION_INDEPENDENT_CODE ON COMPILE_FLAGS "-Wno-unused-parameter")
+
 # Create the libAdHocNetPlugin.so library.
 set(adhocnet_plugin_name AdHocNetPlugin)
 add_library(${adhocnet_plugin_name} src/sim_plugins/AdHocNetPlugin.cc)
@@ -185,8 +195,12 @@ add_dependencies(${drift_odometry_plugin_name}
   ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(${drift_odometry_plugin_name}
   ${catkin_LIBRARIES}
+  ${protobuf_lib_name}
+  protobuf::libprotobuf
   ${ignition-transport4_LIBRARIES}
 )
+add_dependencies(${drift_odometry_plugin_name} protobuf_compilation)
+
 
 add_executable(auto_pilot src/auto_pilot.cpp)
 add_dependencies(auto_pilot

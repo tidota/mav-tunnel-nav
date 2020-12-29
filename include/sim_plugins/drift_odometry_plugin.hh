@@ -19,10 +19,11 @@
 //#include "rotors_gazebo_plugins/common.h"
 //#include "rotors_gazebo_plugins/sdf_api_wrapper.hpp"
 
-//#include "Odometry.pb.h"
+#include <mav_tunnel_nav/protobuf/Odometry.pb.h>
 
 
-namespace gazebo {
+namespace gazebo
+{
 
 // Default values
 static const std::string kDefaultParentFrameId = "world";
@@ -36,7 +37,8 @@ static constexpr int kDefaultOdometrySequence = 0;
 static constexpr double kDefaultUnknownDelay = 0.0;
 static constexpr double kDefaultCovarianceImageScale = 1.0;
 
-class DriftOdometryPlugin : public ModelPlugin {
+class DriftOdometryPlugin : public ModelPlugin
+{
  public:
   typedef std::normal_distribution<> NormalDistribution;
   typedef std::uniform_real_distribution<> UniformDistribution;
@@ -64,7 +66,7 @@ class DriftOdometryPlugin : public ModelPlugin {
         covariance_image_scale_(kDefaultCovarianceImageScale),
         pubs_and_subs_created_(false) {}
 
-  ~DriftOdometryPlugin();
+  ~DriftOdometryPlugin() {};
 
   void InitializeParams();
   void Publish();
