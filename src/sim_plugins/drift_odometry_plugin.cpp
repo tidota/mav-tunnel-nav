@@ -3,18 +3,8 @@
 #include <chrono>
 #include <iostream>
 
-//#include <opencv2/core/core.hpp>
-//#include <opencv2/highgui/highgui.hpp>
-
-// USER
-//#include <rotors_gazebo_plugins/common.h>
-//#include "ConnectGazeboToRosTopic.pb.h"
-//#include "ConnectRosToGazeboTopic.pb.h"
-//#include "PoseStamped.pb.h"
-//#include "PoseWithCovarianceStamped.pb.h"
-//#include "TransformStamped.pb.h"
-//#include "TransformStampedWithFrameIds.pb.h"
-//#include "Vector3dStamped.pb.h"
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 #include <mav_tunnel_nav/protobuf/ConnectGazeboToRosTopic.pb.h>
 #include <mav_tunnel_nav/protobuf/Odometry.pb.h>
@@ -28,10 +18,6 @@ namespace gazebo
 
 void DriftOdometryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 {
-  // if (kPrintOnPluginLoad)
-  // {
-  //   gzdbg << __FUNCTION__ << "() called." << std::endl;
-  // }
 
   // Store the pointer to the model
   model_ = _model;
@@ -222,11 +208,6 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
 // This gets called by the world update start event.
 void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info)
 {
-  if (kPrintOnUpdates)
-  {
-    gzdbg << __FUNCTION__ << "() called." << std::endl;
-  }
-
   if (!pubs_and_subs_created_)
   {
     CreatePubsAndSubs();
@@ -418,14 +399,14 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info)
     angular_velocity->set_z(angular_velocity->z() + angular_velocity_n[2]);
 
     odometry_msg.mutable_pose()->mutable_covariance()->Clear();
-    for (int i = 0; i < pose_covariance_matrix_.size(); i++)
+    for (unsigned int i = 0; i < pose_covariance_matrix_.size(); i++)
     {
       odometry_msg.mutable_pose()->mutable_covariance()->Add(
           pose_covariance_matrix_[i]);
     }
 
     odometry_msg.mutable_twist()->mutable_covariance()->Clear();
-    for (int i = 0; i < twist_covariance_matrix_.size(); i++)
+    for (unsigned int i = 0; i < twist_covariance_matrix_.size(); i++)
     {
       odometry_msg.mutable_twist()->mutable_covariance()->Add(
           twist_covariance_matrix_[i]);

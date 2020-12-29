@@ -16,14 +16,74 @@
 
 #include <mav_msgs/default_topics.h>  // This comes from the mav_comm repo
 
-//#include "rotors_gazebo_plugins/common.h"
-//#include "rotors_gazebo_plugins/sdf_api_wrapper.hpp"
+#include <Eigen/Dense>
+#include <tinyxml.h>
 
 #include <mav_tunnel_nav/protobuf/Odometry.pb.h>
 
 
 namespace gazebo
 {
+//===============================================================================================//
+//================================== TOPICS FOR ROS INTERFACE ===================================//
+//===============================================================================================//
+
+// These should perhaps be defined in an .sdf/.xacro file instead?
+static const std::string kConnectGazeboToRosSubtopic = "connect_gazebo_to_ros_subtopic";
+// static const std::string kConnectRosToGazeboSubtopic = "connect_ros_to_gazebo_subtopic";
+
+/// \brief    Special-case topic for ROS interface plugin to listen to (if present)
+///           and broadcast transforms to the ROS system.
+static const std::string kBroadcastTransformSubtopic = "broadcast_transform";
+
+
+/// \brief      Obtains a parameter from sdf.
+/// \param[in]  sdf           Pointer to the sdf object.
+/// \param[in]  name          Name of the parameter.
+/// \param[out] param         Param Variable to write the parameter to.
+/// \param[in]  default_value Default value, if the parameter not available.
+/// \param[in]  verbose       If true, gzerror if the parameter is not available.
+template<class T>
+bool getSdfParam(sdf::ElementPtr sdf, const std::string& name, T& param, const T& default_value, const bool& verbose =
+                     false) {
+  if (sdf->HasElement(name)) {
+    param = sdf->GetElement(name)->Get<T>();
+    return true;
+  }
+  else {
+    param = default_value;
+    if (verbose)
+      gzerr << "[rotors_gazebo_plugins] Please specify a value for parameter \"" << name << "\".\n";
+  }
+  return false;
+}
+
+#if SDF_MAJOR_VERSION >= 3
+  typedef ignition::math::Vector3d SdfVector3;
+#else
+  class SdfVector3 : public sdf::Vector3 {
+  /*
+  A wrapper class for deprecated sdf::Vector3 class to provide the same accessor
+  functions as in the newer ignition::math::Vector3 class.
+  */
+
+   public:
+    using sdf::Vector3::Vector3;
+    virtual ~SdfVector3() {}
+
+    /// \brief Get the x value
+    /// \return the x value
+    double X() { return this->x; }
+
+    /// \brief Get the y value
+    /// \return the y value
+    double Y() { return this->y; }
+
+    /// \brief Get the z value
+    /// \return the z value
+    double Z() { return this->z; }
+  };
+#endif
 
 // Default values
 static const std::string kDefaultParentFrameId = "world";
@@ -47,7 +107,9 @@ class DriftOdometryPlugin : public ModelPlugin
 
   DriftOdometryPlugin()
       : ModelPlugin(),
-        random_generator_(random_device_()),
+
+        pubs_and_subs_created_(false),
+
         // DEFAULT TOPICS
         pose_pub_topic_(mav_msgs::default_topics::POSE),
         pose_with_covariance_stamped_pub_topic_(mav_msgs::default_topics::POSE_WITH_COVARIANCE),
@@ -60,12 +122,13 @@ class DriftOdometryPlugin : public ModelPlugin
         link_name_(kDefaultLinkName),
         measurement_delay_(kDefaultMeasurementDelay),
         measurement_divisor_(kDefaultMeasurementDivisor),
-        unknown_delay_(kDefaultUnknownDelay),
         gazebo_sequence_(kDefaultGazeboSequence),
         odometry_sequence_(kDefaultOdometrySequence),
+        unknown_delay_(kDefaultUnknownDelay),
         covariance_image_scale_(kDefaultCovarianceImageScale),
-        pubs_and_subs_created_(false) {}
 
+        random_generator_(random_device_())
+  {};
   ~DriftOdometryPlugin() {};
 
   void InitializeParams();
@@ -149,5 +212,22 @@ class DriftOdometryPlugin : public ModelPlugin
 };
 
 } // namespace gazebo
+
+template<class Derived>
+Eigen::Quaternion<typename Derived::Scalar> QuaternionFromSmallAngle(const Eigen::MatrixBase<Derived> & theta) {
+  typedef typename Derived::Scalar Scalar;
+  EIGEN_STATIC_ASSERT_FIXED_SIZE(Derived);
+  EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Derived, 3);
+  const Scalar q_squared = theta.squaredNorm() / 4.0;
+
+  if (q_squared < 1) {
+    return Eigen::Quaternion<Scalar>(sqrt(1 - q_squared), theta[0] * 0.5, theta[1] * 0.5, theta[2] * 0.5);
+  }
+  else {
+    const Scalar w = 1.0 / sqrt(1 + q_squared);
+    const Scalar f = w * 0.5;
+    return Eigen::Quaternion<Scalar>(w, theta[0] * f, theta[1] * f, theta[2] * f);
+  }
+}
 
 #endif // DRIFT_ODOMETRY_PLUGIN_HH_

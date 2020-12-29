@@ -38,6 +38,9 @@ find_package(PCL 1.7 REQUIRED)
 # Octomap
 find_package(octomap REQUIRED)
 
+# OpenCV (just for odometry plugin as of 12/29/2020)
+find_package(OpenCV REQUIRED)
+
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS system)
 
@@ -153,6 +156,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
   ${OCTOMAP_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 link_directories(
@@ -198,6 +202,7 @@ target_link_libraries(${drift_odometry_plugin_name}
   ${protobuf_lib_name}
   protobuf::libprotobuf
   ${ignition-transport4_LIBRARIES}
+  ${OpenCV_LIBRARIES}
 )
 add_dependencies(${drift_odometry_plugin_name} protobuf_compilation)
 
