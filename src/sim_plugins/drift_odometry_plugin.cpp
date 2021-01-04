@@ -49,7 +49,9 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     link_name_ = _sdf->GetElement("linkName")->Get<std::string>();
   else
     gzerr << "[gazebo_odometry_plugin] Please specify a linkName.\n";
+
   link_ = model_->GetLink(link_name_);
+
   if (link_ == NULL)
     gzthrow("[gazebo_odometry_plugin] Couldn't find specified link \""
             << link_name_ << "\".");
@@ -58,7 +60,9 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
   {
     std::string image_name =
         _sdf->GetElement("covarianceImage")->Get<std::string>();
+
     covariance_image_ = cv::imread(image_name, cv::IMREAD_GRAYSCALE);
+
     if (covariance_image_.data == NULL)
       gzerr << "loading covariance image " << image_name << " failed"
             << std::endl;
@@ -77,6 +81,7 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     random_generator_.seed(
         std::chrono::system_clock::now().time_since_epoch().count());
   }
+
   getSdfParam<std::string>(_sdf, "poseTopic", pose_pub_topic_, pose_pub_topic_);
   getSdfParam<std::string>(_sdf, "poseWithCovarianceTopic",
                            pose_with_covariance_stamped_pub_topic_,
@@ -190,13 +195,13 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
       twist_covariance_matrix_.data());
   Eigen::Matrix<double, 6, 1> twist_covd;
 
-  twist_covd << noise_normal_linear_velocity.X() *
-                    noise_normal_linear_velocity.X(),
-      noise_normal_linear_velocity.Y() * noise_normal_linear_velocity.Y(),
-      noise_normal_linear_velocity.Z() * noise_normal_linear_velocity.Z(),
-      noise_normal_angular_velocity.X() * noise_normal_angular_velocity.X(),
-      noise_normal_angular_velocity.Y() * noise_normal_angular_velocity.Y(),
-      noise_normal_angular_velocity.Z() * noise_normal_angular_velocity.Z();
+  twist_covd
+    << noise_normal_linear_velocity.X() * noise_normal_linear_velocity.X(),
+       noise_normal_linear_velocity.Y() * noise_normal_linear_velocity.Y(),
+       noise_normal_linear_velocity.Z() * noise_normal_linear_velocity.Z(),
+       noise_normal_angular_velocity.X() * noise_normal_angular_velocity.X(),
+       noise_normal_angular_velocity.Y() * noise_normal_angular_velocity.Y(),
+       noise_normal_angular_velocity.Z() * noise_normal_angular_velocity.Z();
   twist_covariance = twist_covd.asDiagonal();
 
   // Listen to the update event. This event is broadcast every
@@ -227,7 +232,8 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info)
   if (parent_frame_id_ != kDefaultParentFrameId)
   {
     ignition::math::Pose3d W_pose_W_P = parent_link_->WorldPose();
-    ignition::math::Vector3d P_linear_velocity_W_P = parent_link_->RelativeLinearVel();
+    ignition::math::Vector3d P_linear_velocity_W_P
+      = parent_link_->RelativeLinearVel();
     ignition::math::Vector3d P_angular_velocity_W_P =
         parent_link_->RelativeAngularVel();
     ignition::math::Pose3d C_pose_P_C_ = W_pose_W_C - W_pose_W_P;

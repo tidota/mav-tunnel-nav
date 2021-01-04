@@ -29,11 +29,8 @@ namespace gazebo
 //===============================================================================================//
 
 // These should perhaps be defined in an .sdf/.xacro file instead?
-static const std::string kConnectGazeboToRosSubtopic = "connect_gazebo_to_ros_subtopic";
-// static const std::string kConnectRosToGazeboSubtopic = "connect_ros_to_gazebo_subtopic";
-
-/// \brief    Special-case topic for ROS interface plugin to listen to (if present)
-///           and broadcast transforms to the ROS system.
+static const std::string kConnectGazeboToRosSubtopic
+  = "connect_gazebo_to_ros_subtopic";
 static const std::string kBroadcastTransformSubtopic = "broadcast_transform";
 
 
@@ -44,16 +41,21 @@ static const std::string kBroadcastTransformSubtopic = "broadcast_transform";
 /// \param[in]  default_value Default value, if the parameter not available.
 /// \param[in]  verbose       If true, gzerror if the parameter is not available.
 template<class T>
-bool getSdfParam(sdf::ElementPtr sdf, const std::string& name, T& param, const T& default_value, const bool& verbose =
-                     false) {
-  if (sdf->HasElement(name)) {
+bool getSdfParam(
+  sdf::ElementPtr sdf, const std::string& name, T& param,
+  const T& default_value, const bool& verbose = false)
+{
+  if (sdf->HasElement(name))
+  {
     param = sdf->GetElement(name)->Get<T>();
     return true;
   }
-  else {
+  else
+  {
     param = default_value;
     if (verbose)
-      gzerr << "[rotors_gazebo_plugins] Please specify a value for parameter \"" << name << "\".\n";
+      gzerr << "[rotors_gazebo_plugins] Please specify a value for parameter \""
+            << name << "\".\n";
   }
   return false;
 }
@@ -61,7 +63,8 @@ bool getSdfParam(sdf::ElementPtr sdf, const std::string& name, T& param, const T
 #if SDF_MAJOR_VERSION >= 3
   typedef ignition::math::Vector3d SdfVector3;
 #else
-  class SdfVector3 : public sdf::Vector3 {
+  class SdfVector3 : public sdf::Vector3
+  {
   /*
   A wrapper class for deprecated sdf::Vector3 class to provide the same accessor
   functions as in the newer ignition::math::Vector3 class.
@@ -112,7 +115,8 @@ class DriftOdometryPlugin : public ModelPlugin
 
         // DEFAULT TOPICS
         pose_pub_topic_(mav_msgs::default_topics::POSE),
-        pose_with_covariance_stamped_pub_topic_(mav_msgs::default_topics::POSE_WITH_COVARIANCE),
+        pose_with_covariance_stamped_pub_topic_(
+          mav_msgs::default_topics::POSE_WITH_COVARIANCE),
         position_stamped_pub_topic_(mav_msgs::default_topics::POSITION),
         transform_stamped_pub_topic_(mav_msgs::default_topics::TRANSFORM),
         odometry_pub_topic_(mav_msgs::default_topics::ODOMETRY),
@@ -214,16 +218,21 @@ class DriftOdometryPlugin : public ModelPlugin
 } // namespace gazebo
 
 template<class Derived>
-Eigen::Quaternion<typename Derived::Scalar> QuaternionFromSmallAngle(const Eigen::MatrixBase<Derived> & theta) {
+Eigen::Quaternion<typename Derived::Scalar> QuaternionFromSmallAngle(
+  const Eigen::MatrixBase<Derived> & theta)
+{
   typedef typename Derived::Scalar Scalar;
   EIGEN_STATIC_ASSERT_FIXED_SIZE(Derived);
   EIGEN_STATIC_ASSERT_VECTOR_SPECIFIC_SIZE(Derived, 3);
   const Scalar q_squared = theta.squaredNorm() / 4.0;
 
-  if (q_squared < 1) {
-    return Eigen::Quaternion<Scalar>(sqrt(1 - q_squared), theta[0] * 0.5, theta[1] * 0.5, theta[2] * 0.5);
+  if (q_squared < 1)
+  {
+    return Eigen::Quaternion<Scalar>(
+      sqrt(1 - q_squared), theta[0] * 0.5, theta[1] * 0.5, theta[2] * 0.5);
   }
-  else {
+  else
+  {
     const Scalar w = 1.0 / sqrt(1 + q_squared);
     const Scalar f = w * 0.5;
     return Eigen::Quaternion<Scalar>(w, theta[0] * f, theta[1] * f, theta[2] * f);
