@@ -83,7 +83,7 @@
     measurement_divisor="1"
     measurement_delay="0"
     unknown_delay="0.0"
-    noise_normal_position="0 0 0"
+    noise_normal_position="0.01 0.01 0.01"
     noise_normal_quaternion="0 0 0"
     noise_normal_linear_velocity="0 0 0"
     noise_normal_angular_velocity="0 0 0"
