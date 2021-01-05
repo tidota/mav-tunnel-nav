@@ -349,9 +349,13 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info)
 
     gazebo::msgs::Vector3d* p =
         odometry_msg.mutable_pose()->mutable_pose()->mutable_position();
-    p->set_x(p->x() + pos_n[0]);
-    p->set_y(p->y() + pos_n[1]);
-    p->set_z(p->z() + pos_n[2]);
+
+    accumulated_pos_n_[0] += pos_n[0];
+    accumulated_pos_n_[1] += pos_n[1];
+    accumulated_pos_n_[2] += pos_n[2];
+    p->set_x(p->x() + accumulated_pos_n_[0]);
+    p->set_y(p->y() + accumulated_pos_n_[1]);
+    p->set_z(p->z() + accumulated_pos_n_[2]);
 
     // Calculate attitude distortions.
     Eigen::Vector3d theta;
