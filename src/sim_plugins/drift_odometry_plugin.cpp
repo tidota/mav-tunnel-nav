@@ -371,6 +371,11 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info)
 
     Eigen::Quaterniond _q_W_L(q_W_L->w(), q_W_L->x(), q_W_L->y(), q_W_L->z());
     _q_W_L = _q_W_L * q_n;
+
+    // TODO: apply accumulated Yaw noise.
+    // yaw_n, accumulated_yaw_n_
+    // reuse attitude_n_[2](random_generator_) or create another Normal dist?
+
     q_W_L->set_w(_q_W_L.w());
     q_W_L->set_x(_q_W_L.x());
     q_W_L->set_y(_q_W_L.y());
