@@ -259,6 +259,14 @@ void control_main()
               else if (auto_pilot_type == "mesh")
               {
                 // TODO: get necessary data about neighbors
+
+                // get the distances from the following neighbors
+
+                // - left front, right front
+                // - left, right
+                // - back
+
+                // should also have a list saying if the neighbors were detected
               }
             }
           }
@@ -376,6 +384,12 @@ void control_main()
             else if (auto_pilot_type == "mesh")
             {
               // TODO: devel "straight" behavior
+
+              // if a neighbor in left-front is really too close, stop
+
+              // else if a neighbor in right-front is too close, stop
+
+              // otherwise, adjust the distance from a neighbor in back
             }
             else
             {
@@ -390,6 +404,14 @@ void control_main()
             if (auto_pilot_type == "mesh")
             {
               // TODO: devel "steer" behavior
+
+              // if the wall is detected and no neighbor in the hemicircle,
+              // adjust the heading along it
+
+              // else if the "average" neighbor is far from its location,
+              // face away
+
+              // otherwise, do nothing
             }
             else
             {
@@ -416,6 +438,15 @@ void control_main()
             if (auto_pilot_type == "mesh")
             {
               // TODO: devel "middle" behavior
+
+              // if the wall(s) detected and the hemicircle has no neighbor,
+              // adjut the position w.r.t. the wall(s)
+
+              // else if a neighbor in left is really too close, stop
+
+              // else if a neighbor in right is too close, move away
+
+              // otherwise, do nothing
             }
             else
             {
@@ -452,6 +483,14 @@ void control_main()
             if (auto_pilot_type == "mesh")
             {
               // TODO: devel "turn" behaviro
+
+              // if the wall detected,
+
+                // if right is open, turn right
+
+                // if left is open, turn left
+
+              // otherwise, do nothing
             }
             else
             {
