@@ -202,7 +202,7 @@ void control_main()
           }
         }
 
-        // get relative pose data
+        // === get relative pose data === //
         bool has_dist_front = false;
         bool has_dist_back = false;
         bool has_base = false;
@@ -255,6 +255,10 @@ void control_main()
                 //   msg.estimated_orientation.y,
                 //   msg.estimated_orientation.z);
                 // force_rel += f * v;
+              }
+              else if (auto_pilot_type == "mesh")
+              {
+                // TODO: get necessary data about neighbors
               }
             }
           }
@@ -369,128 +373,153 @@ void control_main()
               if (control_msg.linear.x < -straight_rate)
                 control_msg.linear.x = -straight_rate;
             }
+            else if (auto_pilot_type == "mesh")
+            {
+              // TODO: devel "straight" behavior
+            }
             else
             {
               ROS_ERROR_STREAM("invalid auto_pilot_type: " << auto_pilot_type);
             }
           }
 
-          // ===================== steering =================================== //
+          // ===================== steering ================================= //
           // adjusts the heading so that the robot's right side faces toward the
           // wall.
           {
-            double range_rf = range_data.at("range_rfront");
-            double range_rr = range_data.at("range_rrear");
-            double diff_rate = (range_rr - range_rf) / (range_rf + range_rr);
-
-            // input check
-            if(diff_rate < -STEER_THRESH || STEER_THRESH < diff_rate)
+            if (auto_pilot_type == "mesh")
             {
-              if (STEER_THRESH < diff_rate)
-                ROS_DEBUG("STEER TO THE RIGHT");
-              else
-                ROS_DEBUG("STEER TO THE LEFT");
-              // calculate the output
-              control_msg.angular.z = steering_yaw_rate * diff_rate;
+              // TODO: devel "steer" behavior
+            }
+            else
+            {
+              double range_rf = range_data.at("range_rfront");
+              double range_rr = range_data.at("range_rrear");
+              double diff_rate = (range_rr - range_rf) / (range_rf + range_rr);
+
+              // input check
+              if(diff_rate < -STEER_THRESH || STEER_THRESH < diff_rate)
+              {
+                if (STEER_THRESH < diff_rate)
+                  ROS_DEBUG("STEER TO THE RIGHT");
+                else
+                  ROS_DEBUG("STEER TO THE LEFT");
+                // calculate the output
+                control_msg.angular.z = steering_yaw_rate * diff_rate;
+              }
             }
           }
 
-          // ===================== staying_on_the_middle_line ================= //
+          // =================== staying_on_the_middle_line ================= //
           // adjusts the horizontal position in the tube.
           {
-            // pick shorter one as "left" length
-            const double lengL
-              = std::min({range_data.at("range_left"),
-                          range_data.at("range_lfront")/sqrt(2),
-                          range_data.at("range_front")});
-
-            const double lengR = range_data.at("range_right");
-
-            // diff_rate is the gap from the mid with respect to y axis (left is
-            // positive)
-            const double mid_leng = (lengL + lengR)/2;
-            const double diff_leng = (lengR - lengL)/2;
-            const double diff_rate
-              = (lengL > range_max * 0.99)? lengR / range_max - mid_open:
-                (mid_leng != 0)? diff_leng/mid_leng: 0;
-
-            // input check
-            // if the front side is clear and it is out of range from the middle
-            // line apply a proportional value
-            if(diff_rate < -MIDDLE_THRESH || MIDDLE_THRESH < diff_rate)
+            if (auto_pilot_type == "mesh")
             {
-              ROS_DEBUG("STAY ON THE MIDDLE LINE");
-              control_msg.linear.y = middle_line_rate * -diff_rate;
+              // TODO: devel "middle" behavior
+            }
+            else
+            {
+              // pick shorter one as "left" length
+              const double lengL
+                = std::min({range_data.at("range_left"),
+                            range_data.at("range_lfront")/sqrt(2),
+                            range_data.at("range_front")});
+
+              const double lengR = range_data.at("range_right");
+
+              // diff_rate is the gap from the mid with respect to y axis (left is
+              // positive)
+              const double mid_leng = (lengL + lengR)/2;
+              const double diff_leng = (lengR - lengL)/2;
+              const double diff_rate
+                = (lengL > range_max * 0.99)? lengR / range_max - mid_open:
+                  (mid_leng != 0)? diff_leng/mid_leng: 0;
+
+              // input check
+              // if the front side is clear and it is out of range from the middle
+              // line apply a proportional value
+              if(diff_rate < -MIDDLE_THRESH || MIDDLE_THRESH < diff_rate)
+              {
+                ROS_DEBUG("STAY ON THE MIDDLE LINE");
+                control_msg.linear.y = middle_line_rate * -diff_rate;
+              }
             }
           }
 
-          // ===================== turning_around ============================= //
+          // ===================== turning_around =========================== //
           // turns the robot around so that it can avoid the wall in front of it.
           {
-            // input check
-            std::vector<double> vlist
-                = {range_data.at("range_ufront"),
-                   range_data.at("range_front"),
-                   range_data.at("range_dfront")};
-            std::sort(vlist.begin(), vlist.end());
-            std::vector<double> hlist
-                = {range_data.at("range_front"),
-                   range_data.at("range_rfront"),
-                   range_data.at("range_right")};
-            std::sort(hlist.begin(), hlist.end());
-            double front_comp = (vlist[0] + vlist[1])/2;
-            double rfront_comp = (hlist[0] + hlist[1])/2;
-            if(front_comp < TURN_THRESH1 || rfront_comp < TURN_THRESH1)
+            if (auto_pilot_type == "mesh")
             {
-              // if both up-front and down-front ranges are too short
-
-              ROS_DEBUG("TURN LEFT!");
-              control_msg.linear.x = 0;
-              control_msg.linear.y = 0;
-              // calculate the output
-              control_msg.angular.z = turn_yaw_rate;
+              // TODO: devel "turn" behaviro
             }
-            else if(
-              range_data.at("range_ufront")
-                <= range_data.at("range_up") * sqrt(2) * TURN_THRESH2 &&
-              range_data.at("range_dfront")
-                <= range_data.at("range_down") * sqrt(2) * TURN_THRESH2)
+            else
             {
-              // if both up-front and down-front ranges are short relative to
-              // up and down ranges respectively
-
-              // max (up-front, front, down-front)
-              double length_comp
-                = fmax(range_data.at("range_front"), length_comp);
-
-              if(
-                range_data.at("range_right") > length_comp &&
-                range_data.at("range_rfront")
-                  > range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
+              // input check
+              std::vector<double> vlist
+                  = {range_data.at("range_ufront"),
+                     range_data.at("range_front"),
+                     range_data.at("range_dfront")};
+              std::sort(vlist.begin(), vlist.end());
+              std::vector<double> hlist
+                  = {range_data.at("range_front"),
+                     range_data.at("range_rfront"),
+                     range_data.at("range_right")};
+              std::sort(hlist.begin(), hlist.end());
+              double front_comp = (vlist[0] + vlist[1])/2;
+              double rfront_comp = (hlist[0] + hlist[1])/2;
+              if(front_comp < TURN_THRESH1 || rfront_comp < TURN_THRESH1)
               {
-                // if the length is less than both right and right-front ranges
-                ROS_DEBUG("TURN RIGHT");
-                control_msg.linear.x = 0;
-                control_msg.linear.y = 0;
-                // calculate the output
-                control_msg.angular.z = -turn_yaw_rate;
-              }
-              else if(
-                range_data.at("range_right") > length_comp &&
-                range_data.at("range_rfront")
-                  <= range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
-              {
-                // if the length is more than both right and right-front ranges
-                ROS_DEBUG("TURN LEFT");
+                // if both up-front and down-front ranges are too short
+
+                ROS_DEBUG("TURN LEFT!");
                 control_msg.linear.x = 0;
                 control_msg.linear.y = 0;
                 // calculate the output
                 control_msg.angular.z = turn_yaw_rate;
               }
+              else if(
+                range_data.at("range_ufront")
+                  <= range_data.at("range_up") * sqrt(2) * TURN_THRESH2 &&
+                range_data.at("range_dfront")
+                  <= range_data.at("range_down") * sqrt(2) * TURN_THRESH2)
+              {
+                // if both up-front and down-front ranges are short relative to
+                // up and down ranges respectively
+
+                // max (up-front, front, down-front)
+                double length_comp
+                  = fmax(range_data.at("range_front"), length_comp);
+
+                if(
+                  range_data.at("range_right") > length_comp &&
+                  range_data.at("range_rfront")
+                    > range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
+                {
+                  // if the length is less than both right and right-front ranges
+                  ROS_DEBUG("TURN RIGHT");
+                  control_msg.linear.x = 0;
+                  control_msg.linear.y = 0;
+                  // calculate the output
+                  control_msg.angular.z = -turn_yaw_rate;
+                }
+                else if(
+                  range_data.at("range_right") > length_comp &&
+                  range_data.at("range_rfront")
+                    <= range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
+                {
+                  // if the length is more than both right and right-front ranges
+                  ROS_DEBUG("TURN LEFT");
+                  control_msg.linear.x = 0;
+                  control_msg.linear.y = 0;
+                  // calculate the output
+                  control_msg.angular.z = turn_yaw_rate;
+                }
+              }
             }
           }
 
-          // ===================== altitude_adjustment ======================== //
+          // =================== altitude_adjustment ======================== //
           // keeps the altitude in the middle of the vertical line, assumes that
           // there is no impending obstacles.
           // diff_rate is the gap from the mid altitude with respect to z axis
@@ -514,7 +543,7 @@ void control_main()
             }
           }
 
-          // ===================== obstacle_avoidance ========================= //
+          // ===================== obstacle_avoidance ======================= //
           // avoids impending obstacles, assumes nothing.
           {
             tf::Vector3 unit_vec(-1, 0, 0);
