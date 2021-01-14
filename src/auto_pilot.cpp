@@ -480,80 +480,65 @@ void control_main()
           // ===================== turning_around =========================== //
           // turns the robot around so that it can avoid the wall in front of it.
           {
-            if (auto_pilot_type == "mesh")
+            // input check
+            std::vector<double> vlist
+                = {range_data.at("range_ufront"),
+                   range_data.at("range_front"),
+                   range_data.at("range_dfront")};
+            std::sort(vlist.begin(), vlist.end());
+            std::vector<double> hlist
+                = {range_data.at("range_front"),
+                   range_data.at("range_rfront"),
+                   range_data.at("range_right")};
+            std::sort(hlist.begin(), hlist.end());
+            double front_comp = (vlist[0] + vlist[1])/2;
+            double rfront_comp = (hlist[0] + hlist[1])/2;
+            if(front_comp < TURN_THRESH1 || rfront_comp < TURN_THRESH1)
             {
-              // TODO: devel "turn" behaviro
+              // if both up-front and down-front ranges are too short
 
-              // if the wall detected,
-
-                // if right is open, turn right
-
-                // if left is open, turn left
-
-              // otherwise, do nothing
+              ROS_DEBUG("TURN LEFT!");
+              control_msg.linear.x = 0;
+              control_msg.linear.y = 0;
+              // calculate the output
+              control_msg.angular.z = turn_yaw_rate;
             }
-            else
+            else if(
+              range_data.at("range_ufront")
+                <= range_data.at("range_up") * sqrt(2) * TURN_THRESH2 &&
+              range_data.at("range_dfront")
+                <= range_data.at("range_down") * sqrt(2) * TURN_THRESH2)
             {
-              // input check
-              std::vector<double> vlist
-                  = {range_data.at("range_ufront"),
-                     range_data.at("range_front"),
-                     range_data.at("range_dfront")};
-              std::sort(vlist.begin(), vlist.end());
-              std::vector<double> hlist
-                  = {range_data.at("range_front"),
-                     range_data.at("range_rfront"),
-                     range_data.at("range_right")};
-              std::sort(hlist.begin(), hlist.end());
-              double front_comp = (vlist[0] + vlist[1])/2;
-              double rfront_comp = (hlist[0] + hlist[1])/2;
-              if(front_comp < TURN_THRESH1 || rfront_comp < TURN_THRESH1)
-              {
-                // if both up-front and down-front ranges are too short
+              // if both up-front and down-front ranges are short relative to
+              // up and down ranges respectively
 
-                ROS_DEBUG("TURN LEFT!");
+              // max (up-front, front, down-front)
+              double length_comp
+                = fmax(range_data.at("range_front"), length_comp);
+
+              if(
+                range_data.at("range_right") > length_comp &&
+                range_data.at("range_rfront")
+                  > range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
+              {
+                // if the length is less than both right and right-front ranges
+                ROS_DEBUG("TURN RIGHT");
+                control_msg.linear.x = 0;
+                control_msg.linear.y = 0;
+                // calculate the output
+                control_msg.angular.z = -turn_yaw_rate;
+              }
+              else if(
+                range_data.at("range_right") > length_comp &&
+                range_data.at("range_rfront")
+                  <= range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
+              {
+                // if the length is more than both right and right-front ranges
+                ROS_DEBUG("TURN LEFT");
                 control_msg.linear.x = 0;
                 control_msg.linear.y = 0;
                 // calculate the output
                 control_msg.angular.z = turn_yaw_rate;
-              }
-              else if(
-                range_data.at("range_ufront")
-                  <= range_data.at("range_up") * sqrt(2) * TURN_THRESH2 &&
-                range_data.at("range_dfront")
-                  <= range_data.at("range_down") * sqrt(2) * TURN_THRESH2)
-              {
-                // if both up-front and down-front ranges are short relative to
-                // up and down ranges respectively
-
-                // max (up-front, front, down-front)
-                double length_comp
-                  = fmax(range_data.at("range_front"), length_comp);
-
-                if(
-                  range_data.at("range_right") > length_comp &&
-                  range_data.at("range_rfront")
-                    > range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
-                {
-                  // if the length is less than both right and right-front ranges
-                  ROS_DEBUG("TURN RIGHT");
-                  control_msg.linear.x = 0;
-                  control_msg.linear.y = 0;
-                  // calculate the output
-                  control_msg.angular.z = -turn_yaw_rate;
-                }
-                else if(
-                  range_data.at("range_right") > length_comp &&
-                  range_data.at("range_rfront")
-                    <= range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
-                {
-                  // if the length is more than both right and right-front ranges
-                  ROS_DEBUG("TURN LEFT");
-                  control_msg.linear.x = 0;
-                  control_msg.linear.y = 0;
-                  // calculate the output
-                  control_msg.angular.z = turn_yaw_rate;
-                }
               }
             }
           }
