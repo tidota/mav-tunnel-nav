@@ -293,6 +293,10 @@ void control_main()
             }
             else if (auto_pilot_type == "line")
             {
+              // TODO: remodel the line formation based on the new idea?
+              // basically they can only "push" others
+              // if there is another neighbor in the direction to go,
+              // move slowly.
               std_msgs::String debug_msg;
               if (has_dist_front && dist_front < 10)
               {
