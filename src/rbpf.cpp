@@ -626,47 +626,30 @@ void pf_main()
       last_update = now;
       if (now > initial_update + phase_pose_adjust)
       {
-        // Odometry data
-        tf::Vector3 position;
-        tf::Quaternion orientation;
-        //tf::Transform diff_pose;
+        tf::StampedTransform ground_truth_tf;
+        try
         {
-          std::lock_guard<std::mutex> lk(odom_mutex);
-          // tf::Vector3 pos(
-          //   odom_buff.pose.pose.position.x,
-          //   odom_buff.pose.pose.position.y,
-          //   odom_buff.pose.pose.position.z);
-          // tf::Quaternion dir(
-          //   odom_buff.pose.pose.orientation.x,
-          //   odom_buff.pose.pose.orientation.y,
-          //   odom_buff.pose.pose.orientation.z,
-          //   odom_buff.pose.pose.orientation.w);
-          // pose_curr.setOrigin(pos);
-          // pose_curr.setRotation(dir);
-          position = tf::Vector3(
-            odom_buff.pose.pose.position.x,
-            odom_buff.pose.pose.position.y,
-            odom_buff.pose.pose.position.z);
-          orientation = tf::Quaternion(
-            odom_buff.pose.pose.orientation.x,
-            odom_buff.pose.pose.orientation.y,
-            odom_buff.pose.pose.orientation.z,
-            odom_buff.pose.pose.orientation.w);
-          // diff_pose = pose_prev.inverse() * pose_curr;
-          // pose_prev = pose_curr;
-        }
+          tf_listener->waitForTransform(
+            world_frame_id, robot_name + "_groundtruth",
+            ros::Time(0), ros::Duration(1));
+          tf_listener->lookupTransform(
+            world_frame_id, robot_name + "_groundtruth",
+            ros::Time(0), ground_truth_tf);
 
-        if (orientation.x() != 0 || orientation.y() != 0 ||
-            orientation.z() != 0 || orientation.w() != 0)
-        {
-          // update the estimated poses with the odometry data.
+          tf::Vector3 position = ground_truth_tf.getOrigin();
+          tf::Quaternion orientation = ground_truth_tf.getRotation();
           for (auto p: particles)
           {
             p->initPosition(position);
             p->initOrientation(orientation);
           }
-
           break;
+        }
+        catch (tf::TransformException ex)
+        {
+          ROS_ERROR_STREAM(
+            "Transfrom from " << robot_name + "_groundtruth" <<
+            " to " << world_frame_id << " is not available yet.");
         }
       }
     }
