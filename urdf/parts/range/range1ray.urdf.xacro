@@ -8,10 +8,10 @@ https://medium.com/teamarimac/integrating-sonar-and-ir-sensor-plugin-to-robot-mo
     <joint name="${name}_joint" type="fixed">
       <xacro:insert_block name="origin" />
       <parent link="${parent}"/>
-      <child link="${name}_link"/>
+      <child link="${namespace}/${name}_link"/>
     </joint>
 
-    <link name="${name}_link">
+    <link name="${namespace}/${name}_link">
       <inertial>
         <mass value="0.001" />
         <origin xyz="0 0 0" rpy="0 0 0" />
@@ -31,7 +31,7 @@ https://medium.com/teamarimac/integrating-sonar-and-ir-sensor-plugin-to-robot-mo
       </collision> -->
     </link>
 
-    <gazebo reference="${name}_link">
+    <gazebo reference="${namespace}/${name}_link">
       <sensor type="ray" name="${name}">
         <pose>0 0 0 0 0 0</pose>
         <visualize>true</visualize>
@@ -62,7 +62,7 @@ https://medium.com/teamarimac/integrating-sonar-and-ir-sensor-plugin-to-robot-mo
           <alwaysOn>true</alwaysOn>
           <updateRate>${update_rate}</updateRate>
           <topicName>${ros_topic}</topicName>
-          <frameName>${name}_link</frameName>
+          <frameName>${namespace}/${name}_link</frameName>
           <radiation>infrared</radiation>
           <fov>${field_of_view}</fov>
         </plugin>
