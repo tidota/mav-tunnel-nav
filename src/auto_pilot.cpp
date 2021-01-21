@@ -244,17 +244,6 @@ void control_main()
                     dist_back = msg.estimated_distance;
                   }
                 }
-                // double f
-                //   = (msg.estimated_distance - distance_to_neighbor)
-                //     / distance_to_neighbor;
-                // if (base_station_name == msg.source &&
-                //     msg.estimated_orientation.x > 0)
-                //   f = std::fabs(f);
-                // tf::Vector3 v(
-                //   msg.estimated_orientation.x,
-                //   msg.estimated_orientation.y,
-                //   msg.estimated_orientation.z);
-                // force_rel += f * v;
               }
               else if (auto_pilot_type == "mesh")
               {
@@ -296,8 +285,108 @@ void control_main()
               // TODO: remodel the line formation based on the new idea?
               // basically they can only "push" others
               // if there is another neighbor in the direction to go,
-              // move slowly.
+              // move slowly or stop.
               std_msgs::String debug_msg;
+              if (has_dist_back)
+              {
+                // consider moving forward
+                if (dist_back < distance_to_neighbor * 0.95)
+                {
+                  {
+                    // too close to the back
+                    double rate = (distance_to_neighbor * 0.95 - dist_back)
+                                / (distance_to_neighbor * 0.1);
+                    if (rate > 1.0)
+                      rate = 1.0;
+                    else if (rate < 0.0)
+                      rate = 0.0;
+                    control_msg.linear.x
+                      = straight_rate * rate;
+
+                    debug_msg.data = "line control: forward (close to back)";
+                  }
+
+                  if (has_dist_front && dist_front < distance_to_neighbor * 0.7)
+                  {
+                    // too close to the front
+                    double rate = (dist_front - distance_to_neighbor * 0.5)
+                                / (distance_to_neighbor * (0.7 - 0.5));
+                    if (rate > 1.0)
+                      rate = 1.0;
+                    else if (rate < 0.0)
+                      rate = 0.0;
+
+                    control_msg.linear.x *= rate;
+                    debug_msg.data
+                      = "line control: forward slowly (too close to front)";
+                  }
+                }
+                else
+                {
+                  control_msg.linear.x = 0;
+                  debug_msg.data = "line control: stay (good dist to back)";
+                }
+              }
+              else if (has_base)
+              {
+                if (
+                  dist_base_x < 0 && dist_base > distance_to_neighbor * 0.9)
+                {
+                  // base is behind and too far
+                  // should go backward
+                  control_msg.linear.x
+                    = -straight_rate
+                      * (dist_base - distance_to_neighbor * 0.9)
+                      / (distance_to_neighbor * 0.02);
+                  debug_msg.data = "line control: go backward (wrt base)";
+                }
+                else if (dist_base_x > 0)
+                {
+                  // base is ahead
+                  // should go forward
+                  control_msg.linear.x = straight_rate * 0.3;
+                  debug_msg.data = "line control: go forward (base ahead)";
+                }
+                else if (dist_base < distance_to_neighbor * 0.8)
+                {
+                  // base is ahead or it is so close
+                  // should go forward
+                  control_msg.linear.x
+                    = straight_rate
+                      * (distance_to_neighbor * 0.8 - dist_base)
+                      / (distance_to_neighbor * 0.03);
+                  debug_msg.data = "line control: go forward (wrt base)";
+                }
+                else
+                  debug_msg.data = "line control: balanced (wrt base)";
+
+                if (has_dist_front && dist_front < distance_to_neighbor * 0.7)
+                {
+                  // too close to the front
+                  double rate = (dist_front - distance_to_neighbor * 0.5)
+                              / (distance_to_neighbor * (0.7 - 0.5));
+                  if (rate > 1.0)
+                    rate = 1.0;
+                  else if (rate < 0.0)
+                    rate = 0.0;
+
+                  control_msg.linear.x *= rate;
+                  debug_msg.data
+                    = "line control: forward slowly (too close to front)";
+                }
+              }
+              else
+              {
+                // the previous robot or the base is lost.
+                // so it will just retrieve back to the previous place.
+                control_msg.linear.x = -0.1 * straight_rate;
+                if (!has_base)
+                  debug_msg.data = "line control: alone...";
+                else
+                  debug_msg.data = "line control: -_-";
+              }
+
+              /*
               if (has_dist_front && dist_front < 10)
               {
                 // too close to the front
@@ -372,6 +461,7 @@ void control_main()
                 else
                   debug_msg.data = "line control: -_-";
               }
+              */
 
               // DEBUG: publish the debug info
               debug_pub.publish(debug_msg);
