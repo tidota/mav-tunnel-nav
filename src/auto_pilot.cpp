@@ -282,7 +282,6 @@ void control_main()
             }
             else if (auto_pilot_type == "line")
             {
-              // TODO: remodel the line formation based on the new idea?
               // basically they can only "push" others
               // if there is another neighbor in the direction to go,
               // move slowly or stop.
@@ -479,11 +478,17 @@ void control_main()
             {
               // TODO: devel "straight" behavior
 
-              // if a neighbor in left-front is really too close, stop
+              // if a neighbor in the back is too close
+                // move forward
 
-              // else if a neighbor in right-front is too close, stop
+              // but...
+              // if the wall is in front and too close,
+                // move slowly or stop
+              // else if a neighbor in left-front is really too close,
+                // move slowly or stop
+              // else if a neighbor in right-front is too close,
+                // move slowly or stop
 
-              // otherwise, adjust the distance from a neighbor in back
             }
             else
             {
@@ -499,11 +504,13 @@ void control_main()
             {
               // TODO: devel "steer" behavior
 
-              // if the wall is detected and no neighbor in the hemicircle,
-              // adjust the heading along it
+              // NOTE: if there is a neigbor in front, move to an open space (right/left)?
 
-              // else if the "average" neighbor is far from its location,
-              // face away
+              // if the wall is detected and no neighbor in the hemicircle,
+                // adjust the heading along it
+
+              // else if some direction does not have a neighbor or the wall,
+                // head toward that direction
 
               // otherwise, do nothing
             }
@@ -534,13 +541,29 @@ void control_main()
               // TODO: devel "middle" behavior
 
               // if the wall(s) detected and the hemicircle has no neighbor,
-              // adjut the position w.r.t. the wall(s)
+                // move away
 
-              // else if a neighbor in left is really too close, stop
+                // but,
+                // if a neighbor in the opposite side is too close,
+                  // move slowly or stop
 
-              // else if a neighbor in right is too close, move away
+              // else
 
-              // otherwise, do nothing
+                // if the closest neighbor is in left and too close
+                  // move toward the right
+
+                  // but,
+                  // if a neighbor in the right is too close,
+                    // move slowly or stop
+
+                // else if the closest neighbor is in right and too close
+                  // move toward the left
+
+                  // but,
+                  // if a neighbor in the left is too close,
+                    // move slowly or stop
+
+                // otherwise, do nothing
             }
             else
             {
