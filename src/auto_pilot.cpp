@@ -385,83 +385,6 @@ void control_main()
                   debug_msg.data = "line control: -_-";
               }
 
-              /*
-              if (has_dist_front && dist_front < 10)
-              {
-                // too close to the front
-                control_msg.linear.x = 0;
-                debug_msg.data = "line control: stay (detected front)";
-              }
-              else if (has_dist_back)
-              {
-                if (dist_back < distance_to_neighbor * 0.8)
-                {
-                  // too close to the back
-                  control_msg.linear.x
-                    = straight_rate
-                      * (distance_to_neighbor * 0.8 - dist_back)
-                      / (distance_to_neighbor * 0.01);
-                  debug_msg.data = "line control: go forward (detected back)";
-                }
-                else if (dist_back > distance_to_neighbor * 0.9)
-                {
-                  // too far from the back
-                  control_msg.linear.x
-                    = -straight_rate
-                      * (dist_back - distance_to_neighbor * 0.9)
-                      / (distance_to_neighbor * 0.04);
-                  debug_msg.data = "line control: go backward (detected back)";
-                }
-                else
-                {
-                  control_msg.linear.x = 0;
-                  debug_msg.data = "line control: balanced (detected back)";
-                }
-              }
-              else if (has_base)
-              {
-                if (dist_base_x < 0 && dist_base > distance_to_neighbor * 0.9)
-                {
-                  // base is behind and too far
-                  // should go backward
-                  control_msg.linear.x
-                    = -straight_rate
-                      * (dist_base - distance_to_neighbor * 0.9)
-                      / (distance_to_neighbor * 0.02);
-                  debug_msg.data = "line control: go backward (wrt base)";
-                }
-                else if (dist_base_x > 0)
-                {
-                  // base is ahead
-                  // should go forward
-                  control_msg.linear.x = straight_rate * 0.3;
-                  debug_msg.data = "line control: go forward (base ahead)";
-                }
-                else if (dist_base < distance_to_neighbor * 0.8)
-                {
-                  // base is ahead or it is so close
-                  // should go forward
-                  control_msg.linear.x
-                    = straight_rate
-                      * (distance_to_neighbor * 0.8 - dist_base)
-                      / (distance_to_neighbor * 0.03);
-                  debug_msg.data = "line control: go forward (wrt base)";
-                }
-                else
-                  debug_msg.data = "line control: balanced (wrt base)";
-              }
-              else
-              {
-                // the previous robot or the base is lost.
-                // so it will just retrieve back to the previous place.
-                control_msg.linear.x = -0.1 * straight_rate;
-                if (!has_base)
-                  debug_msg.data = "line control: alone...";
-                else
-                  debug_msg.data = "line control: -_-";
-              }
-              */
-
               // DEBUG: publish the debug info
               debug_pub.publish(debug_msg);
 
@@ -493,43 +416,6 @@ void control_main()
             else
             {
               ROS_ERROR_STREAM("invalid auto_pilot_type: " << auto_pilot_type);
-            }
-          }
-
-          // ===================== steering ================================= //
-          // adjusts the heading so that the robot's right side faces toward the
-          // wall.
-          {
-            if (auto_pilot_type == "mesh")
-            {
-              // TODO: devel "steer" behavior
-
-              // NOTE: if there is a neigbor in front, move to an open space (right/left)?
-
-              // if the wall is detected and no neighbor in the hemicircle,
-                // adjust the heading along it
-
-              // else if some direction does not have a neighbor or the wall,
-                // head toward that direction
-
-              // otherwise, do nothing
-            }
-            else
-            {
-              double range_rf = range_data.at("range_rfront");
-              double range_rr = range_data.at("range_rrear");
-              double diff_rate = (range_rr - range_rf) / (range_rf + range_rr);
-
-              // input check
-              if(diff_rate < -STEER_THRESH || STEER_THRESH < diff_rate)
-              {
-                if (STEER_THRESH < diff_rate)
-                  ROS_DEBUG("STEER TO THE RIGHT");
-                else
-                  ROS_DEBUG("STEER TO THE LEFT");
-                // calculate the output
-                control_msg.angular.z = steering_yaw_rate * diff_rate;
-              }
             }
           }
 
@@ -590,6 +476,43 @@ void control_main()
               {
                 ROS_DEBUG("STAY ON THE MIDDLE LINE");
                 control_msg.linear.y = middle_line_rate * -diff_rate;
+              }
+            }
+          }
+
+          // ===================== steering ================================= //
+          // adjusts the heading so that the robot's right side faces toward the
+          // wall.
+          {
+            if (auto_pilot_type == "mesh")
+            {
+              // TODO: devel "steer" behavior
+
+              // NOTE: if there is a neigbor in front, move to an open space (right/left)?
+
+              // if the wall is detected and no neighbor in the hemicircle,
+                // adjust the heading along it
+
+              // else if some direction does not have a neighbor or the wall,
+                // head toward that direction
+
+              // otherwise, do nothing
+            }
+            else
+            {
+              double range_rf = range_data.at("range_rfront");
+              double range_rr = range_data.at("range_rrear");
+              double diff_rate = (range_rr - range_rf) / (range_rf + range_rr);
+
+              // input check
+              if(diff_rate < -STEER_THRESH || STEER_THRESH < diff_rate)
+              {
+                if (STEER_THRESH < diff_rate)
+                  ROS_DEBUG("STEER TO THE RIGHT");
+                else
+                  ROS_DEBUG("STEER TO THE LEFT");
+                // calculate the output
+                control_msg.angular.z = steering_yaw_rate * diff_rate;
               }
             }
           }
