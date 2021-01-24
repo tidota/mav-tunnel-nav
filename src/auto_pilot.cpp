@@ -210,6 +210,12 @@ void control_main()
         double dist_back = 0;
         double dist_base_x = 0;
         double dist_base = 0;
+
+        bool has_dist_right = false;
+        bool has_dist_left = false;
+        double dist_right = 0;
+        double dist_left = 0;
+
         tf::Vector3 force_rel;
         {
           auto now = ros::Time::now();
@@ -249,13 +255,45 @@ void control_main()
               {
                 // TODO: get necessary data about neighbors
 
-                // get the distances from the following neighbors
-
-                // - left front, right front
-                // - left, right
-                // - back
-
-                // should also have a list saying if the neighbors were detected
+                auto ori = msg.estimated_orientation;
+                if (msg.source == base_station_name)
+                {
+                  has_base = true;
+                  dist_base = msg.estimated_distance;
+                  dist_base_x = ori.x * msg.estimated_distance;
+                }
+                else if (ori.x > 0) // front
+                {
+                  if (!has_dist_front || msg.estimated_distance < dist_front)
+                  {
+                    has_dist_front = true;
+                    dist_front = msg.estimated_distance;
+                  }
+                }
+                else if (ori.x < 0) // back
+                {
+                  if (!has_dist_back || msg.estimated_distance < dist_back)
+                  {
+                    has_dist_back = true;
+                    dist_back = msg.estimated_distance;
+                  }
+                }
+                else if (ori.y > 0) // left
+                {
+                  if (!has_dist_left || msg.estimated_distance < dist_left)
+                  {
+                    has_dist_left = true;
+                    dist_left = msg.estimated_distance;
+                  }
+                }
+                else if (ori.y < 0) // right
+                {
+                  if (!has_dist_right || msg.estimated_distance < dist_right)
+                  {
+                    has_dist_right = true;
+                    dist_right = msg.estimated_distance;
+                  }
+                }
               }
             }
           }
