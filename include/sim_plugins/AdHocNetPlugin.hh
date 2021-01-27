@@ -133,6 +133,9 @@ namespace gazebo
     // /// \brief mutex for data
     // private: std::mutex beacon_data;
 
+    /// \brief the type of auto pilot
+    private: std::string auto_pilot_type;
+
     /// \brief list of robot names.
     private: std::vector<std::string> robotList;
 

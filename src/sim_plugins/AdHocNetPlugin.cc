@@ -33,6 +33,8 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
   GZ_ASSERT(_world, "AdHocNetPlugin world pointer is NULL");
   this->world = _world;
 
+  this->nh.param(
+    "auto_pilot_type", this->auto_pilot_type, this->auto_pilot_type);
   this->nh.param("robots", this->robotList, this->robotList);
 
   this->nh.param("comm_range", this->comm_range, this->comm_range);
@@ -223,10 +225,34 @@ void AdHocNetPlugin::OnUpdate()
       {
         // call the ROS service.
         mav_tunnel_nav::SpawnRobot srv;
-        srv.request.x = this->initLoc.getX();
-        srv.request.y = this->initLoc.getY();
-        srv.request.z = this->initLoc.getZ();
-        srv.request.Y = this->initOri;
+        if (this->auto_pilot_type == "mesh")
+        {
+          // TODO: spawn at different places
+
+          tf::Vector3 pos(1, 0, 0);
+          double initY;
+          if (this->spawnedList.size() % 2 == 0)
+          {
+            initY = 0.1;
+          }
+          else
+          {
+            initY = 1.5;
+          }
+          pos.rotate(tf::Vector3(0,0,1), initY);
+
+          srv.request.x = pos.getX();
+          srv.request.y = pos.getY();
+          srv.request.z = pos.getZ();
+          srv.request.Y = initY;
+        }
+        else
+        {
+          srv.request.x = this->initLoc.getX();
+          srv.request.y = this->initLoc.getY();
+          srv.request.z = this->initLoc.getZ();
+          srv.request.Y = this->initOri;
+        }
         if (this->spawnedList.size() == 0)
           srv.request.auto_enable_by_slam = false;
         else
