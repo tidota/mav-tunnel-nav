@@ -659,15 +659,16 @@ void control_main()
             {
               // TODO: devel "steer" behavior
 
-              // NOTE: if there is a neigbor in front, move to an open space (right/left)?
+              // NOTE: at the moment, just face along the direction to move.
 
-              // if the wall is detected and no neighbor in the hemicircle,
-                // adjust the heading along it
-
-              // else if some direction does not have a neighbor or the wall,
-                // head toward that direction
-
-              // otherwise, do nothing
+              double diff_rate = 0;
+              if (control_msg.linear.y != 0)
+              {
+                diff_rate
+                  = std::atan2(control_msg.linear.y, control_msg.linear.x)
+                  / M_PI;
+              }
+              control_msg.angular.z = steering_yaw_rate * diff_rate;
             }
             else
             {
