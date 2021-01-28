@@ -229,7 +229,7 @@ void AdHocNetPlugin::OnUpdate()
         {
           // TODO: spawn at different places
 
-          tf::Vector3 pos(1, 0, 0);
+          tf::Vector3 pos(1, 0, 0.5);
           double initY;
           if (this->spawnedList.size() % 2 == 0)
           {
