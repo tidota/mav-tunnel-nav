@@ -229,7 +229,7 @@ void AdHocNetPlugin::OnUpdate()
         {
           // TODO: spawn at different places
 
-          tf::Vector3 pos(1, 0, 0.5);
+          tf::Vector3 pos(1, 0, 0.3);
           double initY;
           if (this->spawnedList.size() % 2 == 0)
           {
@@ -239,7 +239,7 @@ void AdHocNetPlugin::OnUpdate()
           {
             initY = 1.5;
           }
-          pos.rotate(tf::Vector3(0,0,1), initY);
+          pos = pos.rotate(tf::Vector3(0,0,1), initY);
 
           srv.request.x = pos.getX();
           srv.request.y = pos.getY();

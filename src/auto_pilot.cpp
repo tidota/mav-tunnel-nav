@@ -256,13 +256,7 @@ void control_main()
                 // TODO: get necessary data about neighbors
 
                 auto ori = msg.estimated_orientation;
-                if (msg.source == base_station_name)
-                {
-                  has_base = true;
-                  dist_base = msg.estimated_distance;
-                  dist_base_x = ori.x * msg.estimated_distance;
-                }
-                else if (ori.x > 0) // front
+                if (ori.x > 0) // front
                 {
                   if (!has_dist_front || msg.estimated_distance < dist_front)
                   {
@@ -439,6 +433,7 @@ void control_main()
             {
               // TODO: devel "straight" behavior
 
+              std_msgs::String debug_msg;
               // if a neighbor in the back is too close
               if (has_dist_back && dist_back < distance_to_neighbor * 0.95)
               {
@@ -453,7 +448,7 @@ void control_main()
                   control_msg.linear.x
                     = straight_rate * rate;
 
-                  //debug_msg.data = "line control: forward (close to back)";
+                  debug_msg.data = "mesh control: forward (close to back)";
                 }
 
                 if (has_dist_front && dist_front < distance_to_neighbor * 0.7)
@@ -467,35 +462,48 @@ void control_main()
                     rate = 0.0;
 
                   control_msg.linear.x *= rate;
-                  //debug_msg.data
-                  //  = "line control: forward slowly (too close to front)";
+                  debug_msg.data
+                    = "mesh control: forward slowly (too close to front)";
                 }
                 else
                 {
                   // NOTE: should it consider the wall?
+                  // const double leng
+                  //   = std::min({range_data.at("range_dfront"),
+                  //               range_data.at("range_ufront"),
+                  //               range_data.at("range_front")});
                   const double leng
-                    = std::min({range_data.at("range_dfront"),
-                                range_data.at("range_ufront"),
-                                range_data.at("range_front")});
-                  const double thresh = distance_to_neighbor * 0.3;
+                    = (range_data.at("range_dfront")
+                      + range_data.at("range_ufront")
+                      + range_data.at("range_front"))/3.0;
+                  const double thresh = 2.0;
                   if (leng < thresh)
                   {
                     double rate = (leng - thresh / 2)
-                                / (distance_to_neighbor * (1 - 0.5));
+                                / (thresh * (1 - 0.5));
                     if (rate > 1.0)
                       rate = 1.0;
                     else if (rate < 0.0)
                       rate = 0.0;
 
                     control_msg.linear.x *= rate;
+
+                    debug_msg.data
+                      = "mesh control: forward slowly (too close to wall)";
                   }
                 }
               }
               else
               {
                 control_msg.linear.x = 0;
-                //debug_msg.data = "line control: stay (good dist to back)";
+                if (has_dist_back)
+                  debug_msg.data = "mesh control: stay (good dist to back)";
+                else
+                  debug_msg.data = "mesh control: stay (no back!)";
               }
+
+              // DEBUG: publish the debug info
+              debug_pub.publish(debug_msg);
             }
             else
             {

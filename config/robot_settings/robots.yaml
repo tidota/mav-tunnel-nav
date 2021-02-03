@@ -1,7 +1,7 @@
 # default: flies along the wall independently
 # line: flies along the wall but manages the distances of the neighbors.
 # mesh: (not implemented yet)
-auto_pilot_type: line # default, line, mesh
+auto_pilot_type: mesh # default, line, mesh
 
 robots:
   - robot1
