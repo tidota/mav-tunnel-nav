@@ -433,6 +433,7 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
         mav_tunnel_nav::Particles msg2send = *msg;
         auto pos = getPoseInfo(msg->source, msg->destination).Pos();
 
+        // TODO: use orientation! (so comment out these lines)
         // NOTE: Simple loc w/o orientation. The reference frame is rotated to
         //       be aligned with the global reference frame so that only
         //       the location can be used without the orientation.

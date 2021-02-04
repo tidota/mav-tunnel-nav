@@ -795,6 +795,7 @@ void pf_main()
         // for Nref
         for (int i = 0; i < Nref; ++i)
         {
+          // TODO: double check the orientation comparison
           // get a particle of the other robot by msg.cumul_weights
           auto neighbor_pose_msg
             = msg.particles[drawIndex(msg.cumul_weights, gen_cooploc)];
