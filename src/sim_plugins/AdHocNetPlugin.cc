@@ -156,7 +156,7 @@ void AdHocNetPlugin::OnUpdate()
         {
           auto robot1_pose = robot1->WorldPose();
           auto robot2_pose = robot2->WorldPose();
-          auto diff = robot2_pose - robot1_pose;
+          auto diff = robot2_pose * robot1_pose.Inverse();
           setPoseInfo(this->spawnedList[i], this->spawnedList[j], diff);
           if (diff.Pos().Length() <= this->comm_range)
           {
@@ -179,7 +179,7 @@ void AdHocNetPlugin::OnUpdate()
       auto robot = this->world->ModelByName(robot_name);
       if (robot)
       {
-        auto diff = robot->WorldPose() - base_pose;
+        auto diff = robot->WorldPose() * base_pose.Inverse();
         setPoseInfo(base_name, robot_name, diff);
         if (diff.Pos().Length() <= this->comm_range)
         {
@@ -436,7 +436,7 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
         // NOTE: Simple loc w/o orientation. The reference frame is rotated to
         //       be aligned with the global reference frame so that only
         //       the location can be used without the orientation.
-        pos = this->world->ModelByName(msg->source)->WorldPose().Rot().Inverse()
+        pos = this->world->ModelByName(msg->source)->WorldPose().Rot()
               * pos;
 
         msg2send.estimated_distance = pos.Length() + dst_noise(gen);
