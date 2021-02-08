@@ -755,9 +755,8 @@ void pf_main()
     }
     else if (state == DataWaiting)
     {
-      // NOTE: do nothing in the main loop.
-
-      // NOTE: the state is switched to Update by the callback once the
+      // NOTE: DataWaiting: do nothing in the main loop.
+      //       the state is switched to Update by the callback once the
       //       data from the other robot is received.
     }
     else if (state == Update)
@@ -795,7 +794,6 @@ void pf_main()
         // for Nref
         for (int i = 0; i < Nref; ++i)
         {
-          // TODO: double check the orientation comparison
           // get a particle of the other robot by msg.cumul_weights
           auto neighbor_pose_msg
             = msg.particles[drawIndex(msg.cumul_weights, gen_cooploc)];
@@ -810,10 +808,8 @@ void pf_main()
               neighbor_pose_msg.position.y,
               neighbor_pose_msg.position.z));
           // simulate a measurement based on the sampled poses.
-          // NOTE: ignore the orientation for the simple loc
           tf::Vector3 sampled_loc
-            = robot_pose.getOrigin() - neighbor_pose.getOrigin();
-            //= (robot_pose * neighbor_pose.inverse()).getOrigin();
+            = (robot_pose * neighbor_pose.inverse()).getOrigin();
           double sampled_range = sampled_loc.length();
           tf::Vector3 sampled_orientation = sampled_loc / sampled_range;
 
