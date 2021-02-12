@@ -503,7 +503,7 @@ void control_main()
               }
 
               // DEBUG: publish the debug info
-              debug_pub.publish(debug_msg);
+              //debug_pub.publish(debug_msg);
             }
             else
             {
@@ -538,7 +538,7 @@ void control_main()
 
                 if (has_dist_left && dist_left < distance_to_neighbor * 0.7)
                 {
-                  // too close to the front
+                  // too close to the left
                   double rate = (dist_left - distance_to_neighbor * 0.5)
                               / (distance_to_neighbor * (0.7 - 0.5));
                   if (rate > 1.0)
@@ -667,16 +667,75 @@ void control_main()
             {
               // TODO: devel "steer" behavior
 
-              // NOTE: at the moment, just face along the direction to move.
+              // if there is a wall, face along the wall.
+              // otherwise, face along the direction to move.
 
-              double diff_rate = 0;
-              if (control_msg.linear.y != 0)
+              const double thresh = 2.0;
+              double range_rf = range_data.at("range_rfront");
+              double range_rr = range_data.at("range_rrear");
+              double range_r = range_data.at("range_right");
+              const double rleng
+                = std::min({range_rf, range_rr, range_r});
+              double range_lf = range_data.at("range_lfront");
+              double range_lr = range_data.at("range_lrear");
+              double range_l = range_data.at("range_left");
+              const double lleng
+                = std::min({range_lf, range_lr, range_l});
+
+              // DEBUG:
+              std_msgs::String debug_msg;
+              std::stringstream ss;
+
+              if (rleng < thresh)
               {
-                diff_rate
-                  = std::atan2(control_msg.linear.y, control_msg.linear.x)
-                  / M_PI;
+                // TODO: face along the right wall.
+                double diff_rate
+                  = (range_rr - range_rf) / (range_rf + range_rr);
+
+                // input check
+                if(diff_rate < -STEER_THRESH || STEER_THRESH < diff_rate)
+                {
+                  // calculate the output
+                  control_msg.angular.z = steering_yaw_rate * diff_rate;
+                }
+                // DEBUG:
+                ss << "steering along right wall: diff_rate = " << diff_rate;
+                debug_msg.data = ss.str();
               }
-              control_msg.angular.z = steering_yaw_rate * diff_rate;
+              else if (lleng < thresh)
+              {
+                // TODO: face along the left wall.
+                double diff_rate
+                  = (range_lf - range_lr) / (range_lf + range_lr);
+
+                // input check
+                if(diff_rate < -STEER_THRESH || STEER_THRESH < diff_rate)
+                {
+                  // calculate the output
+                  control_msg.angular.z = steering_yaw_rate * diff_rate;
+                }
+                // DEBUG:
+                ss << "steering along left wall: diff_rate = " << diff_rate;
+                debug_msg.data = ss.str();
+              }
+              else
+              {
+                double diff_rate = 0;
+                if (control_msg.linear.y != 0)
+                {
+                  diff_rate
+                    = std::atan2(control_msg.linear.y, control_msg.linear.x)
+                    / M_PI;
+                }
+                control_msg.angular.z = steering_yaw_rate * diff_rate;
+
+                // DEBUG:
+                ss << "steering: diff_rate = " << diff_rate;
+                debug_msg.data = ss.str();
+              }
+
+              // DEBUG:
+              debug_pub.publish(debug_msg);
             }
             else
             {
