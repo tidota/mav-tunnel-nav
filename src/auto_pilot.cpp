@@ -213,6 +213,7 @@ void control_main()
 
         double move_x = 0;
         double move_y = 0;
+        bool near_base = false;
 
         tf::Vector3 force_rel;
         {
@@ -259,6 +260,12 @@ void control_main()
                 {
                   move_x += -ori.x * diff;
                   move_y += -ori.y * diff;
+                }
+
+                if (msg.source == base_station_name
+                  && msg.estimated_distance < 15.0)
+                {
+                  near_base = true;
                 }
               }
             }
@@ -465,6 +472,9 @@ void control_main()
             {
               // TODO: devel "middle" behavior
 
+              if (near_base)
+                move_y = 0;
+
               // should move away from right?
 
               // too close to the right
@@ -488,8 +498,20 @@ void control_main()
                   + range_data.at("range_rrear")
                   + range_data.at("range_right"))/3;
               const double leng = (move_y > 0)? lleng: rleng;
-              const double thresh = 2.0;
-              if (leng < thresh)
+              const double thresh = 2.5;
+              if (leng < thresh * 0.9)
+              {
+                double rate = (thresh * 0.9 - leng) / (thresh * 0.5);
+                if (rate > 1.0)
+                  rate = 1.0;
+                else if (rate < 0.0)
+                  rate = 0.0;
+                if (move_y > 0)
+                  control_msg.linear.y = -straight_rate * rate;
+                else
+                  control_msg.linear.y = straight_rate * rate;
+              }
+              else if (leng < thresh)
               {
                 double rate = 1 - (thresh - leng) / (thresh * 0.1);
                 if (rate > 1.0)
