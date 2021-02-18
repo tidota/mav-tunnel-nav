@@ -256,7 +256,8 @@ void control_main()
                 // TODO: get necessary data about neighbors
 
                 auto ori = msg.estimated_orientation;
-                if (ori.x > 0) // front
+                double rad = std::atan2(ori.y, ori.x);
+                if (-M_PI/4 <= rad && rad < M_PI/4) // front
                 {
                   if (!has_dist_front || msg.estimated_distance < dist_front)
                   {
@@ -264,7 +265,7 @@ void control_main()
                     dist_front = msg.estimated_distance;
                   }
                 }
-                else if (ori.x < 0) // back
+                else if (rad < -M_PI*3/4 || M_PI*3/4 <= rad) // back
                 {
                   if (!has_dist_back || msg.estimated_distance < dist_back)
                   {
@@ -272,7 +273,7 @@ void control_main()
                     dist_back = msg.estimated_distance;
                   }
                 }
-                else if (ori.y > 0) // left
+                else if (rad > 0) // left
                 {
                   if (!has_dist_left || msg.estimated_distance < dist_left)
                   {
@@ -280,7 +281,7 @@ void control_main()
                     dist_left = msg.estimated_distance;
                   }
                 }
-                else if (ori.y < 0) // right
+                else if (rad < 0) // right
                 {
                   if (!has_dist_right || msg.estimated_distance < dist_right)
                   {
