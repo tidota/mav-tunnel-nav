@@ -90,8 +90,11 @@ void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
   // then need "range_xxxx" so "range_" is appended
   // NOTE: There may be some bug in the simulator generating very small value
   //       intermitently. At the moment, it is replaced with range_max
-  range_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
-    = (new_range->range >= 0.09)? new_range->range: range_max;
+  if (new_range->range >= 0.09)
+    range_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
+      = new_range->range;
+  // range_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
+  //   = (new_range->range >= 0.09)? new_range->range: range_max;
 
   // ROS_DEBUG_STREAM(
   //   "range " << new_range->header.frame_id

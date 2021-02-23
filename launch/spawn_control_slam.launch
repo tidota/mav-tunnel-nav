@@ -26,7 +26,7 @@
   <!-- Autonomous control based on ranging data -->
   <node name="auto_pilot" pkg="mav_tunnel_nav" type="auto_pilot" output="$(arg output)">
     <param name="enable_topic" value="enable"/>
-    <param name="update_freq" value="50"/>
+    <param name="update_freq" value="5"/>
     <!-- refer to xacro for range settings -->
     <param name="range_list"
       value = "range_front  0.11     0 -0.01 0 0   0
