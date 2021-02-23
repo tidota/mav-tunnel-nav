@@ -142,8 +142,8 @@
       <param name="map_threshMin" value="0.12"/>
       <param name="map_threshMax" value="0.97"/>
 
-      <param name="t_pose_adjust" value="5.0"/>
-      <param name="t_only_mapping" value="5.0"/>
+      <param name="t_pose_adjust" value="1.5"/>
+      <param name="t_only_mapping" value="2.0"/>
       <param name="mapping_interval" value="3"/>
       <param name="publish_interval" value="0"/>
       <param name="vismap_interval" value="3"/>

@@ -613,50 +613,72 @@ void pf_main()
 
   std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
 
-  ros::Time initial_update = ros::Time::now();
-  ros::Time last_update = initial_update;
-  // initialize the estimated pose
+  ros::Time last_update = ros::Time::now();
+  // wait for the tf of initial ground truth
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
     if (now > last_update + update_phase)
     {
-      ROS_DEBUG("rbpf: iteration for pose init");
       // initialize the time step
       last_update = now;
-      if (now > initial_update + phase_pose_adjust)
+      tf::StampedTransform ground_truth_tf;
+      try
       {
-        tf::StampedTransform ground_truth_tf;
-        try
-        {
-          tf_listener->waitForTransform(
-            world_frame_id, robot_name + "_groundtruth",
-            ros::Time(0), ros::Duration(1));
-          tf_listener->lookupTransform(
-            world_frame_id, robot_name + "_groundtruth",
-            ros::Time(0), ground_truth_tf);
+        tf_listener->waitForTransform(
+          world_frame_id, robot_name + "_groundtruth",
+          ros::Time(0), ros::Duration(1));
+        tf_listener->lookupTransform(
+          world_frame_id, robot_name + "_groundtruth",
+          ros::Time(0), ground_truth_tf);
 
-          tf::Vector3 position = ground_truth_tf.getOrigin();
-          tf::Quaternion orientation = ground_truth_tf.getRotation();
-          for (auto p: particles)
-          {
-            p->initPosition(position);
-            p->initOrientation(orientation);
-          }
-          break;
-        }
-        catch (tf::TransformException ex)
+        break;
+      }
+      catch (tf::TransformException ex)
+      {
+        // NOTE: do nothing. Just wait.
+      }
+    }
+  }
+
+  // initialize the estimated pose
+  ros::Time initial_update = ros::Time::now();
+  while (ros::ok())
+  {
+    ros::Time now = ros::Time::now();
+    if (now > initial_update + phase_pose_adjust)
+    {
+      ROS_DEBUG("rbpf: iteration for pose init");
+      // initialize the time step
+      tf::StampedTransform ground_truth_tf;
+      try
+      {
+        tf_listener->waitForTransform(
+          world_frame_id, robot_name + "_groundtruth",
+          ros::Time(0), ros::Duration(1));
+        tf_listener->lookupTransform(
+          world_frame_id, robot_name + "_groundtruth",
+          ros::Time(0), ground_truth_tf);
+
+        tf::Vector3 position = ground_truth_tf.getOrigin();
+        tf::Quaternion orientation = ground_truth_tf.getRotation();
+        for (auto p: particles)
         {
-          ROS_ERROR_STREAM(
-            "Transfrom from " << robot_name + "_groundtruth" <<
-            " to " << world_frame_id << " is not available yet.");
+          p->initPosition(position);
+          p->initOrientation(orientation);
         }
+        break;
+      }
+      catch (tf::TransformException ex)
+      {
+        ROS_ERROR_STREAM(
+          "Transfrom from " << robot_name + "_groundtruth" <<
+          " to " << world_frame_id << " is not available yet.");
       }
     }
   }
 
   // parameters for cooperative localization
-
   int Nref;
   if (!pnh.getParam("Nref", Nref))
     ROS_ERROR_STREAM("no param: Nref");
