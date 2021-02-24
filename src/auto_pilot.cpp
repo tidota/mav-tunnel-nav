@@ -95,13 +95,6 @@ void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
       = new_range->range;
   // range_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
   //   = (new_range->range >= 0.09)? new_range->range: range_max;
-
-  // ROS_DEBUG_STREAM(
-  //   "range " << new_range->header.frame_id
-  //            << "("
-  //            << new_range->header.frame_id.substr(pos1, pos2 - pos1)
-  //            << ")"
-  //            << " = " << new_range->range);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,11 +168,6 @@ void control_main()
   std::string auto_pilot_type;
   pnh.getParam("auto_pilot_type", auto_pilot_type);
 
-  // DEBUG: this publish a message corressponding to the straight command of the
-  //        ``line'' auto-pilot.
-  ros::Publisher debug_pub
-    = nh.advertise<std_msgs::String>("auto_pilot_debug", 1);
-
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
@@ -193,8 +181,6 @@ void control_main()
 
       if (f_enabled)
       {
-        ROS_DEBUG("auto control: calculate inputs!");
-
         // get ranging data
         std::map<std::string, double> range_data;
         {
@@ -255,8 +241,6 @@ void control_main()
               }
               else if (auto_pilot_type == "mesh")
               {
-                // TODO: get necessary data about neighbors
-
                 auto ori = msg.estimated_orientation;
                 double diff = distance_to_neighbor - msg.estimated_distance;
                 if (diff > 0)
@@ -289,7 +273,6 @@ void control_main()
           // ===================== going_straight =========================== //
           // moves the robot forward.
           {
-            ROS_DEBUG("STRAIGHT");
             if (auto_pilot_type == "default")
             {
               control_msg.linear.x = straight_rate;
@@ -299,7 +282,6 @@ void control_main()
               // basically they can only "push" others
               // if there is another neighbor in the direction to go,
               // move slowly or stop.
-              std_msgs::String debug_msg;
               if (has_dist_back)
               {
                 // consider moving forward
@@ -315,8 +297,6 @@ void control_main()
                       rate = 0.0;
                     control_msg.linear.x
                       = straight_rate * rate;
-
-                    debug_msg.data = "line control: forward (close to back)";
                   }
 
                   if (has_dist_front && dist_front < distance_to_neighbor * 0.7)
@@ -330,14 +310,11 @@ void control_main()
                       rate = 0.0;
 
                     control_msg.linear.x *= rate;
-                    debug_msg.data
-                      = "line control: forward slowly (too close to front)";
                   }
                 }
                 else
                 {
                   control_msg.linear.x = 0;
-                  debug_msg.data = "line control: stay (good dist to back)";
                 }
               }
               else if (has_base)
@@ -351,14 +328,12 @@ void control_main()
                     = -straight_rate
                       * (dist_base - distance_to_neighbor * 0.9)
                       / (distance_to_neighbor * 0.02);
-                  debug_msg.data = "line control: go backward (wrt base)";
                 }
                 else if (dist_base_x > 0)
                 {
                   // base is ahead
                   // should go forward
                   control_msg.linear.x = straight_rate * 0.3;
-                  debug_msg.data = "line control: go forward (base ahead)";
                 }
                 else if (dist_base < distance_to_neighbor * 0.8)
                 {
@@ -368,10 +343,7 @@ void control_main()
                     = straight_rate
                       * (distance_to_neighbor * 0.8 - dist_base)
                       / (distance_to_neighbor * 0.03);
-                  debug_msg.data = "line control: go forward (wrt base)";
                 }
-                else
-                  debug_msg.data = "line control: balanced (wrt base)";
 
                 if (has_dist_front && dist_front < distance_to_neighbor * 0.7)
                 {
@@ -384,8 +356,6 @@ void control_main()
                     rate = 0.0;
 
                   control_msg.linear.x *= rate;
-                  debug_msg.data
-                    = "line control: forward slowly (too close to front)";
                 }
               }
               else
@@ -393,14 +363,7 @@ void control_main()
                 // the previous robot or the base is lost.
                 // so it will just retrieve back to the previous place.
                 control_msg.linear.x = -0.1 * straight_rate;
-                if (!has_base)
-                  debug_msg.data = "line control: alone...";
-                else
-                  debug_msg.data = "line control: -_-";
               }
-
-              // DEBUG: publish the debug info
-              debug_pub.publish(debug_msg);
 
               // if (force_rel.x() > 0.1)
               // {
@@ -413,10 +376,6 @@ void control_main()
             }
             else if (auto_pilot_type == "mesh")
             {
-              // TODO: devel "straight" behavior
-
-              std_msgs::String debug_msg;
-
               // too close to the back
               double rate = move_x / (distance_to_neighbor * 0.1);
               if (rate > 1.0)
@@ -425,13 +384,6 @@ void control_main()
                 rate = -1.0;
               control_msg.linear.x
                 = straight_rate * rate;
-
-              if (rate > 0)
-                debug_msg.data = "mesh control: forward";
-              else if (rate < 0)
-                debug_msg.data = "mesh control: backward";
-              else
-                debug_msg.data = "mesh control: stay";
 
               // NOTE: should it consider the wall?
               // const double leng
@@ -452,15 +404,9 @@ void control_main()
                   rate = 0.0;
 
                 control_msg.linear.x *= rate;
-
-                debug_msg.data
-                  = "mesh control: forward slowly (too close to wall)";
               }
               if (control_msg.linear.x < 0)
                 control_msg.linear.x = 0;
-
-              // DEBUG: publish the debug info
-              debug_pub.publish(debug_msg);
             }
             else
             {
@@ -473,8 +419,6 @@ void control_main()
           {
             if (auto_pilot_type == "mesh")
             {
-              // TODO: devel "middle" behavior
-
               if (near_base)
                 move_y = 0;
 
@@ -488,8 +432,6 @@ void control_main()
                 rate = -1.0;
               control_msg.linear.y
                 = straight_rate * rate;
-
-              //debug_msg.data = "line control: forward (close to back)";
 
               // NOTE: should it consider the wall?
               const double lleng
@@ -548,7 +490,6 @@ void control_main()
               // line apply a proportional value
               if(diff_rate < -MIDDLE_THRESH || MIDDLE_THRESH < diff_rate)
               {
-                ROS_DEBUG("STAY ON THE MIDDLE LINE");
                 control_msg.linear.y = middle_line_rate * -diff_rate;
               }
             }
@@ -560,11 +501,8 @@ void control_main()
           {
             if (auto_pilot_type == "mesh")
             {
-              // TODO: devel "steer" behavior
-
               // if there is a wall, face along the wall.
               // otherwise, face along the direction to move.
-
               const double thresh = 2.0;
               double range_rf = range_data.at("range_rfront");
               double range_rr = range_data.at("range_rrear");
@@ -577,13 +515,8 @@ void control_main()
               const double lleng
                 = std::min({range_lf, range_lr, range_l});
 
-              // DEBUG:
-              std_msgs::String debug_msg;
-              std::stringstream ss;
-
               if (rleng < thresh && rleng < lleng)
               {
-                // TODO: face along the right wall.
                 double diff_rate
                   = (range_rr - range_rf) / (range_rf + range_rr);
 
@@ -593,13 +526,9 @@ void control_main()
                   // calculate the output
                   control_msg.angular.z = steering_yaw_rate * diff_rate;
                 }
-                // DEBUG:
-                ss << "steering along right wall: diff_rate = " << diff_rate;
-                debug_msg.data = ss.str();
               }
               else if (lleng < thresh)
               {
-                // TODO: face along the left wall.
                 double diff_rate
                   = (range_lf - range_lr) / (range_lf + range_lr);
 
@@ -609,9 +538,6 @@ void control_main()
                   // calculate the output
                   control_msg.angular.z = steering_yaw_rate * diff_rate;
                 }
-                // DEBUG:
-                ss << "steering along left wall: diff_rate = " << diff_rate;
-                debug_msg.data = ss.str();
               }
               else
               {
@@ -623,14 +549,7 @@ void control_main()
                     / M_PI;
                 }
                 control_msg.angular.z = steering_yaw_rate * diff_rate;
-
-                // DEBUG:
-                ss << "steering: diff_rate = " << diff_rate;
-                debug_msg.data = ss.str();
               }
-
-              // DEBUG:
-              debug_pub.publish(debug_msg);
             }
             else
             {
@@ -641,10 +560,6 @@ void control_main()
               // input check
               if(diff_rate < -STEER_THRESH || STEER_THRESH < diff_rate)
               {
-                if (STEER_THRESH < diff_rate)
-                  ROS_DEBUG("STEER TO THE RIGHT");
-                else
-                  ROS_DEBUG("STEER TO THE LEFT");
                 // calculate the output
                 control_msg.angular.z = steering_yaw_rate * diff_rate;
               }
@@ -670,8 +585,6 @@ void control_main()
             if(front_comp < TURN_THRESH1 || rfront_comp < TURN_THRESH1)
             {
               // if both up-front and down-front ranges are too short
-
-              ROS_DEBUG("TURN LEFT!");
               control_msg.linear.x = 0;
               control_msg.linear.y = 0;
               // calculate the output
@@ -696,7 +609,6 @@ void control_main()
                   > range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
               {
                 // if the length is less than both right and right-front ranges
-                ROS_DEBUG("TURN RIGHT");
                 control_msg.linear.x = 0;
                 control_msg.linear.y = 0;
                 // calculate the output
@@ -708,7 +620,6 @@ void control_main()
                   <= range_data.at("range_right") * sqrt(2) * TURN_THRESH3)
               {
                 // if the length is more than both right and right-front ranges
-                ROS_DEBUG("TURN LEFT");
                 control_msg.linear.x = 0;
                 control_msg.linear.y = 0;
                 // calculate the output
@@ -736,7 +647,6 @@ void control_main()
             {
               // if it is out of range defined by DIST_OFF_RATE_ALT, apply a
               // proportional value
-              ROS_DEBUG("KEEP THE ALTITUDE");
               control_msg.linear.z =  alt_rate * -diff_rate;
             }
           }
@@ -796,10 +706,6 @@ void control_main()
         // control_msg.header.frame_id = "rotors_joy_frame";
         ctrl_pub.publish(control_msg);
       }
-      else
-      {
-        ROS_DEBUG("auto control: disabled");
-      }
     }
   }
 }
@@ -836,11 +742,6 @@ int main(int argc, char** argv)
   std::vector<ros::Subscriber> range_subs;
   while (ss >> token >> x >> y >> z >> R >> P >> Y)
   {
-    ROS_DEBUG_STREAM(
-      "range: " << token << ", "
-                << x << ", " << y << ", " << z << ", "
-                << R << ", " << P << ", " << Y);
-
     range_subs.push_back(
       nh.subscribe(token, 1000, rangeCallback)
     );

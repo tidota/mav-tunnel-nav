@@ -210,9 +210,6 @@ void pf_main()
                 octomap::point3d(point.x(), point.y(), point.z()));
             // }
           }
-          ROS_DEBUG_STREAM(
-            "depth_cam_pc(" << depth_cam_pc->points.size() << ") => " <<
-            "octocloud(" << octocloud.size() << ")");
           pc_buff.height = 0;
           pc_buff.width = 0;
         }
@@ -248,7 +245,6 @@ void pf_main()
       // publish data
       if (counts_publish >= publish_interval)
       {
-        ROS_DEBUG("publish map");
         octomap_msgs::Octomap map_msg;
         map_msg.header.frame_id = world_frame_id;
         map_msg.header.stamp = now;
@@ -267,7 +263,6 @@ void pf_main()
       // visualization
       if (counts_visualize_map >= vismap_interval)
       {
-        ROS_DEBUG("visualize map");
         const octomap::OcTree* m = map;// = particles[index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
         occupiedNodesVis.markers.resize(m->getTreeDepth()+1);

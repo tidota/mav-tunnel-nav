@@ -158,15 +158,13 @@ void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
   while (pos2 < len && new_range->header.frame_id[pos2] != '_'){ ++pos2; }
 
   // then need "range_xxxx" so "range_" is appended
-  range_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
-    = new_range->range;
-
-  // ROS_DEBUG_STREAM(
-  //   "range " << new_range->header.frame_id
-  //            << "("
-  //            << new_range->header.frame_id.substr(pos1, pos2 - pos1)
-  //            << ")"
-  //            << " = " << new_range->range);
+  // NOTE: There may be some bug in the simulator generating very small value
+  //       intermitently. At the moment, it is replaced with range_max
+  if (new_range->range >= 0.09)
+    range_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
+      = new_range->range;
+  // range_buff["range_" + new_range->header.frame_id.substr(pos1, pos2 - pos1)]
+  //   = new_range->range;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -648,7 +646,6 @@ void pf_main()
     ros::Time now = ros::Time::now();
     if (now > initial_update + phase_pose_adjust)
     {
-      ROS_DEBUG("rbpf: iteration for pose init");
       // initialize the time step
       tf::StampedTransform ground_truth_tf;
       try
@@ -973,9 +970,6 @@ void pf_main()
           //       octomap::point3d(point.x(), point.y(), point.z()));
           //   // }
           // }
-          ROS_DEBUG_STREAM(
-            "depth_cam_pc(" << depth_cam_pc->points.size() << ") => " <<
-            "octocloud(" << octocloud.size() << ")");
           pc_buff.height = 0;
           pc_buff.width = 0;
         }
@@ -1041,7 +1035,6 @@ void pf_main()
           errors[i] = 0;
         }
 
-        ROS_DEBUG("rbpf: predict");
         // predict PF (use odometory)
         const tf::Vector3 delta_pos = diff_pose.getOrigin();
         const tf::Quaternion delta_rot = diff_pose.getRotation();
@@ -1052,7 +1045,6 @@ void pf_main()
           p->predict(delta_pos, delta_rot, gen);
         }
 
-        ROS_DEBUG("rbpf: evaluate");
         // weight PF (use depth cam)
         for (int i = 0; i < n_particles; ++i)
         {
@@ -1060,15 +1052,10 @@ void pf_main()
           weights[i] = particles[i]->evaluate(range_data, octocloud);
           weight_sum += weights[i];
         }
-        for (int i = 0; i < n_particles; ++i)
-        {
-          ROS_DEBUG("eval[%2d]: %7.2f", i, weights[i]/weight_sum);
-        }
 
         // resample PF (and update map)
         if (weight_sum != 0)
         {
-          ROS_DEBUG("rbpf: resample start");
           // http://mrpt.ual.es/reference/devel/_c_particle_filter_data_8h_source.html#l00109
           std::vector<int> indx_list(n_particles);
           for (int i = 0; i < n_particles; ++i)
@@ -1125,14 +1112,12 @@ void pf_main()
           {
             ++counts_map_update;
           }
-          ROS_DEBUG("rbpf: resample done");
         }
         else
         {
           // update the map
           if (counts_map_update >= mapping_interval && octocloud.size() > 0)
           {
-            ROS_DEBUG("rbpf: update map");
             for (auto p: particles)
             {
               p->update_map(octocloud);
@@ -1157,7 +1142,6 @@ void pf_main()
       // compress maps
       if (counts_compress >= compress_interval)
       {
-        ROS_DEBUG("rbpf: compress");
         for (auto p: particles)
         {
           p->compress_map();
@@ -1185,7 +1169,6 @@ void pf_main()
       // publish data
       if (counts_publish >= publish_interval)
       {
-        ROS_DEBUG("rbpf: publish data");
         octomap_msgs::Octomap map;
         map.header.frame_id = world_frame_id;
         map.header.stamp = now;
@@ -1259,23 +1242,16 @@ void pf_main()
         locdata.twist.twist.linear.y = 0;
         locdata.twist.twist.linear.z = 0;
         odom_reset_pub.publish(locdata);
-        ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight << " | UPDATE!!!!!!!!!");
-        ROS_DEBUG("vx: %7.2f, vy: %7.2f, vz: %7.2f",
-          locdata.twist.twist.linear.x,
-          locdata.twist.twist.linear.y,
-          locdata.twist.twist.linear.z);
         counts_locdata = 0;
       }
       else
       {
-        ROS_DEBUG_STREAM("odom_reset: weight = " << max_weight << " | no update");
         ++counts_locdata;
       }
 
       // visualization
       if (counts_visualize_map >= vismap_interval)
       {
-        ROS_DEBUG("rbpf: visualize map");
         const octomap::OcTree* m = particles[index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
         occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
@@ -1352,7 +1328,6 @@ void pf_main()
 
       if (counts_visualize_loc >= visloc_interval)
       {
-        ROS_DEBUG("rbpf: visualize loc");
         // publish poses
         geometry_msgs::PoseArray poseArray;
         poseArray.header.frame_id = world_frame_id;
@@ -1379,7 +1354,6 @@ void pf_main()
       {
         ++counts_visualize_loc;
       }
-      ROS_DEBUG("rbpf: end of iteration");
     }
   }
 }
@@ -1445,11 +1419,6 @@ int main(int argc, char** argv)
   std::vector<ros::Subscriber> range_subs;
   while (ss >> token >> x >> y >> z >> R >> P >> Y)
   {
-    ROS_DEBUG_STREAM(
-      "range: " << token << ", "
-                << x << ", " << y << ", " << z << ", "
-                << R << ", " << P << ", " << Y);
-
     range_subs.push_back(
       nh.subscribe(token, 1000, rangeCallback)
     );
