@@ -377,7 +377,7 @@ void control_main()
             else if (auto_pilot_type == "mesh")
             {
               // too close to the back
-              double rate = move_x / (distance_to_neighbor * 0.1);
+              double rate = move_x / distance_to_neighbor * 20;
               if (rate > 1.0)
                 rate = 1.0;
               else if (rate < -1.0)
@@ -405,6 +405,7 @@ void control_main()
 
                 control_msg.linear.x *= rate;
               }
+              // If it says moving back, just ignore and stay there.
               if (control_msg.linear.x < 0)
                 control_msg.linear.x = 0;
             }
