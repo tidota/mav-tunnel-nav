@@ -22,14 +22,16 @@ class Particle
   private: octomap::OcTree *map;
   public: const octomap::OcTree* getMap();
   // sigma for motion noise.
-  private: const double motion_noise_sigma;
+  private: const double motion_noise_lin_sigma;
+  private: const double motion_noise_rot_sigma;
 
   public: Particle(
     const double &init_x, const double &init_y, const double &init_z,
     const double &init_Y, const double &resol,
     const double &probHit, const double &probMiss,
     const double &threshMin, const double &threshMax,
-    const double &new_motion_noise_sigma);
+    const double &new_motion_noise_lin_sigma,
+    const double &new_motion_noise_rot_sigma);
   public: Particle(const Particle &src);
   public: Particle();
   public: ~Particle();
