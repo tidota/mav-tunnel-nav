@@ -202,7 +202,9 @@ Particle::Particle(
   const double &init_x, const double &init_y, const double &init_z,
   const double &init_Y, const double &resol,
   const double &probHit, const double &probMiss,
-  const double &threshMin, const double &threshMax)
+  const double &threshMin, const double &threshMax,
+  const double &new_motion_noise_sigma):
+    motion_noise_sigma(new_motion_noise_sigma)
 {
   this->map = new octomap::OcTree(resol);
   this->map->setProbHit(probHit);
@@ -216,7 +218,8 @@ Particle::Particle(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Particle::Particle(const Particle &src)
+Particle::Particle(const Particle &src):
+  motion_noise_sigma(src.motion_noise_sigma)
 {
   // copy the localization data
   this->pose = src.pose;
@@ -227,7 +230,8 @@ Particle::Particle(const Particle &src)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-Particle::Particle(): Particle(0.0, 0.0, 0.0, 0.0, 0.25, 0.7, 0.4, 0.12, 0.97){}
+Particle::Particle():
+  Particle(0.0, 0.0, 0.0, 0.0, 0.25, 0.7, 0.4, 0.12, 0.97, 0.05){}
 
 ////////////////////////////////////////////////////////////////////////////////
 Particle::~Particle()
@@ -269,7 +273,7 @@ void Particle::predict(
   const tf::Vector3 &delta_pos, const tf::Quaternion &delta_rot,
   std::mt19937 &gen)
 {
-  std::normal_distribution<> motion_noise_lin(0, 0.05);
+  std::normal_distribution<> motion_noise_lin(0, motion_noise_sigma);
   tf::Vector3 delta_pos_noise(
     delta_pos.x() + motion_noise_lin(gen),
     delta_pos.y() + motion_noise_lin(gen),
@@ -545,6 +549,8 @@ void pf_main()
   pnh.getParam("map_probMiss", probMiss);
   pnh.getParam("map_threshMin", threshMin);
   pnh.getParam("map_threshMax", threshMax);
+  double motion_noise_sigma;
+  pnh.getParam("motion_noise_sigma", motion_noise_sigma);
 
   double t_pose_adjust;
   pnh.getParam("t_pose_adjust", t_pose_adjust);
@@ -571,7 +577,7 @@ void pf_main()
     particles.push_back(
       std::make_shared<Particle>(
         init_x, init_y, init_z, init_Y,
-        resol, probHit, probMiss, threshMin, threshMax));
+        resol, probHit, probMiss, threshMin, threshMax, motion_noise_sigma));
   }
   std::vector<double> weights(n_particles);
   std::vector<double> errors(n_particles);
