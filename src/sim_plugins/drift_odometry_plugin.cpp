@@ -340,23 +340,25 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info)
     // Now that we have copied the first element from the queue, remove it.
     odometry_queue_.pop_front();
 
+    // get the current pose
+    gazebo::msgs::Vector3d* p =
+        odometry_msg.mutable_pose()->mutable_pose()->mutable_position();
+    gazebo::msgs::Quaternion* q_W_L =
+        odometry_msg.mutable_pose()->mutable_pose()->mutable_orientation();
+    //tf::Vector3 pos(p->x(), p->y(), p->z());
+    Eigen::Vector3d curr_pos_gt;
+    curr_pos_gt << p->x(), p->y(), p->z();
+    // tf::Quaternion rot(q_W_L->w(), q_W_L->x(), q_W_L->y(), q_W_L->z());
+    Eigen::Quaterniond curr_rot_gt(
+      q_W_L->w(), q_W_L->x(), q_W_L->y(), q_W_L->z());
+    // tf::Pose curr_pose_gt = tf::Pose(rot, pos);
+
     // Calculate position distortions.
     Eigen::Vector3d pos_n;
     pos_n << position_n_[0](random_generator_) +
                  position_u_[0](random_generator_),
         position_n_[1](random_generator_) + position_u_[1](random_generator_),
         position_n_[2](random_generator_) + position_u_[2](random_generator_);
-
-    gazebo::msgs::Vector3d* p =
-        odometry_msg.mutable_pose()->mutable_pose()->mutable_position();
-
-    accumulated_pos_n_[0] += pos_n[0];
-    accumulated_pos_n_[1] += pos_n[1];
-    accumulated_pos_n_[2] += pos_n[2];
-    p->set_x(p->x() + accumulated_pos_n_[0]);
-    p->set_y(p->y() + accumulated_pos_n_[1]);
-    p->set_z(p->z() + accumulated_pos_n_[2]);
-
     // Calculate attitude distortions.
     Eigen::Vector3d theta;
     theta << attitude_n_[0](random_generator_) +
@@ -366,20 +368,97 @@ void DriftOdometryPlugin::OnUpdate(const common::UpdateInfo& _info)
     Eigen::Quaterniond q_n = QuaternionFromSmallAngle(theta);
     q_n.normalize();
 
-    gazebo::msgs::Quaternion* q_W_L =
-        odometry_msg.mutable_pose()->mutable_pose()->mutable_orientation();
+    // tf::Transform pose_noise(
+    //   tf::Quaternion(q_n->w(), q_n->x(), q_n->y(), q_n->z()),
+    //   tf::Vector3(pos_n[0], pos_n[1], pos_n[2]));
 
-    Eigen::Quaterniond _q_W_L(q_W_L->w(), q_W_L->x(), q_W_L->y(), q_W_L->z());
-    _q_W_L = _q_W_L * q_n;
+    Eigen::Vector3d curr_pos_odom;
+    Eigen::Quaterniond curr_rot_odom;
+    // tf::Pose curr_pose_odom;
+    if (initialized)
+    {
+      Eigen::Vector3d pos_diff
+        = this->prev_rot_gt.inverse() * (curr_pos_gt - this->prev_pos_gt);
+      Eigen::Quaterniond rot_diff
+        = this->prev_rot_gt.inverse() * curr_rot_gt;
+      // tf::Transform pose_diff = this->prev_pose_gt.inverse() * curr_pose_gt;
+      curr_pos_odom
+        = this->prev_pos_odom
+        + this->prev_rot_odom * (pos_diff + pos_n);
+      curr_rot_odom = this->prev_rot_odom * rot_diff * q_n;
+      // curr_pose_odom = this->prev_pose_odom * pose_diff * pose_noise;
+    }
+    else
+    {
+      curr_pos_odom = curr_pos_gt + pos_n;
+      curr_rot_odom = curr_rot_gt * q_n;
+      // curr_pose_odom = curr_pose_gt * pose_noise;
+      initialized = true;
+    }
+    this->prev_pos_gt = curr_pos_gt;
+    this->prev_rot_gt = curr_rot_gt;
+    // this->prev_pose_gt = curr_pose_gt;
+    this->prev_pos_odom = curr_pos_odom;
+    this->prev_rot_odom = curr_rot_odom;
+    // this->prev_pose_odom = curr_pose_odom;
 
-    // TODO: apply accumulated Yaw noise.
-    // yaw_n, accumulated_yaw_n_
-    // reuse attitude_n_[2](random_generator_) or create another Normal dist?
+    p->set_x(curr_pos_odom.x());
+    p->set_y(curr_pos_odom.y());
+    p->set_z(curr_pos_odom.z());
+    // tf::Vector3 pos_noise = curr_pose_odom.getOrigin();
+    // p->set_x(pos_noise.x());
+    // p->set_y(pos_noise.y());
+    // p->set_z(pos_noise.z());
+    q_W_L->set_w(curr_rot_odom.w());
+    q_W_L->set_x(curr_rot_odom.x());
+    q_W_L->set_y(curr_rot_odom.y());
+    q_W_L->set_z(curr_rot_odom.z());
+    // tf::Quaternion rot_noise = curr_pose_odom.getRotation();
+    // q_W_L->set_w(rot_noise.w());
+    // q_W_L->set_x(rot_noise.x());
+    // q_W_L->set_y(rot_noise.y());
+    // q_W_L->set_z(rot_noise.z());
 
-    q_W_L->set_w(_q_W_L.w());
-    q_W_L->set_x(_q_W_L.x());
-    q_W_L->set_y(_q_W_L.y());
-    q_W_L->set_z(_q_W_L.z());
+    // // Calculate position distortions.
+    // Eigen::Vector3d pos_n;
+    // pos_n << position_n_[0](random_generator_) +
+    //              position_u_[0](random_generator_),
+    //     position_n_[1](random_generator_) + position_u_[1](random_generator_),
+    //     position_n_[2](random_generator_) + position_u_[2](random_generator_);
+    //
+    // gazebo::msgs::Vector3d* p =
+    //     odometry_msg.mutable_pose()->mutable_pose()->mutable_position();
+    //
+    // accumulated_pos_n_[0] += pos_n[0];
+    // accumulated_pos_n_[1] += pos_n[1];
+    // accumulated_pos_n_[2] += pos_n[2];
+    // p->set_x(p->x() + accumulated_pos_n_[0]);
+    // p->set_y(p->y() + accumulated_pos_n_[1]);
+    // p->set_z(p->z() + accumulated_pos_n_[2]);
+    //
+    // // Calculate attitude distortions.
+    // Eigen::Vector3d theta;
+    // theta << attitude_n_[0](random_generator_) +
+    //              attitude_u_[0](random_generator_),
+    //     attitude_n_[1](random_generator_) + attitude_u_[1](random_generator_),
+    //     attitude_n_[2](random_generator_) + attitude_u_[2](random_generator_);
+    // Eigen::Quaterniond q_n = QuaternionFromSmallAngle(theta);
+    // q_n.normalize();
+    //
+    // gazebo::msgs::Quaternion* q_W_L =
+    //     odometry_msg.mutable_pose()->mutable_pose()->mutable_orientation();
+    //
+    // Eigen::Quaterniond _q_W_L(q_W_L->w(), q_W_L->x(), q_W_L->y(), q_W_L->z());
+    // _q_W_L = _q_W_L * q_n;
+    //
+    // // TODO: apply accumulated Yaw noise.
+    // // yaw_n, accumulated_yaw_n_
+    // // reuse attitude_n_[2](random_generator_) or create another Normal dist?
+    //
+    // q_W_L->set_w(_q_W_L.w());
+    // q_W_L->set_x(_q_W_L.x());
+    // q_W_L->set_y(_q_W_L.y());
+    // q_W_L->set_z(_q_W_L.z());
 
     // Calculate linear velocity distortions.
     Eigen::Vector3d linear_velocity_n;

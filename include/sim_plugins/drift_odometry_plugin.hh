@@ -131,7 +131,8 @@ class DriftOdometryPlugin : public ModelPlugin
         unknown_delay_(kDefaultUnknownDelay),
         covariance_image_scale_(kDefaultCovarianceImageScale),
 
-        accumulated_pos_n_(Eigen::Vector3d::Zero()),
+        // accumulated_pos_n_(Eigen::Vector3d::Zero()),
+        initialized(false),
 
         random_generator_(random_device_())
   {};
@@ -188,7 +189,16 @@ class DriftOdometryPlugin : public ModelPlugin
   double covariance_image_scale_;
   cv::Mat covariance_image_;
 
-  Eigen::Vector3d accumulated_pos_n_;
+  // Eigen::Vector3d accumulated_pos_n_;
+
+  // tf::Pose prev_pose_gt;
+  // tf::Pose prev_pose_odom;
+  Eigen::Vector3d prev_pos_gt;
+  Eigen::Quaterniond prev_rot_gt;
+  Eigen::Vector3d prev_pos_odom;
+  Eigen::Quaterniond prev_rot_odom;
+  bool initialized;
+
 
   std::random_device random_device_;
   std::mt19937 random_generator_;
