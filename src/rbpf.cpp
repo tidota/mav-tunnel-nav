@@ -591,7 +591,7 @@ void pf_main()
         resol, probHit, probMiss, threshMin, threshMax,
         motion_noise_lin_sigma, motion_noise_rot_sigma));
   }
-  std::vector<double> weights(n_particles);
+  std::vector<double> cumul_weights_slam(n_particles);
   std::vector<double> errors(n_particles);
 
   tf::Pose pose_prev;
@@ -1049,7 +1049,7 @@ void pf_main()
         // initialize weights and errors
         for (int i = 0; i < n_particles; ++i)
         {
-          weights[i] = 0;
+          cumul_weights_slam[i] = 0;
           errors[i] = 0;
         }
 
@@ -1067,36 +1067,32 @@ void pf_main()
         for (int i = 0; i < n_particles; ++i)
         {
           // Calculate a probability ranging from 0 to 1.
-          weights[i] = particles[i]->evaluate(range_data, octocloud);
-          weight_sum += weights[i];
-        }
+          cumul_weights_slam[i] = particles[i]->evaluate(range_data, octocloud);
+          if (i == 0 || max_weight < cumul_weights_slam[i])
+          {
+            max_weight = cumul_weights_slam[i];
+            index_best = i;
+          }
+          if (i > 0)
+            cumul_weights_slam[i] += cumul_weights_slam[i-1];
 
+        }
+        weight_sum = cumul_weights_slam[n_particles-1];
+        if (weight_sum != 0)
+          max_weight /= weight_sum;
+
+        // TODO: resamp for indiv SLAM
         // resample PF (and update map)
         if (weight_sum != 0)
         {
-          // http://mrpt.ual.es/reference/devel/_c_particle_filter_data_8h_source.html#l00109
           std::vector<int> indx_list(n_particles);
           for (int i = 0; i < n_particles; ++i)
           {
-            double rval = dis(gen);
-            double weight_buff = 0;
-            int index = 0;
-            for (; index < n_particles - 1; ++index)
-            {
-              weight_buff += weights[index]/weight_sum;
-              if (rval <= weight_buff)
-                break;
-            }
-            indx_list[i] = index;
-            if (i == 0 || max_weight < weights[index]/weight_sum)
-            {
-              max_weight = weights[index]/weight_sum;
-              index_best = i;
-            }
+            indx_list[i] = drawIndex(cumul_weights_slam, gen);
           }
-          std::vector<int> indx_unused(n_particles, -1);
 
           std::vector< std::shared_ptr<Particle> > new_generation;
+          std::vector<int> indx_unused(n_particles, -1);
           for (int i = 0; i < n_particles; ++i)
           {
             const int prev_indx = indx_unused[indx_list[i]];
@@ -1117,11 +1113,10 @@ void pf_main()
                 std::make_shared<Particle>(*new_generation[prev_indx]));
             }
           }
-
           // Copy the children to the parents.
           particles = std::move(new_generation);
 
-          // update the map
+          // update the map count
           if (counts_map_update >= mapping_interval)
           {
             counts_map_update = 0;
