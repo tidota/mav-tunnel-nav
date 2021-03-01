@@ -142,8 +142,8 @@
       <param name="map_threshMin" value="0.12"/>
       <param name="map_threshMax" value="0.97"/>
 
-      <param name="motion_noise_lin_sigma" value="0.05"/>
-      <param name="motion_noise_rot_sigma" value="0.02"/>
+      <param name="motion_noise_lin_sigma" value="0.005"/>
+      <param name="motion_noise_rot_sigma" value="0.01"/>
 
       <param name="t_pose_adjust" value="1.5"/>
       <param name="t_only_mapping" value="2.0"/>
