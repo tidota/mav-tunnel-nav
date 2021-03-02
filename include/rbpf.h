@@ -21,10 +21,14 @@ class Particle
   // map
   private: octomap::OcTree *map;
   public: const octomap::OcTree* getMap();
+
   // sigma for motion noise.
   private: const double motion_noise_lin_sigma;
   private: const double motion_noise_rot_sigma;
 
+  // TODO: make a shared pointer to the previous particle
+
+  // TODO: add a parameter for the previous particle pointer.
   public: Particle(
     const double &init_x, const double &init_y, const double &init_z,
     const double &init_Y, const double &resol,
