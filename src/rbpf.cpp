@@ -591,15 +591,17 @@ void pf_main()
 
   // TODO: make and use a vector of vectors of particles
   //       each vector of particles represent a segment.
-  std::vector< std::shared_ptr<Particle> > particles;
+  std::vector< std::vector< std::shared_ptr<Particle> > > segments(1);
+  int iseg = 0;
   for (int i = 0; i < n_particles; ++i)
   {
-    particles.push_back(
+    segments[iseg].push_back(
       std::make_shared<Particle>(
         init_x, init_y, init_z, init_Y,
         resol, probHit, probMiss, threshMin, threshMax,
         motion_noise_lin_sigma, motion_noise_rot_sigma));
   }
+  std::vector< int > segments_index_best(1);
   std::vector<double> cumul_weights_slam(n_particles);
   std::vector<double> errors(n_particles);
 
@@ -686,7 +688,7 @@ void pf_main()
 
         tf::Vector3 position = ground_truth_tf.getOrigin();
         tf::Quaternion orientation = ground_truth_tf.getRotation();
-        for (auto p: particles)
+        for (auto p: segments[iseg])
         {
           p->initPosition(position);
           p->initOrientation(orientation);
@@ -781,8 +783,7 @@ void pf_main()
     {
       prepareDataMsg(
         data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
-        conserv_omega, sigma_kde_squared_x2, particles, Nref, gen_cooploc);
-
+        conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc);
       // send data to the other
       data_pub.publish(data_msg);
 
@@ -792,7 +793,7 @@ void pf_main()
     {
       prepareDataMsg(
         data_msg, last_data_src, cumul_weights, cumul_weights_comp,
-        conserv_omega, sigma_kde_squared_x2, particles, Nref, gen_cooploc);
+        conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc);
 
       // send data to the other
       data_pub.publish(data_msg);
@@ -836,8 +837,7 @@ void pf_main()
         // initialize the wegith
         cumul_weights_update[ip] = 0;
         // get the particle's pose
-        tf::Pose robot_pose = particles[ip]->getPose();
-
+        tf::Pose robot_pose = segments[iseg][ip]->getPose();
         // for Nref
         for (int i = 0; i < msg.particles.size(); ++i)
         {
@@ -895,7 +895,7 @@ void pf_main()
         const int prev_indx = indx_unused[indx_list[ip]];
         if (prev_indx == -1)
         {
-          new_generation.push_back(std::move(particles[indx_list[ip]]));
+          new_generation.push_back(std::move(segments[iseg][indx_list[ip]]));
           indx_unused[indx_list[ip]] = ip;
         }
         else
@@ -904,7 +904,7 @@ void pf_main()
             std::make_shared<Particle>(*new_generation[prev_indx]));
         }
       }
-      std::swap(particles, new_generation);
+      std::swap(segments[iseg], new_generation);
 
       last_cooploc = now;
       state = LocalSLAM;
@@ -1065,7 +1065,7 @@ void pf_main()
         // predict PF (use odometory)
         const tf::Vector3 delta_pos = diff_pose.getOrigin();
         const tf::Quaternion delta_rot = diff_pose.getRotation();
-        for (auto p: particles)
+        for (auto p: segments[iseg])
         {
           // move the particle
           // call predict with the relative pose.
@@ -1076,7 +1076,7 @@ void pf_main()
         for (int i = 0; i < n_particles; ++i)
         {
           // Calculate a probability ranging from 0 to 1.
-          cumul_weights_slam[i] = particles[i]->evaluate(range_data, octocloud);
+          cumul_weights_slam[i] = segments[iseg][i]->evaluate(range_data, octocloud);
           if (i == 0 || max_weight < cumul_weights_slam[i])
           {
             max_weight = cumul_weights_slam[i];
@@ -1089,6 +1089,7 @@ void pf_main()
         weight_sum = cumul_weights_slam[n_particles-1];
         if (weight_sum != 0)
           max_weight /= weight_sum;
+        segments_index_best[iseg] = index_best;
 
         // TODO: resamp for indiv SLAM
         // resample PF (and update map)
@@ -1107,7 +1108,7 @@ void pf_main()
             const int prev_indx = indx_unused[indx_list[i]];
             if (prev_indx == -1)
             {
-              new_generation.push_back(std::move(particles[indx_list[i]]));
+              new_generation.push_back(std::move(segments[iseg][indx_list[i]]));
               indx_unused[indx_list[i]] = i;
 
               // update the map
@@ -1123,7 +1124,7 @@ void pf_main()
             }
           }
           // Copy the children to the parents.
-          particles = std::move(new_generation);
+          std::swap(segments[iseg], new_generation);
 
           // update the map count
           if (counts_map_update >= mapping_interval)
@@ -1140,7 +1141,7 @@ void pf_main()
           // update the map
           if (counts_map_update >= mapping_interval && octocloud.size() > 0)
           {
-            for (auto p: particles)
+            for (auto p: segments[iseg])
             {
               p->update_map(octocloud);
             }
@@ -1155,7 +1156,7 @@ void pf_main()
       else if (octocloud.size() > 0)
       {
         // mapping only at the beginning
-        for (auto p: particles)
+        for (auto p: segments[iseg])
         {
           p->update_map(octocloud);
         }
@@ -1164,7 +1165,7 @@ void pf_main()
       // compress maps
       if (counts_compress >= compress_interval)
       {
-        for (auto p: particles)
+        for (auto p: segments[iseg])
         {
           p->compress_map();
         }
@@ -1181,7 +1182,7 @@ void pf_main()
       z = 0;
       for (int i = 0; i < n_particles; ++i)
       {
-        tf::Vector3 buff = particles[i]->getPose().getOrigin();
+        tf::Vector3 buff = segments[iseg][i]->getPose().getOrigin();
         x += buff.x()/n_particles;
         y += buff.y()/n_particles;
         z += buff.z()/n_particles;
@@ -1194,12 +1195,12 @@ void pf_main()
         octomap_msgs::Octomap map;
         map.header.frame_id = world_frame_id;
         map.header.stamp = now;
-        if (octomap_msgs::fullMapToMsg(*particles[index_best]->getMap(), map))
+        if (octomap_msgs::fullMapToMsg(*segments[iseg][index_best]->getMap(), map))
           map_pub.publish(map);
         else
           ROS_ERROR("Error serializing OctoMap");
 
-        tf::Quaternion q = particles[index_best]->getPose().getRotation();
+        tf::Quaternion q = segments[iseg][index_best]->getPose().getRotation();
         tf::StampedTransform tf_stamped(
           tf::Transform(q, average_loc), now,
           world_frame_id, robot_frame_id);
@@ -1274,7 +1275,7 @@ void pf_main()
       // visualization
       if (counts_visualize_map >= vismap_interval)
       {
-        const octomap::OcTree* m = particles[index_best]->getMap();
+        const octomap::OcTree* m = segments[iseg][index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
         occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
         for (
@@ -1357,7 +1358,7 @@ void pf_main()
         poseArray.poses.resize(n_particles);
         for (int i = 0; i < n_particles; ++i)
         {
-          tf::Pose pose = particles[i]->getPose();
+          tf::Pose pose = segments[iseg][i]->getPose();
           tf::Vector3 position = pose.getOrigin();
           tf::Quaternion orientation = pose.getRotation();
           poseArray.poses[i].position.x = position.x();
