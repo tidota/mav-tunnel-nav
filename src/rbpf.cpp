@@ -197,7 +197,6 @@ inline int drawIndex(
   return indx;
 }
 
-// TODO: update the constructor1
 ////////////////////////////////////////////////////////////////////////////////
 Particle::Particle(
   const double &init_x, const double &init_y, const double &init_z,
@@ -205,9 +204,11 @@ Particle::Particle(
   const double &probHit, const double &probMiss,
   const double &threshMin, const double &threshMax,
   const double &new_motion_noise_lin_sigma,
-  const double &new_motion_noise_rot_sigma):
+  const double &new_motion_noise_rot_sigma,
+  const std::shared_ptr<Particle>& newPrev):
     motion_noise_lin_sigma(new_motion_noise_lin_sigma),
-    motion_noise_rot_sigma(new_motion_noise_rot_sigma)
+    motion_noise_rot_sigma(new_motion_noise_rot_sigma),
+    prev(newPrev)
 {
   this->map = new octomap::OcTree(resol);
   this->map->setProbHit(probHit);
@@ -220,11 +221,11 @@ Particle::Particle(
   this->pose = tf::Transform(rot_buff, tf::Vector3(init_x, init_y, init_z));
 }
 
-// TODO: update the constructor2
 ////////////////////////////////////////////////////////////////////////////////
 Particle::Particle(const Particle &src):
   motion_noise_lin_sigma(src.motion_noise_lin_sigma),
-  motion_noise_rot_sigma(src.motion_noise_rot_sigma)
+  motion_noise_rot_sigma(src.motion_noise_rot_sigma),
+  prev(src.prev)
 {
   // copy the localization data
   this->pose = src.pose;
@@ -589,7 +590,6 @@ void pf_main()
   int locdata_interval;
   pnh.getParam("locdata_interval", locdata_interval);
 
-  // TODO: make and use a vector of vectors of particles
   //       each vector of particles represent a segment.
   std::vector< std::vector< std::shared_ptr<Particle> > > segments(1);
   int iseg = 0;
@@ -1091,7 +1091,6 @@ void pf_main()
           max_weight /= weight_sum;
         segments_index_best[iseg] = index_best;
 
-        // TODO: resamp for indiv SLAM
         // resample PF (and update map)
         if (weight_sum != 0)
         {

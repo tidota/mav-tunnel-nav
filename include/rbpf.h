@@ -26,16 +26,16 @@ class Particle
   private: const double motion_noise_lin_sigma;
   private: const double motion_noise_rot_sigma;
 
-  // TODO: make a shared pointer to the previous particle
+  private: std::shared_ptr<Particle> prev;
 
-  // TODO: add a parameter for the previous particle pointer.
   public: Particle(
     const double &init_x, const double &init_y, const double &init_z,
     const double &init_Y, const double &resol,
     const double &probHit, const double &probMiss,
     const double &threshMin, const double &threshMax,
     const double &new_motion_noise_lin_sigma,
-    const double &new_motion_noise_rot_sigma);
+    const double &new_motion_noise_rot_sigma,
+    const std::shared_ptr<Particle>& newPrev = nullptr);
   public: Particle(const Particle &src);
   public: Particle();
   public: ~Particle();
