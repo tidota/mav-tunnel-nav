@@ -296,10 +296,23 @@ void Particle::predict(
 ////////////////////////////////////////////////////////////////////////////////
 double Particle::evaluate(
   const std::map<std::string, double> &range_data,
-  const octomap::Pointcloud &scan)
+  const octomap::Pointcloud &scan, const bool use_prev)
 {
   double log_lik = 0;
   // int hits = 0;
+
+  octomap::OcTree *map2use;
+  if (use_prev)
+  {
+    if (this->prev)
+      map2use = this->prev->map;
+    else
+      ROS_ERROR("No previous particle!");
+  }
+  else
+  {
+    map2use = this->map;
+  }
 
   // evaluation by range data
   for (auto range_name: range_topics)
@@ -318,7 +331,7 @@ double Particle::evaluate(
     octomap::point3d oct_target(tf_target.x(), tf_target.y(), tf_target.z());
     octomap::point3d direction = oct_pos - oct_target;
     octomap::point3d hit;
-    if (this->map->castRay(oct_target, direction, hit,
+    if (map2use->castRay(oct_target, direction, hit,
         true, dist + 0.2)) //ignoreUnknownCells = true, maxRange
     {
       // if (this->map->coordToKeyChecked(hit, key) &&
@@ -353,7 +366,7 @@ double Particle::evaluate(
     octomap::point3d oct_target(tf_target.x(), tf_target.y(), tf_target.z());
     octomap::point3d direction = oct_pos - oct_target;
     octomap::point3d hit;
-    if (this->map->castRay(oct_target, direction, hit,
+    if (map2use->castRay(oct_target, direction, hit,
         true, dist + 0.2)) //ignoreUnknownCells = true, maxRange
     {
       // if (this->map->coordToKeyChecked(hit, key) &&
