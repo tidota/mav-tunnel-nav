@@ -785,6 +785,7 @@ void pf_main()
         data_msg, last_data_src, cumul_weights, cumul_weights_comp,
         conserv_omega, sigma_kde_squared_x2, particles);
 
+      // TODO: random sampling so that it passes Nref particles only.
       // send data to the other
       data_pub.publish(data_msg);
 
@@ -828,6 +829,8 @@ void pf_main()
         cumul_weights_update[ip] = 0;
         // get the particle's pose
         tf::Pose robot_pose = particles[ip]->getPose();
+
+        // TODO: just use all particles passed from the other robot.
         // for Nref
         for (int i = 0; i < Nref; ++i)
         {
