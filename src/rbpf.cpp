@@ -1088,8 +1088,15 @@ void pf_main()
         // weight PF (use depth cam)
         for (int i = 0; i < n_particles; ++i)
         {
+          // TODO: pass true to "evaluate" if it is in the beginning of segment.
+
+          // if the current time is not far away from the initial time
+            // call evaluate with the flag which is set to true.
+          // otherwise, just call evaluate in the default way.
+
           // Calculate a probability ranging from 0 to 1.
-          cumul_weights_slam[i] = segments[iseg][i]->evaluate(range_data, octocloud);
+          cumul_weights_slam[i]
+            = segments[iseg][i]->evaluate(range_data, octocloud);
           if (i == 0 || max_weight < cumul_weights_slam[i])
           {
             max_weight = cumul_weights_slam[i];
@@ -1097,7 +1104,6 @@ void pf_main()
           }
           if (i > 0)
             cumul_weights_slam[i] += cumul_weights_slam[i-1];
-
         }
         weight_sum = cumul_weights_slam[n_particles-1];
         if (weight_sum != 0)
@@ -1107,6 +1113,15 @@ void pf_main()
         // resample PF (and update map)
         if (weight_sum != 0)
         {
+          // TODO: decide if it should create a new segment.
+
+          // if far away from the init position of the segment
+
+            // copy a particle everytime.
+            // set the initial pose of the segment to that of the best particle.
+            // set the initial time of the segment to the current one.
+
+          // otherwise, just do the usual thing.
           std::vector<int> indx_list(n_particles);
           for (int i = 0; i < n_particles; ++i)
           {
