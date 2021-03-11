@@ -450,14 +450,13 @@ inline void prepareDataMsg(
     }
   }
 
-  // TODO: random sampling so that it passes Nref particles only.
   data_msg.particles.resize(Nref);
   data_msg.cumul_weights.resize(Nref);
   for (int i = 0; i < Nref; ++i)
   {
     // get a particle of the other robot by msg.cumul_weights
     int indx = drawIndex(cumul_weights_comp, gen_cooploc);
-    // set the weight
+    // NOTE: set the weight
     // (just in case. Maybe this part is no longer necessary as the particles
     // have already been resampled)
     data_msg.cumul_weights[i] = cumul_weights_comp[indx];
@@ -835,7 +834,6 @@ void pf_main()
         // get the particle's pose
         tf::Pose robot_pose = particles[ip]->getPose();
 
-        // TODO: just use all particles passed from the other robot.
         // for Nref
         for (int i = 0; i < msg.particles.size(); ++i)
         {
