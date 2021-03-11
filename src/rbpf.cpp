@@ -408,7 +408,8 @@ inline void prepareDataMsg(
   mav_tunnel_nav::Particles& data_msg, std::string& destination,
   std::vector<double>& cumul_weights, std::vector<double>& cumul_weights_comp,
   const double& conserv_omega, const double& sigma_kde_squared_x2,
-  const std::vector< std::shared_ptr<Particle> >& particles)
+  const std::vector< std::shared_ptr<Particle> >& particles,
+  const int& Nref, std::mt19937& gen_cooploc)
 {
   const int n_particles = particles.size();
 
@@ -448,16 +449,21 @@ inline void prepareDataMsg(
       cumul_weights_comp[i] += cumul_weights_comp[i-1];
     }
   }
-  for (int i = 0; i < n_particles; ++i)
-  {
-    data_msg.cumul_weights[i] = cumul_weights_comp[i];
-  }
 
-  // set the particle's poses.
-  for (int i = 0; i < n_particles; ++i)
+  // TODO: random sampling so that it passes Nref particles only.
+  data_msg.particles.resize(Nref);
+  data_msg.cumul_weights.resize(Nref);
+  for (int i = 0; i < Nref; ++i)
   {
-    tf::Vector3 pos = particles[i]->getPose().getOrigin();
-    tf::Quaternion rot = particles[i]->getPose().getRotation();
+    // get a particle of the other robot by msg.cumul_weights
+    int indx = drawIndex(cumul_weights_comp, gen_cooploc);
+    // set the weight
+    // (just in case. Maybe this part is no longer necessary as the particles
+    // have already been resampled)
+    data_msg.cumul_weights[i] = cumul_weights_comp[indx];
+    // set the particle's poses.
+    tf::Vector3 pos = particles[indx]->getPose().getOrigin();
+    tf::Quaternion rot = particles[indx]->getPose().getRotation();
     data_msg.particles[i].position.x = pos.x();
     data_msg.particles[i].position.y = pos.y();
     data_msg.particles[i].position.z = pos.z();
@@ -742,8 +748,8 @@ void pf_main()
   const double sigma_kde_squared_x2 = 2 * sigma_kde * sigma_kde;
   mav_tunnel_nav::Particles data_msg;
   data_msg.source = robot_name;
-  data_msg.particles.resize(n_particles);
-  data_msg.cumul_weights.resize(n_particles);
+  data_msg.particles;
+  data_msg.cumul_weights;
   std::vector<double> cumul_weights(n_particles);
   std::vector<double> cumul_weights_comp(n_particles);
 
@@ -772,7 +778,7 @@ void pf_main()
     {
       prepareDataMsg(
         data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
-        conserv_omega, sigma_kde_squared_x2, particles);
+        conserv_omega, sigma_kde_squared_x2, particles, Nref, gen_cooploc);
 
       // send data to the other
       data_pub.publish(data_msg);
@@ -783,9 +789,8 @@ void pf_main()
     {
       prepareDataMsg(
         data_msg, last_data_src, cumul_weights, cumul_weights_comp,
-        conserv_omega, sigma_kde_squared_x2, particles);
+        conserv_omega, sigma_kde_squared_x2, particles, Nref, gen_cooploc);
 
-      // TODO: random sampling so that it passes Nref particles only.
       // send data to the other
       data_pub.publish(data_msg);
 
@@ -832,11 +837,10 @@ void pf_main()
 
         // TODO: just use all particles passed from the other robot.
         // for Nref
-        for (int i = 0; i < Nref; ++i)
+        for (int i = 0; i < msg.particles.size(); ++i)
         {
           // get a particle of the other robot by msg.cumul_weights
-          auto neighbor_pose_msg
-            = msg.particles[drawIndex(msg.cumul_weights, gen_cooploc)];
+          auto neighbor_pose_msg = msg.particles[i];
           tf::Pose neighbor_pose(
             tf::Quaternion(
               neighbor_pose_msg.orientation.x,
