@@ -36,6 +36,13 @@ class Particle
     const double &new_motion_noise_lin_sigma,
     const double &new_motion_noise_rot_sigma,
     const std::shared_ptr<Particle>& newPrev = nullptr);
+  public: Particle(
+    const std::shared_ptr<Particle>& src, const double &resol,
+    const double &probHit, const double &probMiss,
+    const double &threshMin, const double &threshMax,
+    const double &new_motion_noise_lin_sigma,
+    const double &new_motion_noise_rot_sigma);
+  public: Particle(const std::shared_ptr<Particle>& src);
   public: Particle(const Particle &src);
   public: Particle();
   public: ~Particle();

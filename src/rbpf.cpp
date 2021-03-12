@@ -222,6 +222,30 @@ Particle::Particle(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+Particle::Particle(
+  const std::shared_ptr<Particle>& src, const double &resol,
+  const double &probHit, const double &probMiss,
+  const double &threshMin, const double &threshMax,
+  const double &new_motion_noise_lin_sigma,
+  const double &new_motion_noise_rot_sigma):
+    motion_noise_lin_sigma(src->motion_noise_lin_sigma),
+    motion_noise_rot_sigma(src->motion_noise_rot_sigma),
+    prev(src)
+{
+  this->pose = src->pose;
+  this->map = new octomap::OcTree(resol);
+  this->map->setProbHit(probHit);
+  this->map->setProbMiss(probMiss);
+  this->map->setClampingThresMin(threshMin);
+  this->map->setClampingThresMax(threshMax);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+Particle::Particle(const std::shared_ptr<Particle> &src): Particle(*src)
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////
 Particle::Particle(const Particle &src):
   motion_noise_lin_sigma(src.motion_noise_lin_sigma),
   motion_noise_rot_sigma(src.motion_noise_rot_sigma),
@@ -617,6 +641,8 @@ void pf_main()
   std::vector< int > segments_index_best(1);
   std::vector<double> cumul_weights_slam(n_particles);
   std::vector<double> errors(n_particles);
+  tf::Pose init_segment_pose;
+  ros::Time init_segment_time;
 
   tf::Pose pose_prev;
   tf::Pose pose_curr;
@@ -706,6 +732,7 @@ void pf_main()
           p->initPosition(position);
           p->initOrientation(orientation);
         }
+        init_segment_pose = ground_truth_tf;
         break;
       }
       catch (tf::TransformException ex)
@@ -766,8 +793,6 @@ void pf_main()
   const double sigma_kde_squared_x2 = 2 * sigma_kde * sigma_kde;
   mav_tunnel_nav::Particles data_msg;
   data_msg.source = robot_name;
-  data_msg.particles;
-  data_msg.cumul_weights;
   std::vector<double> cumul_weights(n_particles);
   std::vector<double> cumul_weights_comp(n_particles);
 
@@ -797,6 +822,7 @@ void pf_main()
       prepareDataMsg(
         data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
         conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc);
+
       // send data to the other
       data_pub.publish(data_msg);
 
@@ -852,7 +878,7 @@ void pf_main()
         // get the particle's pose
         tf::Pose robot_pose = segments[iseg][ip]->getPose();
         // for Nref
-        for (int i = 0; i < msg.particles.size(); ++i)
+        for (unsigned int i = 0; i < msg.particles.size(); ++i)
         {
           // get a particle of the other robot by msg.cumul_weights
           auto neighbor_pose_msg = msg.particles[i];
@@ -917,7 +943,7 @@ void pf_main()
             std::make_shared<Particle>(*new_generation[prev_indx]));
         }
       }
-      std::swap(segments[iseg], new_generation);
+      segments[iseg].swap(new_generation);
 
       last_cooploc = now;
       state = LocalSLAM;
@@ -1088,15 +1114,21 @@ void pf_main()
         // weight PF (use depth cam)
         for (int i = 0; i < n_particles; ++i)
         {
-          // TODO: pass true to "evaluate" if it is in the beginning of segment.
-
+          // TODO: parameterize the duration from the initial time.
           // if the current time is not far away from the initial time
+          if (iseg != 0 && now <= init_segment_time + ros::Duration(3))
+          {
             // call evaluate with the flag which is set to true.
-          // otherwise, just call evaluate in the default way.
+            cumul_weights_slam[i]
+              = segments[iseg][i]->evaluate(range_data, octocloud, true);
+          }
+          else // otherwise, just call evaluate in the default way.
+          {
+            // Calculate a probability ranging from 0 to 1.
+            cumul_weights_slam[i]
+              = segments[iseg][i]->evaluate(range_data, octocloud);
+          }
 
-          // Calculate a probability ranging from 0 to 1.
-          cumul_weights_slam[i]
-            = segments[iseg][i]->evaluate(range_data, octocloud);
           if (i == 0 || max_weight < cumul_weights_slam[i])
           {
             max_weight = cumul_weights_slam[i];
@@ -1113,54 +1145,90 @@ void pf_main()
         // resample PF (and update map)
         if (weight_sum != 0)
         {
-          // TODO: decide if it should create a new segment.
+          // TODO: parameterize the range of init segment location.
 
           // if far away from the init position of the segment
+          tf::Pose best_pose = segments[iseg][index_best]->getPose();
+          tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
 
+          if (pose_in_seg.getOrigin().length() > 10)
+          {
             // copy a particle everytime.
-            // set the initial pose of the segment to that of the best particle.
-            // set the initial time of the segment to the current one.
-
-          // otherwise, just do the usual thing.
-          std::vector<int> indx_list(n_particles);
-          for (int i = 0; i < n_particles; ++i)
-          {
-            indx_list[i] = drawIndex(cumul_weights_slam, gen);
-          }
-
-          std::vector< std::shared_ptr<Particle> > new_generation;
-          std::vector<int> indx_unused(n_particles, -1);
-          for (int i = 0; i < n_particles; ++i)
-          {
-            const int prev_indx = indx_unused[indx_list[i]];
-            if (prev_indx == -1)
+            // TODO: do it!
+            // create a new segment
+            std::vector< std::shared_ptr<Particle> > new_seg(
+              n_particles, nullptr);
+            // copy each resampled particle.
+            for (int i = 0; i < n_particles; ++i)
             {
-              new_generation.push_back(std::move(segments[iseg][indx_list[i]]));
-              indx_unused[indx_list[i]] = i;
-
-              // update the map
-              if (counts_map_update >= mapping_interval && octocloud.size() > 0)
-              {
-                new_generation[i]->update_map(octocloud);
-              }
+              int indx = drawIndex(cumul_weights_slam, gen);
+              new_seg[i]
+                = std::make_shared<Particle>(
+                    segments[iseg][indx],
+                    resol, probHit, probMiss, threshMin, threshMax,
+                    motion_noise_lin_sigma, motion_noise_rot_sigma);
             }
-            else
+            // build a map anyway
+            if (octocloud.size() > 0)
             {
-              new_generation.push_back(
-                std::make_shared<Particle>(*new_generation[prev_indx]));
+              for (int i = 0; i < n_particles; ++i)
+                new_seg[i]->update_map(octocloud);
             }
-          }
-          // Copy the children to the parents.
-          std::swap(segments[iseg], new_generation);
-
-          // update the map count
-          if (counts_map_update >= mapping_interval)
-          {
             counts_map_update = 0;
+            // add the segment to the list.
+            segments.push_back(new_seg);
+            // increment iseg
+            ++iseg;
+            // set the initial pose of the segment to that of the best particle.
+            init_segment_pose = best_pose;
+            // set the initial time of the segment to the current one.
+            init_segment_time = now;
           }
           else
           {
-            ++counts_map_update;
+            // otherwise, just do the usual thing.
+            std::vector<int> indx_list(n_particles);
+            for (int i = 0; i < n_particles; ++i)
+            {
+              indx_list[i] = drawIndex(cumul_weights_slam, gen);
+            }
+
+            std::vector< std::shared_ptr<Particle> > new_generation;
+            std::vector<int> indx_unused(n_particles, -1);
+            for (int i = 0; i < n_particles; ++i)
+            {
+              const int prev_indx = indx_unused[indx_list[i]];
+              if (prev_indx == -1)
+              {
+                new_generation.push_back(
+                  std::move(segments[iseg][indx_list[i]]));
+                indx_unused[indx_list[i]] = i;
+
+                // update the map
+                if (counts_map_update >= mapping_interval
+                  && octocloud.size() > 0)
+                {
+                  new_generation[i]->update_map(octocloud);
+                }
+              }
+              else
+              {
+                new_generation.push_back(
+                  std::make_shared<Particle>(*new_generation[prev_indx]));
+              }
+            }
+            // Copy the children to the parents.
+            segments[iseg].swap(new_generation);
+
+            // update the map count
+            if (counts_map_update >= mapping_interval)
+            {
+              counts_map_update = 0;
+            }
+            else
+            {
+              ++counts_map_update;
+            }
           }
         }
         else
