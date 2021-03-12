@@ -787,6 +787,17 @@ void pf_main()
   ros::Time last_cooploc = ros::Time::now();
   ros::Time last_syncinit;
 
+  bool enable_segmentation;
+  if (!pnh.getParam("enable_segmentation", enable_segmentation))
+    ROS_ERROR_STREAM("no param: enable_segmentation");
+  double init_seg_phase_buff;
+  if (!pnh.getParam("init_seg_phase", init_seg_phase_buff))
+    ROS_ERROR_STREAM("no param: init_seg_phase");
+  ros::Duration init_seg_phase(init_seg_phase_buff);
+  double next_seg_thresh;
+  if (!pnh.getParam("next_seg_thresh", next_seg_thresh))
+    ROS_ERROR_STREAM("no param: next_seg_thresh");
+
   // === For data exchange. ==
   // 95 % of difference should be in approx. 2.7 * sigma_kde
   // https://stats.stackexchange.com/questions/35012/mahalanobis-distance-and-percentage-of-the-distribution-represented
@@ -1083,7 +1094,8 @@ void pf_main()
           if (auto_enable_by_slam)
           {
             ros::ServiceClient srv_client
-              = nh.serviceClient<std_srvs::SetBool>("/" + robot_name + "/enable");
+              = nh.serviceClient<std_srvs::SetBool>(
+                  "/" + robot_name + "/enable");
             std_srvs::SetBool srv;
             srv.request.data = true;
             srv_client.call(srv);
@@ -1114,9 +1126,8 @@ void pf_main()
         // weight PF (use depth cam)
         for (int i = 0; i < n_particles; ++i)
         {
-          // TODO: parameterize the duration from the initial time.
           // if the current time is not far away from the initial time
-          if (iseg != 0 && now <= init_segment_time + ros::Duration(3))
+          if (iseg != 0 && now <= init_segment_time + init_seg_phase)
           {
             // call evaluate with the flag which is set to true.
             cumul_weights_slam[i]
@@ -1145,14 +1156,18 @@ void pf_main()
         // resample PF (and update map)
         if (weight_sum != 0)
         {
-          // TODO: parameterize the range of init segment location.
-          // TODO: add a flag to invoke segmentation
-
           // if far away from the init position of the segment
-          tf::Pose best_pose = segments[iseg][index_best]->getPose();
-          tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
+          bool do_segment = false;
+          tf::Pose best_pose;
+          if (enable_segmentation)
+          {
+            best_pose = segments[iseg][index_best]->getPose();
+            tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
+            if (pose_in_seg.getOrigin().length() > next_seg_thresh)
+              do_segment = true;
+          }
 
-          if (pose_in_seg.getOrigin().length() > 10)
+          if (do_segment)
           {
             // copy a particle everytime.
             // create a new segment

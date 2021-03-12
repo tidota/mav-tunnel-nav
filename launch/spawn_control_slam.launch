@@ -194,6 +194,13 @@
 
       <param name="auto_enable_by_slam" value="$(arg auto_enable_by_slam)"/>
 
+      <!-- parameters for segmentation -->
+      <param name="enable_segmentation" value="true"/>
+      <param name="init_seg_phase" value="3.0"/>
+      <param name="next_seg_thresh" value="10.0"/>
+
+
+      <!-- for evaluation -->
       <param name="save_traj" value="$(arg save_traj)"/>
     </node>
   </group>
