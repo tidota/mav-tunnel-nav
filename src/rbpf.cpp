@@ -1146,6 +1146,7 @@ void pf_main()
         if (weight_sum != 0)
         {
           // TODO: parameterize the range of init segment location.
+          // TODO: add a flag to invoke segmentation
 
           // if far away from the init position of the segment
           tf::Pose best_pose = segments[iseg][index_best]->getPose();
@@ -1154,7 +1155,6 @@ void pf_main()
           if (pose_in_seg.getOrigin().length() > 10)
           {
             // copy a particle everytime.
-            // TODO: do it!
             // create a new segment
             std::vector< std::shared_ptr<Particle> > new_seg(
               n_particles, nullptr);
