@@ -450,44 +450,57 @@ inline void prepareDataMsg(
   std::vector<double>& cumul_weights, std::vector<double>& cumul_weights_comp,
   const double& conserv_omega, const double& sigma_kde_squared_x2,
   const std::vector< std::shared_ptr<Particle> >& particles,
-  const int& Nref, std::mt19937& gen_cooploc)
+  const int& Nref, std::mt19937& gen_cooploc, const bool f_conservative = true)
 {
   const int n_particles = particles.size();
 
   // set the destination
   data_msg.destination = destination;
 
-  // calculate the weights
-  for (int i = 0; i < n_particles; ++i)
+  if (f_conservative)
   {
-    cumul_weights[i] = 1.0;
-  }
-  for (int i = 0; i < n_particles; ++i)
-  {
-    // KDE: kernel density estimation.
-    // estimate the value on the point of the probability distribution
-    for (int j = i + 1; j < n_particles; ++j)
+    // calculate the weights
+    for (int i = 0; i < n_particles; ++i)
     {
-      double diff
-        = (particles[i]->getPose().getOrigin()
-          - particles[j]->getPose().getOrigin()).length();
-      double val = exp(-diff*diff/sigma_kde_squared_x2);
-      cumul_weights[i] += val;
-      cumul_weights[j] += val;
+      cumul_weights[i] = 1.0;
     }
-    double buff = pow(cumul_weights[i], conserv_omega);
+    for (int i = 0; i < n_particles; ++i)
+    {
+      // KDE: kernel density estimation.
+      // estimate the value on the point of the probability distribution
+      for (int j = i + 1; j < n_particles; ++j)
+      {
+        double diff
+          = (particles[i]->getPose().getOrigin()
+            - particles[j]->getPose().getOrigin()).length();
+        double val = exp(-diff*diff/sigma_kde_squared_x2);
+        cumul_weights[i] += val;
+        cumul_weights[j] += val;
+      }
+      double buff = pow(cumul_weights[i], conserv_omega);
 
-    // p^omega / p = p^(omega - 1)
-    cumul_weights[i] = buff / cumul_weights[i];
-    if (i > 0)
-    {
-      cumul_weights[i] += cumul_weights[i-1];
+      // p^omega / p = p^(omega - 1)
+      cumul_weights[i] = buff / cumul_weights[i];
+      if (i > 0)
+      {
+        cumul_weights[i] += cumul_weights[i-1];
+      }
+      // p^(1-omega) / p = p^(-omega) = 1 / p^omega
+      cumul_weights_comp[i] = 1.0 / buff;
+      if (i > 0)
+      {
+        cumul_weights_comp[i] += cumul_weights_comp[i-1];
+      }
     }
-    // p^(1-omega) / p = p^(-omega) = 1 / p^omega
-    cumul_weights_comp[i] = 1.0 / buff;
-    if (i > 0)
+  }
+  else
+  {
+    // without conservative method
+    // i.e., the weights are uniform
+    for (int i = 0; i < n_particles; ++i)
     {
-      cumul_weights_comp[i] += cumul_weights_comp[i-1];
+      cumul_weights[i] = i + 1;
+      cumul_weights_comp[i] = i + 1;
     }
   }
 
@@ -752,6 +765,9 @@ void pf_main()
   int seed_cooploc;
   if (!pnh.getParam("seed_cooploc", seed_cooploc))
     ROS_ERROR_STREAM("no param: seed_cooploc");
+  bool f_conservative;
+  if (!pnh.getParam("f_conservative", f_conservative))
+    ROS_ERROR_STREAM("no param: f_conservative");
 
   double conserv_omega;
   if (!pnh.getParam("conserv_omega", conserv_omega))
@@ -836,7 +852,8 @@ void pf_main()
     {
       prepareDataMsg(
         data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
-        conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc);
+        conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc,
+        f_conservative);
 
       // send data to the other
       data_pub.publish(data_msg);
@@ -847,7 +864,8 @@ void pf_main()
     {
       prepareDataMsg(
         data_msg, last_data_src, cumul_weights, cumul_weights_comp,
-        conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc);
+        conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc,
+        f_conservative);
 
       // send data to the other
       data_pub.publish(data_msg);
