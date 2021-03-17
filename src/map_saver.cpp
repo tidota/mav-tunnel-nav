@@ -22,6 +22,9 @@
 #include <ros/ros.h>
 #include <std_srvs/SetBool.h>
 
+// TODO: mod data buffer so that it can hold multiple maps.
+// list of maps
+// number of maps
 octomap_msgs::Octomap octomap_buff;
 
 std::string filename_base, filename_ext;
@@ -29,6 +32,10 @@ std::string filename_base, filename_ext;
 ////////////////////////////////////////////////////////////////////////////////
 void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 {
+  // TODO: mod the way to store the map
+  // check the segment #
+  // if it is larger, push_back and increment the index
+  // otherwise, do nothing.
   octomap_buff = *msg;
 }
 
@@ -36,6 +43,7 @@ void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
 bool savemapCallback(
   std_srvs::SetBool::Request& request, std_srvs::SetBool::Response& response)
 {
+  // TODO: save all the maps.
   bool f_saving = request.data;
   if (f_saving)
   {

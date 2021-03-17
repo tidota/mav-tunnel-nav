@@ -1302,6 +1302,7 @@ void pf_main()
       // publish data
       if (counts_publish >= publish_interval)
       {
+        // TODO: publish all the maps?
         octomap_msgs::Octomap map;
         map.header.frame_id = world_frame_id;
         map.header.stamp = now;
@@ -1385,6 +1386,8 @@ void pf_main()
       // visualization
       if (counts_visualize_map >= vismap_interval)
       {
+        // TODO: visualize all the maps.
+
         const octomap::OcTree* m = segments[iseg][index_best]->getMap();
         visualization_msgs::MarkerArray occupiedNodesVis;
         occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
