@@ -24,7 +24,7 @@ robot1:
   map_only: false
   map_filename: ''
   output: screen # screen, log
-  save_traj: true
+  save_traj: false
 
 robot2:
   x: -2.0
@@ -43,7 +43,7 @@ robot3:
   map_only: false
   map_filename: ''
   output: screen
-  save_traj: true
+  save_traj: false
 
 robot4:
   x: -16
