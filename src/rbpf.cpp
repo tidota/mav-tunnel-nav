@@ -798,6 +798,9 @@ void pf_main()
   double next_seg_thresh;
   if (!pnh.getParam("next_seg_thresh", next_seg_thresh))
     ROS_ERROR_STREAM("no param: next_seg_thresh");
+  bool f_clr4seg;
+  if (!pnh.getParam("f_clr4seg", f_clr4seg))
+    ROS_ERROR_STREAM("no param: f_clr4seg");
 
   // === For data exchange. ==
   // 95 % of difference should be in approx. 2.7 * sigma_kde
@@ -1392,73 +1395,97 @@ void pf_main()
       {
         // TODO: visualize all the maps.
 
-        const octomap::OcTree* m = segments[iseg][index_best]->getMap();
-        visualization_msgs::MarkerArray occupiedNodesVis;
-        occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
-        for (
-          octomap::OcTree::iterator it = m->begin(m->getTreeDepth()),
-          end = m->end(); it != end; ++it)
+        for (int is = 0; is <= iseg; ++is)
         {
-          if (m->isNodeAtThreshold(*it))
+          const octomap::OcTree* m = segments[is][index_best]->getMap();
+          visualization_msgs::MarkerArray occupiedNodesVis;
+          occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
+          for (
+            octomap::OcTree::iterator it = m->begin(m->getTreeDepth()),
+            end = m->end(); it != end; ++it)
           {
-            double x = it.getX();
-            double z = it.getZ();
-            double y = it.getY();
-
-            unsigned idx = it.getDepth();
-            geometry_msgs::Point cubeCenter;
-            cubeCenter.x = x;
-            cubeCenter.y = y;
-            cubeCenter.z = z;
-
-            if (m->isNodeOccupied(*it))
+            if (m->isNodeAtThreshold(*it))
             {
-              occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
+              double x = it.getX();
+              double z = it.getZ();
+              double y = it.getY();
 
-              double cosR = std::cos(PI*z/10.0)*0.8+0.2;
-              double cosG = std::cos(PI*(2.0/3.0+z/10.0))*0.8+0.2;
-              double cosB = std::cos(PI*(4.0/3.0+z/10.0))*0.8+0.2;
+              unsigned idx = it.getDepth();
+              geometry_msgs::Point cubeCenter;
+              cubeCenter.x = x;
+              cubeCenter.y = y;
+              cubeCenter.z = z;
+
               std_msgs::ColorRGBA clr;
-              clr.r = (cosR > 0)? cosR: 0;
-              clr.g = (cosG > 0)? cosG: 0;
-              clr.b = (cosB > 0)? cosB: 0;
-              clr.a = 0.5;
-              occupiedNodesVis.markers[idx].colors.push_back(clr);
+              double cosR;
+              double cosG;
+              double cosB;
+
+              if (f_clr4seg)
+              {
+                double val = (is + 1.0)/(iseg + 1.0);
+                cosR = std::cos(PI*val)*0.8+0.2;
+                cosG = std::cos(PI*(2.0/3.0+val))*0.8+0.2;
+                cosB = std::cos(PI*(4.0/3.0+val))*0.8+0.2;
+                clr.r = (cosR > 0)? cosR: 0;
+                clr.g = (cosG > 0)? cosG: 0;
+                clr.b = (cosB > 0)? cosB: 0;
+                clr.a = 1.0;
+              }
+
+              if (m->isNodeOccupied(*it))
+              {
+                occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
+
+                if (!f_clr4seg)
+                {
+                  double brightness = (is + 1.0)/(iseg + 1.0);
+                  cosR = std::cos(PI*z/10.0)*0.8+0.2;
+                  cosG = std::cos(PI*(2.0/3.0+z/10.0))*0.8+0.2;
+                  cosB = std::cos(PI*(4.0/3.0+z/10.0))*0.8+0.2;
+                  clr.r = (cosR > 0)? cosR * brightness: 0;
+                  clr.g = (cosG > 0)? cosG * brightness: 0;
+                  clr.b = (cosB > 0)? cosB * brightness: 0;
+                  clr.a = 1.0;
+                }
+                occupiedNodesVis.markers[idx].colors.push_back(clr);
+              }
             }
           }
+          // std_msgs::ColorRGBA m_color_occupied;
+          // m_color_occupied.r = 1;
+          // m_color_occupied.g = 1;
+          // m_color_occupied.b = 0.3;
+          // m_color_occupied.a = 0.5;
+          for (unsigned i = 0; i < occupiedNodesVis.markers.size(); ++i)
+          {
+            double size = m->getNodeSize(i);
+
+            occupiedNodesVis.markers[i].header.frame_id = "world";
+            occupiedNodesVis.markers[i].header.stamp = now;
+            occupiedNodesVis.markers[i].ns
+              = robot_name + "-" + std::to_string(is);
+            occupiedNodesVis.markers[i].id = i;
+            occupiedNodesVis.markers[i].type
+              = visualization_msgs::Marker::CUBE_LIST;
+            occupiedNodesVis.markers[i].scale.x = size;
+            occupiedNodesVis.markers[i].scale.y = size;
+            occupiedNodesVis.markers[i].scale.z = size;
+
+            // without this line, rviz complains orientation is uninitialized.
+            occupiedNodesVis.markers[i].pose.orientation.w = 1;
+
+            //occupiedNodesVis.markers[i].color = m_color_occupied;
+
+            if (occupiedNodesVis.markers[i].points.size() > 0)
+              occupiedNodesVis.markers[i].action
+                = visualization_msgs::Marker::ADD;
+            else
+              occupiedNodesVis.markers[i].action
+                = visualization_msgs::Marker::DELETE;
+          }
+          marker_occupied_pub.publish(occupiedNodesVis);
         }
-        // std_msgs::ColorRGBA m_color_occupied;
-        // m_color_occupied.r = 1;
-        // m_color_occupied.g = 1;
-        // m_color_occupied.b = 0.3;
-        // m_color_occupied.a = 0.5;
-        for (unsigned i= 0; i < occupiedNodesVis.markers.size(); ++i)
-        {
-          double size = m->getNodeSize(i);
-
-          occupiedNodesVis.markers[i].header.frame_id = "world";
-          occupiedNodesVis.markers[i].header.stamp = now;
-          occupiedNodesVis.markers[i].ns = "iris";
-          occupiedNodesVis.markers[i].id = i;
-          occupiedNodesVis.markers[i].type
-            = visualization_msgs::Marker::CUBE_LIST;
-          occupiedNodesVis.markers[i].scale.x = size;
-          occupiedNodesVis.markers[i].scale.y = size;
-          occupiedNodesVis.markers[i].scale.z = size;
-
-          // without this line, rviz complains orientation is uninitialized.
-          occupiedNodesVis.markers[i].pose.orientation.w = 1;
-
-          //occupiedNodesVis.markers[i].color = m_color_occupied;
-
-          if (occupiedNodesVis.markers[i].points.size() > 0)
-            occupiedNodesVis.markers[i].action
-              = visualization_msgs::Marker::ADD;
-          else
-            occupiedNodesVis.markers[i].action
-              = visualization_msgs::Marker::DELETE;
-        }
-        marker_occupied_pub.publish(occupiedNodesVis);
         counts_visualize_map = 0;
       }
       else

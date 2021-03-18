@@ -198,7 +198,7 @@
       <param name="enable_segmentation" value="true"/>
       <param name="init_seg_phase" value="3.0"/>
       <param name="next_seg_thresh" value="10.0"/>
-
+      <param name="f_clr4seg" value="true"/>
 
       <!-- for evaluation -->
       <param name="save_traj" value="$(arg save_traj)"/>
