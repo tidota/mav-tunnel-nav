@@ -450,14 +450,15 @@ inline void prepareDataMsg(
   std::vector<double>& cumul_weights, std::vector<double>& cumul_weights_comp,
   const double& conserv_omega, const double& sigma_kde_squared_x2,
   const std::vector< std::shared_ptr<Particle> >& particles,
-  const int& Nref, std::mt19937& gen_cooploc, const bool f_conservative = true)
+  const int& Nref, std::mt19937& gen_cooploc,
+  const bool enable_conservative = true)
 {
   const int n_particles = particles.size();
 
   // set the destination
   data_msg.destination = destination;
 
-  if (f_conservative)
+  if (enable_conservative)
   {
     // calculate the weights
     for (int i = 0; i < n_particles; ++i)
@@ -765,9 +766,9 @@ void pf_main()
   int seed_cooploc;
   if (!pnh.getParam("seed_cooploc", seed_cooploc))
     ROS_ERROR_STREAM("no param: seed_cooploc");
-  bool f_conservative;
-  if (!pnh.getParam("f_conservative", f_conservative))
-    ROS_ERROR_STREAM("no param: f_conservative");
+  bool enable_conservative;
+  if (!pnh.getParam("enable_conservative", enable_conservative))
+    ROS_ERROR_STREAM("no param: enable_conservative");
 
   double conserv_omega;
   if (!pnh.getParam("conserv_omega", conserv_omega))
@@ -814,9 +815,9 @@ void pf_main()
   double next_seg_thresh;
   if (!pnh.getParam("next_seg_thresh", next_seg_thresh))
     ROS_ERROR_STREAM("no param: next_seg_thresh");
-  bool f_clr4seg;
-  if (!pnh.getParam("f_clr4seg", f_clr4seg))
-    ROS_ERROR_STREAM("no param: f_clr4seg");
+  bool enable_clr4seg;
+  if (!pnh.getParam("enable_clr4seg", enable_clr4seg))
+    ROS_ERROR_STREAM("no param: enable_clr4seg");
 
   // === For data exchange. ==
   // 95 % of difference should be in approx. 2.7 * sigma_kde
@@ -853,7 +854,7 @@ void pf_main()
       prepareDataMsg(
         data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
         conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc,
-        f_conservative);
+        enable_conservative);
 
       // send data to the other
       data_pub.publish(data_msg);
@@ -865,7 +866,7 @@ void pf_main()
       prepareDataMsg(
         data_msg, last_data_src, cumul_weights, cumul_weights_comp,
         conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc,
-        f_conservative);
+        enable_conservative);
 
       // send data to the other
       data_pub.publish(data_msg);
@@ -1439,7 +1440,7 @@ void pf_main()
               double cosG;
               double cosB;
 
-              if (f_clr4seg)
+              if (enable_clr4seg)
               {
                 double val = (is + 1.0)/(iseg + 1.0);
                 cosR = std::cos(PI*val)*0.8+0.2;
@@ -1455,7 +1456,7 @@ void pf_main()
               {
                 occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
 
-                if (!f_clr4seg)
+                if (!enable_clr4seg)
                 {
                   double brightness = (is + 1.0)/(iseg + 1.0);
                   cosR = std::cos(PI*z/10.0)*0.8+0.2;
