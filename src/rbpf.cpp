@@ -701,7 +701,7 @@ void pf_main()
 
         break;
       }
-      catch (tf::TransformException ex)
+      catch (tf::TransformException& ex)
       {
         // NOTE: do nothing. Just wait.
       }
@@ -736,7 +736,7 @@ void pf_main()
         init_segment_pose = ground_truth_tf;
         break;
       }
-      catch (tf::TransformException ex)
+      catch (tf::TransformException& ex)
       {
         ROS_ERROR_STREAM(
           "Transfrom from " << robot_name + "_groundtruth" <<
@@ -1350,7 +1350,7 @@ void pf_main()
                   << loc.y() << " "
                   << loc.z() << " ";
             }
-            catch (tf::TransformException ex)
+            catch (tf::TransformException& ex)
             {
               ROS_ERROR_STREAM(
                 "Transfrom from " << robot_name + "_groundtruth" <<
