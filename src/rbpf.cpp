@@ -32,6 +32,7 @@
 #include <mav_tunnel_nav/SrcDst.h>
 #include <mav_tunnel_nav/Beacon.h>
 #include <mav_tunnel_nav/Particles.h>
+#include <mav_tunnel_nav/OctomapWithSegId.h>
 
 #include <ros/ros.h>
 
@@ -566,7 +567,7 @@ void pf_main()
   std::string octomap_topic;
   pnh.getParam("octomap_topic", octomap_topic);
   ros::Publisher map_pub
-    = nh.advertise<octomap_msgs::Octomap>(octomap_topic, 1);
+    = nh.advertise<mav_tunnel_nav::OctomapWithSegId>(octomap_topic, 1);
   ros::Publisher marker_occupied_pub
     = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
   ros::Publisher vis_poses_pub
@@ -1302,11 +1303,14 @@ void pf_main()
       // publish data
       if (counts_publish >= publish_interval)
       {
-        // TODO: publish all the maps?
-        octomap_msgs::Octomap map;
+        mav_tunnel_nav::OctomapWithSegId map;
         map.header.frame_id = world_frame_id;
         map.header.stamp = now;
-        if (octomap_msgs::fullMapToMsg(*segments[iseg][index_best]->getMap(), map))
+        std::stringstream ss;
+        ss << robot_name << "-" << std::setw(3) << std::setfill('0') << iseg;
+        map.segid = ss.str();
+        if (octomap_msgs::fullMapToMsg(
+            *segments[iseg][index_best]->getMap(), map.octomap))
           map_pub.publish(map);
         else
           ROS_ERROR("Error serializing OctoMap");

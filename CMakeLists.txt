@@ -79,6 +79,7 @@ add_message_files(
   Particles.msg
   Beacon.msg
   SrcDst.msg
+  OctomapWithSegId.msg
 #   Message1.msg
 #   Message2.msg
 )
@@ -103,6 +104,7 @@ generate_messages(
   DEPENDENCIES
   std_msgs
   geometry_msgs
+  octomap_msgs
 )
 
 ################################################

@@ -22,21 +22,16 @@
 #include <ros/ros.h>
 #include <std_srvs/SetBool.h>
 
-// TODO: mod data buffer so that it can hold multiple maps.
-// list of maps
-// number of maps
-octomap_msgs::Octomap octomap_buff;
+#include <mav_tunnel_nav/OctomapWithSegId.h>
+
+std::map<std::string, mav_tunnel_nav::OctomapWithSegId> map_list;
 
 std::string filename_base, filename_ext;
 
 ////////////////////////////////////////////////////////////////////////////////
-void octomapCallback(const octomap_msgs::Octomap::ConstPtr& msg)
+void octomapCallback(const mav_tunnel_nav::OctomapWithSegId::ConstPtr& msg)
 {
-  // TODO: mod the way to store the map
-  // check the segment #
-  // if it is larger, push_back and increment the index
-  // otherwise, do nothing.
-  octomap_buff = *msg;
+  map_list[msg->segid] = *msg;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,19 +42,25 @@ bool savemapCallback(
   bool f_saving = request.data;
   if (f_saving)
   {
-    octomap::OcTree *map
-      = dynamic_cast<octomap::OcTree*>(
-          octomap_msgs::fullMsgToMap(octomap_buff));
+    for (auto p: map_list)
+    {
+      octomap::OcTree *map
+        = dynamic_cast<octomap::OcTree*>(
+            octomap_msgs::fullMsgToMap(p.second.octomap));
 
-    time_t rawtime;
-    char buffer [80];
-    struct tm * timeinfo;
-    time (&rawtime);
-    timeinfo = localtime (&rawtime);
-    strftime (buffer,80,"%y%m%d_%H%M%S",timeinfo);
-    std::string filename = filename_base + std::string(buffer) + filename_ext;
-    ROS_INFO_STREAM("Saving map into " << filename);
-    map->writeBinary(filename);
+      time_t rawtime;
+      char buffer [80];
+      struct tm * timeinfo;
+      time (&rawtime);
+      timeinfo = localtime (&rawtime);
+      strftime (buffer,80,"%y%m%d_%H%M%S",timeinfo);
+      std::string filename
+        = filename_base
+        + "-" + p.first + "-"
+        + std::string(buffer) + filename_ext;
+      ROS_INFO_STREAM("Saving map into " << filename);
+      map->writeBinary(filename);
+    }
   }
   response.success = f_saving;
   return true;
