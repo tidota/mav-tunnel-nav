@@ -1412,8 +1412,6 @@ void pf_main()
       // visualization
       if (counts_visualize_map >= vismap_interval)
       {
-        // TODO: visualize all the maps.
-
         for (int is = 0; is <= iseg; ++is)
         {
           const octomap::OcTree* m = segments[is][index_best]->getMap();

@@ -38,7 +38,6 @@ void octomapCallback(const mav_tunnel_nav::OctomapWithSegId::ConstPtr& msg)
 bool savemapCallback(
   std_srvs::SetBool::Request& request, std_srvs::SetBool::Response& response)
 {
-  // TODO: save all the maps.
   bool f_saving = request.data;
   if (f_saving)
   {
