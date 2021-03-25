@@ -766,6 +766,9 @@ void pf_main()
   int seed_cooploc;
   if (!pnh.getParam("seed_cooploc", seed_cooploc))
     ROS_ERROR_STREAM("no param: seed_cooploc");
+  bool enable_cooploc;
+  if (!pnh.getParam("enable_cooploc", enable_cooploc))
+    ROS_ERROR_STREAM("no param: enable_cooploc");
   bool enable_conservative;
   if (!pnh.getParam("enable_conservative", enable_conservative))
     ROS_ERROR_STREAM("no param: enable_conservative");
@@ -940,8 +943,8 @@ void pf_main()
           // calculate weight and add it
           cumul_weights_update[ip]
             += std::exp(
-                -diff_range*diff_range/sigmaMutualLocR/sigmaMutualLocR
-                -diff_rad*diff_rad/sigmaMutualLocT/sigmaMutualLocT);
+                -(diff_range*diff_range)/sigmaMutualLocR/sigmaMutualLocR
+                -(diff_rad*diff_rad)/sigmaMutualLocT/sigmaMutualLocT);
         }
 
         //   multiply with the original weights
@@ -985,7 +988,7 @@ void pf_main()
     else if (state == LocalSLAM && now <= last_update + update_phase) // in the default state
     {
       // decide if it should initiate interactions with a neighbor.
-      if (now >= last_cooploc + cooploc_phase)
+      if (enable_cooploc && now >= last_cooploc + cooploc_phase)
       {
         // list up candidates to sync.
         std::vector<std::string> candidates;
