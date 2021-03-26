@@ -931,7 +931,7 @@ void pf_main()
               neighbor_pose_msg.position.z));
           // simulate a measurement based on the sampled poses.
           tf::Vector3 sampled_loc
-            = (robot_pose * neighbor_pose.inverse()).getOrigin();
+            = (neighbor_pose.inverse() * robot_pose).getOrigin();
           double sampled_range = sampled_loc.length();
           tf::Vector3 sampled_orientation = sampled_loc / sampled_range;
 

@@ -12,6 +12,7 @@
 #include <gazebo/physics/physics.hh>
 
 #include <ignition/math.hh>
+#include <ignition/math/config.hh>
 
 #include <mav_tunnel_nav/SpawnRobot.h>
 
@@ -158,7 +159,17 @@ void AdHocNetPlugin::OnUpdate()
         {
           auto robot1_pose = robot1->WorldPose();
           auto robot2_pose = robot2->WorldPose();
+
+          // NOTE: ignition math 4 and math 5 have a different behavior
+          // Gazebo 11 uses Ignition math 6
+          // Older versions uses Ignition math 4
+          // http://gazebosim.org/tutorials?tut=install_dependencies_from_source
+          #if GAZEBO_MAJOR_VERSION < 11
           auto diff = robot2_pose * robot1_pose.Inverse();
+          #else
+          auto diff = robot1_pose.Inverse() * robot2_pose;
+          #endif
+
           setPoseInfo(this->spawnedList[i], this->spawnedList[j], diff);
           if (diff.Pos().Length() <= this->comm_range)
           {
@@ -181,7 +192,11 @@ void AdHocNetPlugin::OnUpdate()
       auto robot = this->world->ModelByName(robot_name);
       if (robot)
       {
+        #if GAZEBO_MAJOR_VERSION < 11
         auto diff = robot->WorldPose() * base_pose.Inverse();
+        #else
+        auto diff = base_pose.Inverse() * robot->WorldPose();
+        #endif
         setPoseInfo(base_name, robot_name, diff);
         if (diff.Pos().Length() <= this->comm_range)
         {
@@ -400,8 +415,8 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
         msg2send.cumul_weights.push_back(1.0);
         auto pos = getPoseInfo(this->base_name, msg->source).Pos();
 
-        // assume it can get absolute bearing infor.
-        pos = this->base_pose.Rot().Inverse() * pos;
+        // assume the base can get absolute bearing infor.
+        pos = this->base_pose.Rot() * pos;
 
         msg2send.estimated_distance = pos.Length() + dst_noise(gen);
         pos.Normalize();
