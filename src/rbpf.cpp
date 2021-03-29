@@ -639,8 +639,8 @@ void pf_main()
   pnh.getParam("visloc_interval", visloc_interval);
   int compress_interval;
   pnh.getParam("compress_interval", compress_interval);
-  int locdata_interval;
-  pnh.getParam("locdata_interval", locdata_interval);
+  // int locdata_interval;
+  // pnh.getParam("locdata_interval", locdata_interval);
 
   //       each vector of particles represent a segment.
   std::vector< std::vector< std::shared_ptr<Particle> > > segments(1);
@@ -690,7 +690,7 @@ void pf_main()
   int counts_visualize_loc = 0;
   int counts_map_update = 0;
   int counts_compress = 0;
-  int counts_locdata = 0;
+  // int counts_locdata = 0;
 
   std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
 
@@ -1392,25 +1392,25 @@ void pf_main()
         ++counts_publish;
       }
 
-      if (counts_locdata >= locdata_interval)
-      {
-        nav_msgs::Odometry locdata;
-        locdata.header.frame_id = world_frame_id;
-        locdata.header.stamp = now;
-        locdata.child_frame_id = robot_frame_id;
-        locdata.pose.pose.position.x = average_loc.x();
-        locdata.pose.pose.position.y = average_loc.y();
-        locdata.pose.pose.position.z = average_loc.z();
-        locdata.twist.twist.linear.x = 0;
-        locdata.twist.twist.linear.y = 0;
-        locdata.twist.twist.linear.z = 0;
-        odom_reset_pub.publish(locdata);
-        counts_locdata = 0;
-      }
-      else
-      {
-        ++counts_locdata;
-      }
+      // if (counts_locdata >= locdata_interval)
+      // {
+      //   nav_msgs::Odometry locdata;
+      //   locdata.header.frame_id = world_frame_id;
+      //   locdata.header.stamp = now;
+      //   locdata.child_frame_id = robot_frame_id;
+      //   locdata.pose.pose.position.x = average_loc.x();
+      //   locdata.pose.pose.position.y = average_loc.y();
+      //   locdata.pose.pose.position.z = average_loc.z();
+      //   locdata.twist.twist.linear.x = 0;
+      //   locdata.twist.twist.linear.y = 0;
+      //   locdata.twist.twist.linear.z = 0;
+      //   odom_reset_pub.publish(locdata);
+      //   counts_locdata = 0;
+      // }
+      // else
+      // {
+      //   ++counts_locdata;
+      // }
 
       // visualization
       if (counts_visualize_map >= vismap_interval)
