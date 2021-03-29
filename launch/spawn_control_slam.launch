@@ -191,7 +191,7 @@
       <param name="sigmaMutualLocT" value="0.1"/>
 
       <param name="beacon_lifetime" value="1.0"/>
-      <param name="cooploc_phase" value="0.2"/>
+      <param name="cooploc_phase" value="0.4"/>
       <param name="syncinit_timeout" value="0.5"/>
 
       <param name="auto_enable_by_slam" value="$(arg auto_enable_by_slam)"/>
