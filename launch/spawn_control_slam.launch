@@ -184,7 +184,7 @@
       <param name="enable_cooploc" value="true"/>
       <param name="enable_conservative" value="true"/>
       <param name="conserv_omega" value="0.6"/>
-      <param name="sigma_kde" value="0.3"/>
+      <param name="sigma_kde" value="0.05"/>
       <param name="Nref" value="10"/>
       <param name="seed_cooploc" value="1000"/>
       <param name="sigmaMutualLocR" value="0.5"/>
