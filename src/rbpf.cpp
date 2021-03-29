@@ -1437,27 +1437,40 @@ void pf_main()
               cubeCenter.z = z;
 
               std_msgs::ColorRGBA clr;
+              clr.a = 1.0;
               double cosR;
               double cosG;
               double cosB;
 
               if (enable_clr4seg)
               {
-                double val = (is + 1.0)/(iseg + 1.0);
-                cosR = std::cos(PI*val)*0.8+0.2;
-                cosG = std::cos(PI*(2.0/3.0+val))*0.8+0.2;
-                cosB = std::cos(PI*(4.0/3.0+val))*0.8+0.2;
-                clr.r = (cosR > 0)? cosR: 0;
-                clr.g = (cosG > 0)? cosG: 0;
-                clr.b = (cosB > 0)? cosB: 0;
-                clr.a = 1.0;
+                double val = 0.8 * is;
+                cosR = std::cos(PI*val);
+                cosG = std::cos(PI*(2.0/3.0+val));
+                cosB = std::cos(PI*(4.0/3.0+val));
               }
 
               if (m->isNodeOccupied(*it))
               {
                 occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
 
-                if (!enable_clr4seg)
+                if (enable_clr4seg)
+                {
+                  double brightness = -z/20.0;
+                  while (brightness < 0)
+                    brightness += 1.0;
+                  while (brightness > 1.0)
+                    brightness -= 1.0;
+                  if (brightness >= 0.5)
+                    brightness = (brightness - 0.5)*2.0;
+                  else
+                    brightness = -(brightness - 0.5)*2.0;
+                  brightness = brightness * 0.8 + 0.2;
+                  clr.r = (cosR > 0)? cosR * brightness: 0;
+                  clr.g = (cosG > 0)? cosG * brightness: 0;
+                  clr.b = (cosB > 0)? cosB * brightness: 0;
+                }
+                else
                 {
                   double brightness = (is + 1.0)/(iseg + 1.0);
                   cosR = std::cos(PI*z/10.0)*0.8+0.2;
@@ -1466,8 +1479,8 @@ void pf_main()
                   clr.r = (cosR > 0)? cosR * brightness: 0;
                   clr.g = (cosG > 0)? cosG * brightness: 0;
                   clr.b = (cosB > 0)? cosB * brightness: 0;
-                  clr.a = 1.0;
                 }
+
                 occupiedNodesVis.markers[idx].colors.push_back(clr);
               }
             }
