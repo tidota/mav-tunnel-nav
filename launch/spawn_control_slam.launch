@@ -152,7 +152,7 @@
       <param name="vismap_interval" value="3"/>
       <param name="visloc_interval" value="0"/>
       <param name="compress_interval" value="7"/>
-      <param name="locdata_interval" value="1000"/>
+      <!-- <param name="locdata_interval" value="1000"/> -->
 
       <param name="octomap_topic" value="octomap"/>
 
@@ -191,7 +191,7 @@
       <param name="sigmaMutualLocT" value="0.1"/>
 
       <param name="beacon_lifetime" value="1.0"/>
-      <param name="cooploc_phase" value="3.0"/>
+      <param name="cooploc_phase" value="0.2"/>
       <param name="syncinit_timeout" value="0.5"/>
 
       <param name="auto_enable_by_slam" value="$(arg auto_enable_by_slam)"/>
