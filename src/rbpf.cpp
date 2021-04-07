@@ -822,6 +822,13 @@ void pf_main()
   if (!pnh.getParam("enable_clr4seg", enable_clr4seg))
     ROS_ERROR_STREAM("no param: enable_clr4seg");
 
+  double gl_eval_cons;
+  if (!pnh.getParam("gl_eval_cons", gl_eval_cons))
+    ROS_ERROR_STREAM("no param: gl_eval_cons");
+  double ml_eval_cons;
+  if (!pnh.getParam("ml_eval_cons", ml_eval_cons))
+    ROS_ERROR_STREAM("no param: ml_eval_cons");
+
   // === For data exchange. ==
   // 95 % of difference should be in approx. 2.7 * sigma_kde
   // https://stats.stackexchange.com/questions/35012/mahalanobis-distance-and-percentage-of-the-distribution-represented
@@ -941,10 +948,24 @@ void pf_main()
             = std::acos(sampled_orientation.dot(msg_estimated_orientation));
 
           // calculate weight and add it
-          cumul_weights_update[ip]
-            += std::exp(
-                -(diff_range*diff_range)/sigmaMutualLocR/sigmaMutualLocR
-                -(diff_rad*diff_rad)/sigmaMutualLocT/sigmaMutualLocT);
+          if (msg.particles.size() == 1) // in case of global
+          {
+            cumul_weights_update[ip]
+              += std::exp(
+                  -(diff_range*diff_range)
+                    /sigmaMutualLocR/sigmaMutualLocR/gl_eval_cons
+                  -(diff_rad*diff_rad)
+                    /sigmaMutualLocT/sigmaMutualLocT/gl_eval_cons);
+          }
+          else
+          {
+            cumul_weights_update[ip]
+              += std::exp(
+                  -(diff_range*diff_range)
+                    /sigmaMutualLocR/sigmaMutualLocR/ml_eval_cons
+                  -(diff_rad*diff_rad)
+                    /sigmaMutualLocT/sigmaMutualLocT/ml_eval_cons);
+          }
         }
 
         //   multiply with the original weights
