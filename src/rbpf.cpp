@@ -567,6 +567,14 @@ void pf_main()
     ROS_ERROR_STREAM("no parameter: data_up_topic");
   }
 
+  // parameters for evaluation
+  double gl_eval_cons;
+  if (!nh.getParam("/gl_eval_cons", gl_eval_cons))
+    ROS_ERROR_STREAM("no param: gl_eval_cons");
+  double ml_eval_cons;
+  if (!nh.getParam("/ml_eval_cons", ml_eval_cons))
+    ROS_ERROR_STREAM("no param: ml_eval_cons");
+
   // random numbers
   std::random_device rd{};
   std::mt19937 gen{rd()};
@@ -574,12 +582,14 @@ void pf_main()
 
   tf::TransformBroadcaster tf_broadcaster;
 
-  pnh.getParam("odom_reset_topic", odom_reset_topic);
+  if(!pnh.getParam("odom_reset_topic", odom_reset_topic))
+    ROS_ERROR_STREAM("no param: odom_reset_topic");
   ros::Publisher odom_reset_pub
     = nh.advertise<nav_msgs::Odometry>(odom_reset_topic, 1);
 
   std::string octomap_topic;
-  pnh.getParam("octomap_topic", octomap_topic);
+  if(!pnh.getParam("octomap_topic", octomap_topic))
+    ROS_ERROR_STREAM("no param: octomap_topic");
   ros::Publisher map_pub
     = nh.advertise<mav_tunnel_nav::OctomapWithSegId>(octomap_topic, 1);
   ros::Publisher marker_occupied_pub
@@ -587,18 +597,23 @@ void pf_main()
   ros::Publisher vis_poses_pub
     = nh.advertise<geometry_msgs::PoseArray>("loc_vis_poses", 1, true);
 
-  pnh.getParam("world_frame_id", world_frame_id);
-  pnh.getParam("robot_frame_id", robot_frame_id);
+  if(!pnh.getParam("world_frame_id", world_frame_id))
+    ROS_ERROR_STREAM("no param: world_frame_id");
+  if(!pnh.getParam("robot_frame_id", robot_frame_id))
+    ROS_ERROR_STREAM("no param: robot_frame_id");
 
   // === Initialize PF ===
   int n_particles;
   double update_freq;
-  pnh.getParam("n_particles", n_particles);
-  pnh.getParam("update_freq", update_freq);
+  if(!pnh.getParam("n_particles", n_particles))
+    ROS_ERROR_STREAM("no param: n_particles");
+  if(!pnh.getParam("update_freq", update_freq))
+    ROS_ERROR_STREAM("no param: update_freq");
   const ros::Duration update_phase(1.0/update_freq);
 
   int depth_cam_pc_downsample;
-  pnh.getParam("depth_cam_pc_downsample", depth_cam_pc_downsample);
+  if(!pnh.getParam("depth_cam_pc_downsample", depth_cam_pc_downsample))
+    ROS_ERROR_STREAM("no param: depth_cam_pc_downsample");
 
   double init_x;
   double init_y;
@@ -609,36 +624,54 @@ void pf_main()
   double probMiss;
   double threshMin;
   double threshMax;
-  pnh.getParam("init_x", init_x);
-  pnh.getParam("init_y", init_y);
-  pnh.getParam("init_z", init_z);
-  pnh.getParam("init_Y", init_Y);
-  pnh.getParam("map_resol", resol);
-  pnh.getParam("map_probHit", probHit);
-  pnh.getParam("map_probMiss", probMiss);
-  pnh.getParam("map_threshMin", threshMin);
-  pnh.getParam("map_threshMax", threshMax);
+  if(!pnh.getParam("init_x", init_x))
+    ROS_ERROR_STREAM("no param: init_x");
+  if(!pnh.getParam("init_y", init_y))
+    ROS_ERROR_STREAM("no param: init_y");
+  if(!pnh.getParam("init_z", init_z))
+    ROS_ERROR_STREAM("no param: init_z");
+  if(!pnh.getParam("init_Y", init_Y))
+    ROS_ERROR_STREAM("no param: init_Y");
+  if(!pnh.getParam("map_resol", resol))
+    ROS_ERROR_STREAM("no param: map_resol");
+  if(!pnh.getParam("map_probHit", probHit))
+    ROS_ERROR_STREAM("no param: map_probHit");
+  if(!pnh.getParam("map_probMiss", probMiss))
+    ROS_ERROR_STREAM("no param: map_probMiss");
+  if(!pnh.getParam("map_threshMin", threshMin))
+    ROS_ERROR_STREAM("no param: map_threshMin");
+  if(!pnh.getParam("map_threshMax", threshMax))
+    ROS_ERROR_STREAM("no param: map_threshMax");
   double motion_noise_lin_sigma;
-  pnh.getParam("motion_noise_lin_sigma", motion_noise_lin_sigma);
+  if(!pnh.getParam("motion_noise_lin_sigma", motion_noise_lin_sigma))
+    ROS_ERROR_STREAM("no param: motion_noise_lin_sigma");
   double motion_noise_rot_sigma;
-  pnh.getParam("motion_noise_rot_sigma", motion_noise_rot_sigma);
+  if(!pnh.getParam("motion_noise_rot_sigma", motion_noise_rot_sigma))
+    ROS_ERROR_STREAM("no param: motion_noise_rot_sigma");
 
   double t_pose_adjust;
-  pnh.getParam("t_pose_adjust", t_pose_adjust);
+  if(!pnh.getParam("t_pose_adjust", t_pose_adjust))
+    ROS_ERROR_STREAM("no param: t_pose_adjust");
   const ros::Duration phase_pose_adjust(t_pose_adjust);
   double t_only_mapping;
-  pnh.getParam("t_only_mapping", t_only_mapping);
+  if(!pnh.getParam("t_only_mapping", t_only_mapping))
+    ROS_ERROR_STREAM("no param: t_only_mapping");
   const ros::Duration phase_only_mapping(t_only_mapping);
   int mapping_interval;
-  pnh.getParam("mapping_interval", mapping_interval);
+  if(!pnh.getParam("mapping_interval", mapping_interval))
+    ROS_ERROR_STREAM("no param: mapping_interval");
   int publish_interval;
-  pnh.getParam("publish_interval", publish_interval);
+  if(!pnh.getParam("publish_interval", publish_interval))
+    ROS_ERROR_STREAM("no param: publish_interval");
   int vismap_interval;
-  pnh.getParam("vismap_interval", vismap_interval);
+  if(!pnh.getParam("vismap_interval", vismap_interval))
+    ROS_ERROR_STREAM("no param: vismap_interval");
   int visloc_interval;
-  pnh.getParam("visloc_interval", visloc_interval);
+  if(!pnh.getParam("visloc_interval", visloc_interval))
+    ROS_ERROR_STREAM("no param: visloc_interval");
   int compress_interval;
-  pnh.getParam("compress_interval", compress_interval);
+  if(!pnh.getParam("compress_interval", compress_interval))
+    ROS_ERROR_STREAM("no param: compress_interval");
   // int locdata_interval;
   // pnh.getParam("locdata_interval", locdata_interval);
 
@@ -821,13 +854,6 @@ void pf_main()
   bool enable_clr4seg;
   if (!pnh.getParam("enable_clr4seg", enable_clr4seg))
     ROS_ERROR_STREAM("no param: enable_clr4seg");
-
-  double gl_eval_cons;
-  if (!pnh.getParam("gl_eval_cons", gl_eval_cons))
-    ROS_ERROR_STREAM("no param: gl_eval_cons");
-  double ml_eval_cons;
-  if (!pnh.getParam("ml_eval_cons", ml_eval_cons))
-    ROS_ERROR_STREAM("no param: ml_eval_cons");
 
   // === For data exchange. ==
   // 95 % of difference should be in approx. 2.7 * sigma_kde
