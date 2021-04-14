@@ -187,8 +187,8 @@
       <param name="sigma_kde" value="0.05"/>
       <param name="Nref" value="10"/>
       <param name="seed_cooploc" value="1000"/>
-      <param name="sigmaLocR" value="0.5"/>
-      <param name="sigmaLocT" value="0.1"/>
+      <param name="sigmaLocR" value="0.1"/>
+      <param name="sigmaLocT" value="0.05"/>
       <param name="gl_eval_cons" value="2"/>
       <param name="ml_eval_cons" value="2"/>
 
