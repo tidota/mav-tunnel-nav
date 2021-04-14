@@ -567,14 +567,6 @@ void pf_main()
     ROS_ERROR_STREAM("no parameter: data_up_topic");
   }
 
-  // parameters for evaluation
-  double gl_eval_cons;
-  if (!nh.getParam("/gl_eval_cons", gl_eval_cons))
-    ROS_ERROR_STREAM("no param: gl_eval_cons");
-  double ml_eval_cons;
-  if (!nh.getParam("/ml_eval_cons", ml_eval_cons))
-    ROS_ERROR_STREAM("no param: ml_eval_cons");
-
   // random numbers
   std::random_device rd{};
   std::mt19937 gen{rd()};
@@ -813,12 +805,19 @@ void pf_main()
   if (!pnh.getParam("sigma_kde", sigma_kde))
     ROS_ERROR_STREAM("no param: sigma_kde");
 
-  double sigmaMutualLocR;
-  if (!pnh.getParam("sigmaMutualLocR", sigmaMutualLocR))
-    ROS_ERROR_STREAM("no param: sigmaMutualLocR");
-  double sigmaMutualLocT;
-  if (!pnh.getParam("sigmaMutualLocT", sigmaMutualLocT))
-    ROS_ERROR_STREAM("no param: sigmaMutualLocT");
+  double sigmaLocR;
+  if (!pnh.getParam("sigmaLocR", sigmaLocR))
+    ROS_ERROR_STREAM("no param: sigmaLocR");
+  double sigmaLocT;
+  if (!pnh.getParam("sigmaLocT", sigmaLocT))
+    ROS_ERROR_STREAM("no param: sigmaLocT");
+  // parameters for evaluation
+  double gl_eval_cons;
+  if (!pnh.getParam("gl_eval_cons", gl_eval_cons))
+    ROS_ERROR_STREAM("no param: gl_eval_cons");
+  double ml_eval_cons;
+  if (!pnh.getParam("ml_eval_cons", ml_eval_cons))
+    ROS_ERROR_STREAM("no param: ml_eval_cons");
 
   double beacon_lifetime_buff;
   if (!pnh.getParam("beacon_lifetime", beacon_lifetime_buff))
@@ -979,18 +978,18 @@ void pf_main()
             cumul_weights_update[ip]
               += std::exp(
                   -(diff_range*diff_range)
-                    /sigmaMutualLocR/sigmaMutualLocR/gl_eval_cons
+                    /sigmaLocR/sigmaLocR/gl_eval_cons
                   -(diff_rad*diff_rad)
-                    /sigmaMutualLocT/sigmaMutualLocT/gl_eval_cons);
+                    /sigmaLocT/sigmaLocT/gl_eval_cons);
           }
           else
           {
             cumul_weights_update[ip]
               += std::exp(
                   -(diff_range*diff_range)
-                    /sigmaMutualLocR/sigmaMutualLocR/ml_eval_cons
+                    /sigmaLocR/sigmaLocR/ml_eval_cons
                   -(diff_rad*diff_rad)
-                    /sigmaMutualLocT/sigmaMutualLocT/ml_eval_cons);
+                    /sigmaLocT/sigmaLocT/ml_eval_cons);
           }
         }
 
