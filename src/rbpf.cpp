@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <deque>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -79,7 +80,7 @@ std::map<std::string, ros::Time> beacon_lasttime;
 
 std::mutex sync_mutex;
 std::string last_sync_src;
-double timeout4synccallback;
+std::deque<mav_tunnel_nav::SrcDst> sync_msgs_buffer;
 
 std::mutex data_mutex;
 std::map<std::string, mav_tunnel_nav::Particles> data_buffer;
@@ -105,12 +106,8 @@ void syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 {
   if (state == LocalSLAM)
   {
-    if ((ros::Time::now() - msg->stamp).toSec() < timeout4synccallback)
-    {
-      std::lock_guard<std::mutex> lk(sync_mutex);
-      state = SyncReact;
-      last_sync_src = msg->source;
-    }
+    std::lock_guard<std::mutex> lk(sync_mutex);
+    sync_msgs_buffer.push_back(*msg);
   }
 }
 
@@ -835,7 +832,6 @@ void pf_main()
   if (!pnh.getParam("syncinit_timeout", syncinit_timeout_buff))
     ROS_ERROR_STREAM("no param: syncinit_timeout");
   const ros::Duration syncinit_timeout(syncinit_timeout_buff);
-  timeout4synccallback = syncinit_timeout_buff;
 
   std::mt19937 gen_cooploc;
   gen_cooploc.seed(seed_cooploc);
@@ -1038,34 +1034,52 @@ void pf_main()
     }
     else if (state == LocalSLAM && now <= last_update + update_phase) // in the default state
     {
-      // decide if it should initiate interactions with a neighbor.
-      if (enable_cooploc && now >= last_cooploc + cooploc_phase)
+      if (enable_cooploc)
       {
-        // list up candidates to sync.
-        std::vector<std::string> candidates;
-        for (auto p: beacon_lasttime)
+        if (now < last_cooploc + cooploc_phase)
         {
-          // NOTE: add an candiate if the packet is "fresh" enough and it is
-          //       within 90% of comm range.
-          if (now <= p.second + beacon_lifetime
-            && beacon_buffer[p.first].estimated_distance < 0.9 * comm_range)
+          std::lock_guard<std::mutex> lk(sync_mutex);
+          while(state == LocalSLAM && sync_msgs_buffer.size() > 0)
           {
-            candidates.push_back(p.first);
+            mav_tunnel_nav::SrcDst msg = sync_msgs_buffer.front();
+            sync_msgs_buffer.pop_front();
+            if (now - msg.stamp < syncinit_timeout * 0.7)
+            {
+              last_sync_src = msg.source;
+              state = SyncReact;
+            }
           }
         }
-
-        if (candidates.size() > 0)
+        else
         {
-          // randomly select a neighbor to interact.
-          std::uniform_int_distribution<int> dist(0, candidates.size() - 1);
+          // decide if it should initiate interactions with a neighbor.
 
-          // send a sync packet.
-          sync_msg.stamp = ros::Time::now();
-          sync_msg.destination = candidates[dist(gen_cooploc_select)];
-          sync_pub.publish(sync_msg);
+          // list up candidates to sync.
+          std::vector<std::string> candidates;
+          for (auto p: beacon_lasttime)
+          {
+            // NOTE: add an candiate if the packet is "fresh" enough and it is
+            //       within 90% of comm range.
+            if (now <= p.second + beacon_lifetime
+              && beacon_buffer[p.first].estimated_distance < 0.9 * comm_range)
+            {
+              candidates.push_back(p.first);
+            }
+          }
 
-          last_syncinit = now;
-          state = SyncInit;
+          if (candidates.size() > 0)
+          {
+            // randomly select a neighbor to interact.
+            std::uniform_int_distribution<int> dist(0, candidates.size() - 1);
+
+            // send a sync packet.
+            sync_msg.stamp = ros::Time::now();
+            sync_msg.destination = candidates[dist(gen_cooploc_select)];
+            sync_pub.publish(sync_msg);
+
+            last_syncinit = now;
+            state = SyncInit;
+          }
         }
       }
     }
