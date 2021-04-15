@@ -79,6 +79,7 @@ std::map<std::string, ros::Time> beacon_lasttime;
 
 std::mutex sync_mutex;
 std::string last_sync_src;
+double timeout4synccallback;
 
 std::mutex data_mutex;
 std::map<std::string, mav_tunnel_nav::Particles> data_buffer;
@@ -104,9 +105,12 @@ void syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 {
   if (state == LocalSLAM)
   {
-    std::lock_guard<std::mutex> lk(sync_mutex);
-    state = SyncReact;
-    last_sync_src = msg->source;
+    if ((ros::Time::now() - msg->stamp).toSec() < timeout4synccallback)
+    {
+      std::lock_guard<std::mutex> lk(sync_mutex);
+      state = SyncReact;
+      last_sync_src = msg->source;
+    }
   }
 }
 
@@ -831,6 +835,7 @@ void pf_main()
   if (!pnh.getParam("syncinit_timeout", syncinit_timeout_buff))
     ROS_ERROR_STREAM("no param: syncinit_timeout");
   const ros::Duration syncinit_timeout(syncinit_timeout_buff);
+  timeout4synccallback = syncinit_timeout_buff;
 
   std::mt19937 gen_cooploc;
   gen_cooploc.seed(seed_cooploc);
@@ -1055,6 +1060,7 @@ void pf_main()
           std::uniform_int_distribution<int> dist(0, candidates.size() - 1);
 
           // send a sync packet.
+          sync_msg.stamp = ros::Time::now();
           sync_msg.destination = candidates[dist(gen_cooploc_select)];
           sync_pub.publish(sync_msg);
 
