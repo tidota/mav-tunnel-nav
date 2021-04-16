@@ -885,29 +885,54 @@ void pf_main()
         state = LocalSLAM;
       }
     }
-    else if (state == SyncReact)
+    else if (state == SyncReact || state == DataSending)
     {
+      // Odometry data
+      tf::Transform diff_pose;
+      {
+        std::lock_guard<std::mutex> lk(odom_mutex);
+        tf::Vector3 pos(
+          odom_buff.pose.pose.position.x,
+          odom_buff.pose.pose.position.y,
+          odom_buff.pose.pose.position.z);
+        tf::Quaternion dir(
+          odom_buff.pose.pose.orientation.x,
+          odom_buff.pose.pose.orientation.y,
+          odom_buff.pose.pose.orientation.z,
+          odom_buff.pose.pose.orientation.w);
+        pose_curr.setOrigin(pos);
+        pose_curr.setRotation(dir);
+        diff_pose = pose_prev.inverse() * pose_curr;
+        pose_prev = pose_curr;
+      }
+      // predict PF (use odometory)
+      const tf::Vector3 delta_pos = diff_pose.getOrigin();
+      const tf::Quaternion delta_rot = diff_pose.getRotation();
+      for (auto p: segments[iseg])
+      {
+        // move the particle
+        // call predict with the relative pose.
+        p->predict(delta_pos, delta_rot, gen);
+      }
+
+      std::string dest;
+      if (state == SyncReact)
+        dest = last_sync_src;
+      else
+        dest = last_data_src;
+
       prepareDataMsg(
-        data_msg, last_sync_src, cumul_weights, cumul_weights_comp,
+        data_msg, dest, cumul_weights, cumul_weights_comp,
         conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc,
         enable_conservative);
 
       // send data to the other
       data_pub.publish(data_msg);
 
-      state = DataWaiting;
-    }
-    else if (state == DataSending)
-    {
-      prepareDataMsg(
-        data_msg, last_data_src, cumul_weights, cumul_weights_comp,
-        conserv_omega, sigma_kde_squared_x2, segments[iseg], Nref, gen_cooploc,
-        enable_conservative);
-
-      // send data to the other
-      data_pub.publish(data_msg);
-
-      state = Update;
+      if (state == SyncReact)
+        state = DataWaiting;
+      else
+        state = Update;
     }
     else if (state == DataWaiting)
     {
