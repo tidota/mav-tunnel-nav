@@ -152,6 +152,7 @@
       <init_robot_loc>
         <x>2</x><y>-2</y><z>0.3</z><ori>0</ori>
       </init_robot_loc>
+      <enable_vis_cooploc>true</enable_vis_cooploc>
     </plugin>
   </world>
 </sdf>

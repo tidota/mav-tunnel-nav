@@ -25,6 +25,9 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 
+// NOTE: visualization
+#include <visualization_msgs/Marker.h>
+
 #include <mav_tunnel_nav/SrcDst.h>
 #include <mav_tunnel_nav/Beacon.h>
 #include <mav_tunnel_nav/Particles.h>
@@ -222,6 +225,11 @@ namespace gazebo
         pose = poseInfo[str2 + str1].Inverse();
       return pose;
     }
+
+    /// \brief marker for visualization
+    /// NOTE: visualization
+    private: bool enable_vis_cooploc;
+    private: ros::Publisher marker_pub;
   };
 }
 #endif

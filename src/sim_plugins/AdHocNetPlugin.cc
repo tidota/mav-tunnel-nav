@@ -22,6 +22,9 @@
 
 #include <tf/transform_datatypes.h>
 
+// NOTE: visualization
+#include <visualization_msgs/Marker.h>
+
 using namespace gazebo;
 
 GZ_REGISTER_WORLD_PLUGIN(AdHocNetPlugin)
@@ -140,6 +143,11 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
     setTopoInfo(base_name, robot_name, false);
     setPoseInfo(base_name, robot_name, ignition::math::Pose3d());
   }
+
+  // NOTE: visualization
+  enable_vis_cooploc = _sdf->Get<bool>("enable_vis_cooploc");
+  marker_pub
+    = this->nh.advertise<visualization_msgs::Marker>("data_viz", 10);
 }
 
 /////////////////////////////////////////////////
@@ -428,6 +436,35 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
         msg2send.estimated_orientation.z = pos.Z();
 
         this->data_pubs[msg->source].publish(msg2send);
+
+        // NOTE: visualization
+        if (enable_vis_cooploc)
+        {
+          visualization_msgs::Marker line_list;
+          line_list.header.frame_id = "/world";
+          line_list.header.stamp = ros::Time::now();
+          line_list.ns = base_name;
+          line_list.action = visualization_msgs::Marker::ADD;
+          line_list.pose.orientation.w = 1.0;
+          line_list.id = 0;
+          line_list.type = visualization_msgs::Marker::LINE_LIST;
+          line_list.scale.x = 0.1;
+          line_list.color.r = 1.0;
+          line_list.color.a = 1.0;
+          geometry_msgs::Point p1, p2;
+          auto p1_buff = base_pose.Pos();
+          p1.x = p1_buff.X();
+          p1.y = p1_buff.Y();
+          p1.z = p1_buff.Z();
+          auto p2_buff
+            = this->world->ModelByName(msg->source)->WorldPose().Pos();
+          p2.x = p2_buff.X();
+          p2.y = p2_buff.Y();
+          p2.z = p2_buff.Z();
+          line_list.points.push_back(p1);
+          line_list.points.push_back(p2);
+          marker_pub.publish(line_list);
+        }
       }
     }
     else if (this->sync_pubs.count(msg->destination) > 0)
@@ -483,6 +520,37 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
         msg2send.estimated_orientation.y = pos.Y();
         msg2send.estimated_orientation.z = pos.Z();
         this->data_pubs[msg->destination].publish(msg2send);
+
+        // NOTE: visualization
+        if (enable_vis_cooploc)
+        {
+          visualization_msgs::Marker line_list;
+          line_list.header.frame_id = "/world";
+          line_list.header.stamp = ros::Time::now();
+          line_list.ns = base_name;
+          line_list.action = visualization_msgs::Marker::ADD;
+          line_list.pose.orientation.w = 1.0;
+          line_list.id = 0;
+          line_list.type = visualization_msgs::Marker::LINE_LIST;
+          line_list.scale.x = 0.1;
+          line_list.color.r = 1.0;
+          line_list.color.a = 1.0;
+          geometry_msgs::Point p1, p2;
+          auto p1_buff
+            = this->world->ModelByName(msg->source)->WorldPose().Pos();
+          p1.x = p1_buff.X();
+          p1.y = p1_buff.Y();
+          p1.z = p1_buff.Z();
+          auto p2_buff
+            = this->world->ModelByName(msg->destination)->WorldPose().Pos();
+          p2.x = p2_buff.X();
+          p2.y = p2_buff.Y();
+          p2.z = p2_buff.Z();
+          line_list.points.push_back(p1);
+          line_list.points.push_back(p2);
+          marker_pub.publish(line_list);
+        }
+
       }
     }
   }
