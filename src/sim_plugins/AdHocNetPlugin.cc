@@ -440,19 +440,20 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
         // NOTE: visualization
         if (enable_vis_cooploc)
         {
-          visualization_msgs::Marker line_list;
+          visualization_msgs::Marker line_list, line_sens;
           line_list.header.frame_id = "/world";
           line_list.header.stamp = ros::Time::now();
           line_list.ns = base_name;
           line_list.action = visualization_msgs::Marker::ADD;
           line_list.pose.orientation.w = 1.0;
-          line_list.id = 0;
           line_list.type = visualization_msgs::Marker::LINE_LIST;
           line_list.scale.x = 0.1;
+          line_sens = line_list;
+          line_list.id = 0;
           line_list.color.r = 1.0;
           line_list.color.a = 1.0;
           geometry_msgs::Point p1, p2;
-          auto p1_buff = base_pose.Pos();
+          auto p1_buff = this->base_pose.Pos();
           p1.x = p1_buff.X();
           p1.y = p1_buff.Y();
           p1.z = p1_buff.Z();
@@ -464,6 +465,19 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
           line_list.points.push_back(p1);
           line_list.points.push_back(p2);
           marker_pub.publish(line_list);
+          p2_buff = this->base_pose.Pos();
+          p2.x = p2_buff.X()
+               + msg2send.estimated_orientation.x * msg2send.estimated_distance;
+          p2.y = p2_buff.Y()
+               + msg2send.estimated_orientation.y * msg2send.estimated_distance;
+          p2.z = p2_buff.Z()
+               + msg2send.estimated_orientation.z * msg2send.estimated_distance;
+          line_sens.points.push_back(p1);
+          line_sens.points.push_back(p2);
+          line_sens.color.g = 1.0;
+          line_sens.color.a = 1.0;
+          line_sens.id = 1;
+          marker_pub.publish(line_sens);
         }
       }
     }
@@ -524,15 +538,16 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
         // NOTE: visualization
         if (enable_vis_cooploc)
         {
-          visualization_msgs::Marker line_list;
+          visualization_msgs::Marker line_list, line_sens;
           line_list.header.frame_id = "/world";
           line_list.header.stamp = ros::Time::now();
           line_list.ns = base_name;
           line_list.action = visualization_msgs::Marker::ADD;
           line_list.pose.orientation.w = 1.0;
-          line_list.id = 0;
           line_list.type = visualization_msgs::Marker::LINE_LIST;
           line_list.scale.x = 0.1;
+          line_sens = line_list;
+          line_list.id = 0;
           line_list.color.r = 1.0;
           line_list.color.a = 1.0;
           geometry_msgs::Point p1, p2;
@@ -549,6 +564,22 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
           line_list.points.push_back(p1);
           line_list.points.push_back(p2);
           marker_pub.publish(line_list);
+          p2_buff
+            = this->world->ModelByName(msg->source)->WorldPose().Pos()
+            + this->world->ModelByName(msg->source)->WorldPose().Rot() *
+             ignition::math::Vector3d(
+              msg2send.estimated_orientation.x * msg2send.estimated_distance,
+              msg2send.estimated_orientation.y * msg2send.estimated_distance,
+              msg2send.estimated_orientation.z * msg2send.estimated_distance);
+          p2.x = p2_buff.X();
+          p2.y = p2_buff.Y();
+          p2.z = p2_buff.Z();
+          line_sens.points.push_back(p1);
+          line_sens.points.push_back(p2);
+          line_sens.color.g = 1.0;
+          line_sens.color.a = 1.0;
+          line_sens.id = 1;
+          marker_pub.publish(line_sens);
         }
 
       }
