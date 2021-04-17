@@ -1273,97 +1273,93 @@ void pf_main()
           max_weight /= weight_sum;
         segments_index_best[iseg] = index_best;
 
-        // resample PF (and update map)
-        if (enable_indivLoc && weight_sum != 0)
+        // if far away from the init position of the segment
+        bool do_segment = false;
+        tf::Pose best_pose;
+        if (enable_segmentation)
         {
-          // if far away from the init position of the segment
-          bool do_segment = false;
-          tf::Pose best_pose;
-          if (enable_segmentation)
+          best_pose = segments[iseg][index_best]->getPose();
+          tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
+          if (pose_in_seg.getOrigin().length() > next_seg_thresh)
+            do_segment = true;
+        }
+
+        if (do_segment)
+        {
+          // copy a particle everytime.
+          // create a new segment
+          std::vector< std::shared_ptr<Particle> > new_seg(
+            n_particles, nullptr);
+          // copy each resampled particle.
+          for (int i = 0; i < n_particles; ++i)
           {
-            best_pose = segments[iseg][index_best]->getPose();
-            tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
-            if (pose_in_seg.getOrigin().length() > next_seg_thresh)
-              do_segment = true;
+            int indx = drawIndex(cumul_weights_slam, gen);
+            new_seg[i]
+              = std::make_shared<Particle>(
+                  segments[iseg][indx],
+                  resol, probHit, probMiss, threshMin, threshMax,
+                  motion_noise_lin_sigma, motion_noise_rot_sigma);
+          }
+          // build a map anyway
+          if (octocloud.size() > 0)
+          {
+            for (int i = 0; i < n_particles; ++i)
+              new_seg[i]->update_map(octocloud);
+          }
+          counts_map_update = 0;
+          // add the segment to the list.
+          segments.push_back(new_seg);
+          // increment iseg
+          ++iseg;
+          // set the initial pose of the segment to that of the best particle.
+          init_segment_pose = best_pose;
+          // set the initial time of the segment to the current one.
+          init_segment_time = now;
+        }
+        else if (enable_indivLoc && weight_sum != 0)
+        {
+          // resample PF (and update map)
+          std::vector<int> indx_list(n_particles);
+          for (int i = 0; i < n_particles; ++i)
+          {
+            indx_list[i] = drawIndex(cumul_weights_slam, gen);
           }
 
-          if (do_segment)
+          std::vector< std::shared_ptr<Particle> > new_generation;
+          std::vector<int> indx_unused(n_particles, -1);
+          for (int i = 0; i < n_particles; ++i)
           {
-            // copy a particle everytime.
-            // create a new segment
-            std::vector< std::shared_ptr<Particle> > new_seg(
-              n_particles, nullptr);
-            // copy each resampled particle.
-            for (int i = 0; i < n_particles; ++i)
+            const int prev_indx = indx_unused[indx_list[i]];
+            if (prev_indx == -1)
             {
-              int indx = drawIndex(cumul_weights_slam, gen);
-              new_seg[i]
-                = std::make_shared<Particle>(
-                    segments[iseg][indx],
-                    resol, probHit, probMiss, threshMin, threshMax,
-                    motion_noise_lin_sigma, motion_noise_rot_sigma);
-            }
-            // build a map anyway
-            if (octocloud.size() > 0)
-            {
-              for (int i = 0; i < n_particles; ++i)
-                new_seg[i]->update_map(octocloud);
-            }
-            counts_map_update = 0;
-            // add the segment to the list.
-            segments.push_back(new_seg);
-            // increment iseg
-            ++iseg;
-            // set the initial pose of the segment to that of the best particle.
-            init_segment_pose = best_pose;
-            // set the initial time of the segment to the current one.
-            init_segment_time = now;
-          }
-          else
-          {
-            // otherwise, just do the usual thing.
-            std::vector<int> indx_list(n_particles);
-            for (int i = 0; i < n_particles; ++i)
-            {
-              indx_list[i] = drawIndex(cumul_weights_slam, gen);
-            }
+              new_generation.push_back(
+                std::move(segments[iseg][indx_list[i]]));
+              indx_unused[indx_list[i]] = i;
 
-            std::vector< std::shared_ptr<Particle> > new_generation;
-            std::vector<int> indx_unused(n_particles, -1);
-            for (int i = 0; i < n_particles; ++i)
-            {
-              const int prev_indx = indx_unused[indx_list[i]];
-              if (prev_indx == -1)
+              // update the map
+              if (counts_map_update >= mapping_interval
+                && octocloud.size() > 0)
               {
-                new_generation.push_back(
-                  std::move(segments[iseg][indx_list[i]]));
-                indx_unused[indx_list[i]] = i;
-
-                // update the map
-                if (counts_map_update >= mapping_interval
-                  && octocloud.size() > 0)
-                {
-                  new_generation[i]->update_map(octocloud);
-                }
+                new_generation[i]->update_map(octocloud);
               }
-              else
-              {
-                new_generation.push_back(
-                  std::make_shared<Particle>(*new_generation[prev_indx]));
-              }
-            }
-            // Copy the children to the parents.
-            segments[iseg].swap(new_generation);
-
-            // update the map count
-            if (counts_map_update >= mapping_interval)
-            {
-              counts_map_update = 0;
             }
             else
             {
-              ++counts_map_update;
+              new_generation.push_back(
+                std::make_shared<Particle>(*new_generation[prev_indx]));
             }
+          }
+          // Copy the children to the parents.
+          segments[iseg].swap(new_generation);
+
+          // update the map count
+          if (counts_map_update >= mapping_interval)
+          {
+            counts_map_update = 0;
+          }
+          else
+          {
+            ++counts_map_update;
           }
         }
         else
