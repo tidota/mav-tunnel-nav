@@ -307,6 +307,18 @@ void AdHocNetPlugin::OnUpdate()
       }
     }
 
+    // for publishing the base station's pose.
+    {
+      auto pose = this->base_pose;
+      tf::Vector3 pos(pose.Pos().X(), pose.Pos().Y(), pose.Pos().Z());
+      tf::Quaternion rot(
+        pose.Rot().X(), pose.Rot().Y(), pose.Rot().Z(), pose.Rot().W());
+      tf::StampedTransform tf_stamped(
+        tf::Transform(rot, pos), now,
+        "world", this->base_name);
+      this->tf_broadcaster.sendTransform(tf_stamped);
+    }
+
     last_update = current;
   }
 }
