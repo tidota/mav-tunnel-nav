@@ -665,6 +665,9 @@ void pf_main()
   int compress_interval;
   if(!pnh.getParam("compress_interval", compress_interval))
     ROS_ERROR_STREAM("no param: compress_interval");
+  bool enable_indivLoc;
+  if(!pnh.getParam("enable_indivLoc", enable_indivLoc))
+    ROS_ERROR_STREAM("no param: enable_indivLoc");
   // int locdata_interval;
   // pnh.getParam("locdata_interval", locdata_interval);
 
@@ -1271,7 +1274,7 @@ void pf_main()
         segments_index_best[iseg] = index_best;
 
         // resample PF (and update map)
-        if (weight_sum != 0)
+        if (enable_indivLoc && weight_sum != 0)
         {
           // if far away from the init position of the segment
           bool do_segment = false;
