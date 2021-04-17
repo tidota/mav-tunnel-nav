@@ -1296,10 +1296,10 @@ void pf_main()
 
         if (do_segment)
         {
-          // copy a particle everytime.
           // create a new segment
           std::vector< std::shared_ptr<Particle> > new_seg(
             n_particles, nullptr);
+          segments_index_best.push_back(0);
           // copy each resampled particle.
           for (int i = 0; i < n_particles; ++i)
           {
@@ -1442,12 +1442,13 @@ void pf_main()
         ss << robot_name << "-" << std::setw(3) << std::setfill('0') << iseg;
         map.segid = ss.str();
         if (octomap_msgs::fullMapToMsg(
-            *segments[iseg][index_best]->getMap(), map.octomap))
+            *segments[iseg][segments_index_best[iseg]]->getMap(), map.octomap))
           map_pub.publish(map);
         else
           ROS_ERROR("Error serializing OctoMap");
 
-        tf::Quaternion q = segments[iseg][index_best]->getPose().getRotation();
+        tf::Quaternion q
+          = segments[iseg][segments_index_best[iseg]]->getPose().getRotation();
         tf::StampedTransform tf_stamped(
           tf::Transform(q, average_loc), now,
           world_frame_id, robot_frame_id);
@@ -1524,7 +1525,8 @@ void pf_main()
       {
         for (int is = 0; is <= iseg; ++is)
         {
-          const octomap::OcTree* m = segments[is][index_best]->getMap();
+          const octomap::OcTree* m
+            = segments[is][segments_index_best[is]]->getMap();
           visualization_msgs::MarkerArray occupiedNodesVis;
           occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
           for (
