@@ -1303,7 +1303,14 @@ void pf_main()
           // copy each resampled particle.
           for (int i = 0; i < n_particles; ++i)
           {
-            int indx = drawIndex(cumul_weights_slam, gen);
+            // if individual localization is disabled, just pass i so the
+            // resampling is disabled.
+            int indx;
+            if (enable_indivLoc)
+              indx = drawIndex(cumul_weights_slam, gen);
+            else
+              indx = i;
+
             new_seg[i]
               = std::make_shared<Particle>(
                   segments[iseg][indx],
