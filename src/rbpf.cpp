@@ -942,6 +942,15 @@ void pf_main()
       // NOTE: DataWaiting: do nothing in the main loop.
       //       the state is switched to Update by the callback once the
       //       data from the other robot is received.
+      //
+      //       If it takes too long, there must be some problem.
+      //       In such a case, print out an error and returns to the initial
+      //       state.
+      if (now >= last_syncinit + syncinit_timeout)
+      {
+        ROS_ERROR_STREAM("" << robot_name << ": timeout in DataWaiting");
+        state = LocalSLAM;
+      }
     }
     else if (state == Update)
     {
@@ -1075,6 +1084,7 @@ void pf_main()
             {
               last_sync_src = msg.source;
               state = SyncReact;
+              last_syncinit = now;
             }
           }
         }
