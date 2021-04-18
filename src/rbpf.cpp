@@ -1086,6 +1086,28 @@ void pf_main()
         tf_broadcaster.sendTransform(tf_stamped);
       }
 
+      {
+        // publish poses
+        geometry_msgs::PoseArray poseArray;
+        poseArray.header.frame_id = world_frame_id;
+        poseArray.header.stamp = now;
+        poseArray.poses.resize(n_particles);
+        for (int i = 0; i < n_particles; ++i)
+        {
+          tf::Pose pose = segments[iseg][i]->getPose();
+          tf::Vector3 position = pose.getOrigin();
+          tf::Quaternion orientation = pose.getRotation();
+          poseArray.poses[i].position.x = position.x();
+          poseArray.poses[i].position.y = position.y();
+          poseArray.poses[i].position.z = position.z();
+          poseArray.poses[i].orientation.x = orientation.x();
+          poseArray.poses[i].orientation.y = orientation.y();
+          poseArray.poses[i].orientation.z = orientation.z();
+          poseArray.poses[i].orientation.w = orientation.w();
+        }
+        vis_poses_pub.publish(poseArray);
+      }
+
       last_cooploc = now;
       state = LocalSLAM;
     }
