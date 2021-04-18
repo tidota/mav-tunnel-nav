@@ -325,7 +325,7 @@ double Particle::evaluate(
   const octomap::Pointcloud &scan, const bool use_prev)
 {
   double log_lik = 0;
-  // int hits = 0;
+  int hits = 0;
 
   octomap::OcTree *map2use;
   if (use_prev)
@@ -368,6 +368,7 @@ double Particle::evaluate(
 
         log_lik +=
           -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
+        ++hits;
       // }
     }
   }
@@ -403,6 +404,7 @@ double Particle::evaluate(
 
         log_lik +=
           -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
+        ++hits;
       // }
     }
   }
@@ -421,7 +423,8 @@ double Particle::evaluate(
   // }
   // return 0 if the major part of the point cloud landed on unknown cells.
   //ROS_DEBUG_STREAM("hits: " << hits);
-  return std::exp(log_lik);
+  log_lik /= hits;
+  return (hits > 0)? std::exp(log_lik): 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
