@@ -980,6 +980,9 @@ void pf_main()
       // cumulative weights for resampling.
       std::vector<double> cumul_weights_update(n_particles);
 
+      double weight_max = 0;
+      int index_best = -1;
+
       // for all particles
       for (int ip = 0; ip < n_particles; ++ip)
       {
@@ -1039,6 +1042,12 @@ void pf_main()
           *= ((ip > 0)? cumul_weights[ip] - cumul_weights[ip-1]:
                         cumul_weights[0]);
 
+        if (index_best == -1 || cumul_weights_update[ip] > weight_max)
+        {
+          index_best = ip;
+          weight_max = cumul_weights_update[ip];
+        }
+
         // make it cumuluative
         if (ip > 0)
           cumul_weights_update[ip] += cumul_weights_update[ip - 1];
@@ -1068,6 +1077,14 @@ void pf_main()
         }
       }
       segments[iseg].swap(new_generation);
+
+      {
+        // publish the location
+        tf::StampedTransform tf_stamped(
+          segments[iseg][index_best]->getPose(), now,
+          world_frame_id, robot_frame_id);
+        tf_broadcaster.sendTransform(tf_stamped);
+      }
 
       last_cooploc = now;
       state = LocalSLAM;
@@ -1450,10 +1467,8 @@ void pf_main()
         else
           ROS_ERROR("Error serializing OctoMap");
 
-        tf::Quaternion q
-          = segments[iseg][segments_index_best[iseg]]->getPose().getRotation();
         tf::StampedTransform tf_stamped(
-          tf::Transform(q, average_loc), now,
+          segments[iseg][segments_index_best[iseg]]->getPose(), now,
           world_frame_id, robot_frame_id);
         tf_broadcaster.sendTransform(tf_stamped);
         counts_publish = 0;
