@@ -791,6 +791,24 @@ void pf_main()
     }
   }
 
+  // Initialization of prev pose
+  // Odometry data
+  tf::Transform diff_pose;
+  {
+    std::lock_guard<std::mutex> lk(odom_mutex);
+    tf::Vector3 pos(
+      odom_buff.pose.pose.position.x,
+      odom_buff.pose.pose.position.y,
+      odom_buff.pose.pose.position.z);
+    tf::Quaternion dir(
+      odom_buff.pose.pose.orientation.x,
+      odom_buff.pose.pose.orientation.y,
+      odom_buff.pose.pose.orientation.z,
+      odom_buff.pose.pose.orientation.w);
+    pose_prev.setOrigin(pos);
+    pose_prev.setRotation(dir);
+  }
+
   // parameters for cooperative localization
   int Nref;
   if (!pnh.getParam("Nref", Nref))
@@ -1108,6 +1126,93 @@ void pf_main()
         vis_poses_pub.publish(poseArray);
       }
 
+      if (!enable_indivLoc)
+      {
+        // if the individual localization is disabled,
+        // perform mapping and segmentation here.
+        // if far away from the init position of the segment
+        octomap::Pointcloud octocloud;
+        {
+          // Depthcam data
+          std::lock_guard<std::mutex> lk(pc_mutex);
+          if (pc_buff.height * pc_buff.width > 1)
+          {
+            pcl::fromROSMsg(pc_buff, *depth_cam_pc);
+
+            pcl::VoxelGrid<PointT> downSizeFilter;
+            downSizeFilter.setLeafSize(resol, resol, resol);
+            downSizeFilter.setInputCloud(depth_cam_pc);
+            downSizeFilter.filter(*depth_cam_pc);
+            for (unsigned int i = 0; i < depth_cam_pc->points.size(); ++i)
+            {
+              tf::Vector3 point = camera_pose * tf::Vector3(
+                                          depth_cam_pc->points[i].x,
+                                          depth_cam_pc->points[i].y,
+                                          depth_cam_pc->points[i].z);
+              octocloud.push_back(
+                octomap::point3d(point.x(), point.y(), point.z()));
+            }
+            pc_buff.height = 0;
+            pc_buff.width = 0;
+          }
+        }
+        bool do_segment = false;
+        tf::Pose best_pose;
+        if (enable_segmentation)
+        {
+          best_pose = segments[iseg][index_best]->getPose();
+          tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
+          if (pose_in_seg.getOrigin().length() > next_seg_thresh)
+            do_segment = true;
+        }
+
+        if (do_segment)
+        {
+          // create a new segment
+          std::vector< std::shared_ptr<Particle> > new_seg(
+            n_particles, nullptr);
+          segments_index_best.push_back(index_best);
+          // copy each resampled particle.
+          for (int i = 0; i < n_particles; ++i)
+          {
+            int indx = i;
+
+            new_seg[i]
+              = std::make_shared<Particle>(
+                  segments[iseg][indx],
+                  resol, probHit, probMiss, threshMin, threshMax,
+                  motion_noise_lin_sigma, motion_noise_rot_sigma);
+          }
+          // build a map anyway
+          if (octocloud.size() > 0)
+          {
+            for (int i = 0; i < n_particles; ++i)
+              new_seg[i]->update_map(octocloud);
+          }
+          counts_map_update = 0;
+          // add the segment to the list.
+          segments.push_back(new_seg);
+          // increment iseg
+          ++iseg;
+          // set the initial pose of the segment to that of the best particle.
+          init_segment_pose = best_pose;
+          // set the initial time of the segment to the current one.
+          init_segment_time = now;
+        }
+        else if (counts_map_update >= mapping_interval && octocloud.size() > 0)
+        {
+          for (auto p: segments[iseg])
+          {
+            p->update_map(octocloud);
+          }
+          counts_map_update = 0;
+        }
+        else
+        {
+          ++counts_map_update;
+        }
+      }
+
       last_cooploc = now;
       state = LocalSLAM;
     }
@@ -1223,24 +1328,6 @@ void pf_main()
           pc_buff.width = 0;
         }
       }
-      // Odometry data
-      tf::Transform diff_pose;
-      {
-        std::lock_guard<std::mutex> lk(odom_mutex);
-        tf::Vector3 pos(
-          odom_buff.pose.pose.position.x,
-          odom_buff.pose.pose.position.y,
-          odom_buff.pose.pose.position.z);
-        tf::Quaternion dir(
-          odom_buff.pose.pose.orientation.x,
-          odom_buff.pose.pose.orientation.y,
-          odom_buff.pose.pose.orientation.z,
-          odom_buff.pose.pose.orientation.w);
-        pose_curr.setOrigin(pos);
-        pose_curr.setRotation(dir);
-        diff_pose = pose_prev.inverse() * pose_curr;
-        pose_prev = pose_curr;
-      }
 
       int index_best = 0;
       double max_weight = 0;
@@ -1275,166 +1362,189 @@ void pf_main()
 
           state = LocalSLAM;
         }
-        // ===== update on the particles ===== //
-        // - individual SLAM: update based on local sensory data.
 
-        // initialize weights and errors
-        for (int i = 0; i < n_particles; ++i)
+        if (enable_indivLoc)
         {
-          cumul_weights_slam[i] = 0;
-          errors[i] = 0;
-        }
+          // ===== update on the particles ===== //
+          // - individual SLAM: update based on local sensory data.
 
-        // predict PF (use odometory)
-        const tf::Vector3 delta_pos = diff_pose.getOrigin();
-        const tf::Quaternion delta_rot = diff_pose.getRotation();
-        for (auto p: segments[iseg])
-        {
-          // move the particle
-          // call predict with the relative pose.
-          p->predict(delta_pos, delta_rot, gen);
-        }
-
-        // weight PF (use depth cam)
-        for (int i = 0; i < n_particles; ++i)
-        {
-          // if the current time is not far away from the initial time
-          if (iseg != 0 && now <= init_segment_time + init_seg_phase)
+          // Odometry data
+          tf::Transform diff_pose;
           {
-            // call evaluate with the flag which is set to true.
-            cumul_weights_slam[i]
-              = segments[iseg][i]->evaluate(range_data, octocloud, true);
-          }
-          else // otherwise, just call evaluate in the default way.
-          {
-            // Calculate a probability ranging from 0 to 1.
-            cumul_weights_slam[i]
-              = segments[iseg][i]->evaluate(range_data, octocloud);
+            std::lock_guard<std::mutex> lk(odom_mutex);
+            tf::Vector3 pos(
+              odom_buff.pose.pose.position.x,
+              odom_buff.pose.pose.position.y,
+              odom_buff.pose.pose.position.z);
+            tf::Quaternion dir(
+              odom_buff.pose.pose.orientation.x,
+              odom_buff.pose.pose.orientation.y,
+              odom_buff.pose.pose.orientation.z,
+              odom_buff.pose.pose.orientation.w);
+            pose_curr.setOrigin(pos);
+            pose_curr.setRotation(dir);
+            diff_pose = pose_prev.inverse() * pose_curr;
+            pose_prev = pose_curr;
           }
 
-          if (i == 0 || max_weight < cumul_weights_slam[i])
-          {
-            max_weight = cumul_weights_slam[i];
-            index_best = i;
-          }
-          if (i > 0)
-            cumul_weights_slam[i] += cumul_weights_slam[i-1];
-        }
-        weight_sum = cumul_weights_slam[n_particles-1];
-        if (weight_sum != 0)
-          max_weight /= weight_sum;
-        segments_index_best[iseg] = index_best;
-
-        // if far away from the init position of the segment
-        bool do_segment = false;
-        tf::Pose best_pose;
-        if (enable_segmentation)
-        {
-          best_pose = segments[iseg][index_best]->getPose();
-          tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
-          if (pose_in_seg.getOrigin().length() > next_seg_thresh)
-            do_segment = true;
-        }
-
-        if (do_segment)
-        {
-          // create a new segment
-          std::vector< std::shared_ptr<Particle> > new_seg(
-            n_particles, nullptr);
-          segments_index_best.push_back(0);
-          // copy each resampled particle.
+          // initialize weights and errors
           for (int i = 0; i < n_particles; ++i)
           {
-            // if individual localization is disabled, just pass i so the
-            // resampling is disabled.
-            int indx;
-            if (enable_indivLoc)
-              indx = drawIndex(cumul_weights_slam, gen);
-            else
-              indx = i;
-
-            new_seg[i]
-              = std::make_shared<Particle>(
-                  segments[iseg][indx],
-                  resol, probHit, probMiss, threshMin, threshMax,
-                  motion_noise_lin_sigma, motion_noise_rot_sigma);
-          }
-          // build a map anyway
-          if (octocloud.size() > 0)
-          {
-            for (int i = 0; i < n_particles; ++i)
-              new_seg[i]->update_map(octocloud);
-          }
-          counts_map_update = 0;
-          // add the segment to the list.
-          segments.push_back(new_seg);
-          // increment iseg
-          ++iseg;
-          // set the initial pose of the segment to that of the best particle.
-          init_segment_pose = best_pose;
-          // set the initial time of the segment to the current one.
-          init_segment_time = now;
-        }
-        else if (enable_indivLoc && weight_sum != 0)
-        {
-          // resample PF (and update map)
-          std::vector<int> indx_list(n_particles);
-          for (int i = 0; i < n_particles; ++i)
-          {
-            indx_list[i] = drawIndex(cumul_weights_slam, gen);
+            cumul_weights_slam[i] = 0;
+            errors[i] = 0;
           }
 
-          std::vector< std::shared_ptr<Particle> > new_generation;
-          std::vector<int> indx_unused(n_particles, -1);
+          // predict PF (use odometory)
+          const tf::Vector3 delta_pos = diff_pose.getOrigin();
+          const tf::Quaternion delta_rot = diff_pose.getRotation();
+          for (auto p: segments[iseg])
+          {
+            // move the particle
+            // call predict with the relative pose.
+            p->predict(delta_pos, delta_rot, gen);
+          }
+
+          // weight PF (use depth cam)
           for (int i = 0; i < n_particles; ++i)
           {
-            const int prev_indx = indx_unused[indx_list[i]];
-            if (prev_indx == -1)
+            // if the current time is not far away from the initial time
+            if (iseg != 0 && now <= init_segment_time + init_seg_phase)
             {
-              new_generation.push_back(
-                std::move(segments[iseg][indx_list[i]]));
-              indx_unused[indx_list[i]] = i;
+              // call evaluate with the flag which is set to true.
+              cumul_weights_slam[i]
+                = segments[iseg][i]->evaluate(range_data, octocloud, true);
+            }
+            else // otherwise, just call evaluate in the default way.
+            {
+              // Calculate a probability ranging from 0 to 1.
+              cumul_weights_slam[i]
+                = segments[iseg][i]->evaluate(range_data, octocloud);
+            }
 
-              // update the map
-              if (counts_map_update >= mapping_interval
-                && octocloud.size() > 0)
+            if (i == 0 || max_weight < cumul_weights_slam[i])
+            {
+              max_weight = cumul_weights_slam[i];
+              index_best = i;
+            }
+            if (i > 0)
+              cumul_weights_slam[i] += cumul_weights_slam[i-1];
+          }
+          weight_sum = cumul_weights_slam[n_particles-1];
+          if (weight_sum != 0)
+            max_weight /= weight_sum;
+          segments_index_best[iseg] = index_best;
+
+          // if far away from the init position of the segment
+          bool do_segment = false;
+          tf::Pose best_pose;
+          if (enable_segmentation)
+          {
+            best_pose = segments[iseg][index_best]->getPose();
+            tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
+            if (pose_in_seg.getOrigin().length() > next_seg_thresh)
+              do_segment = true;
+          }
+
+          if (do_segment)
+          {
+            // create a new segment
+            std::vector< std::shared_ptr<Particle> > new_seg(
+              n_particles, nullptr);
+            segments_index_best.push_back(index_best);
+            // copy each resampled particle.
+            for (int i = 0; i < n_particles; ++i)
+            {
+              // if individual localization is disabled, just pass i so the
+              // resampling is disabled.
+              int indx;
+              if (enable_indivLoc)
+                indx = drawIndex(cumul_weights_slam, gen);
+              else
+                indx = i;
+
+              new_seg[i]
+                = std::make_shared<Particle>(
+                    segments[iseg][indx],
+                    resol, probHit, probMiss, threshMin, threshMax,
+                    motion_noise_lin_sigma, motion_noise_rot_sigma);
+            }
+            // build a map anyway
+            if (octocloud.size() > 0)
+            {
+              for (int i = 0; i < n_particles; ++i)
+                new_seg[i]->update_map(octocloud);
+            }
+            counts_map_update = 0;
+            // add the segment to the list.
+            segments.push_back(new_seg);
+            // increment iseg
+            ++iseg;
+            // set the initial pose of the segment to that of the best particle.
+            init_segment_pose = best_pose;
+            // set the initial time of the segment to the current one.
+            init_segment_time = now;
+          }
+          else if (weight_sum != 0)
+          {
+            // resample PF (and update map)
+            std::vector<int> indx_list(n_particles);
+            for (int i = 0; i < n_particles; ++i)
+            {
+              indx_list[i] = drawIndex(cumul_weights_slam, gen);
+            }
+
+            std::vector< std::shared_ptr<Particle> > new_generation;
+            std::vector<int> indx_unused(n_particles, -1);
+            for (int i = 0; i < n_particles; ++i)
+            {
+              const int prev_indx = indx_unused[indx_list[i]];
+              if (prev_indx == -1)
               {
-                new_generation[i]->update_map(octocloud);
+                new_generation.push_back(
+                  std::move(segments[iseg][indx_list[i]]));
+                indx_unused[indx_list[i]] = i;
+
+                // update the map
+                if (counts_map_update >= mapping_interval
+                  && octocloud.size() > 0)
+                {
+                  new_generation[i]->update_map(octocloud);
+                }
+              }
+              else
+              {
+                new_generation.push_back(
+                  std::make_shared<Particle>(*new_generation[prev_indx]));
               }
             }
+            // Copy the children to the parents.
+            segments[iseg].swap(new_generation);
+
+            // update the map count
+            if (counts_map_update >= mapping_interval)
+            {
+              counts_map_update = 0;
+            }
             else
             {
-              new_generation.push_back(
-                std::make_shared<Particle>(*new_generation[prev_indx]));
+              ++counts_map_update;
             }
-          }
-          // Copy the children to the parents.
-          segments[iseg].swap(new_generation);
-
-          // update the map count
-          if (counts_map_update >= mapping_interval)
-          {
-            counts_map_update = 0;
           }
           else
           {
-            ++counts_map_update;
-          }
-        }
-        else
-        {
-          // update the map
-          if (counts_map_update >= mapping_interval && octocloud.size() > 0)
-          {
-            for (auto p: segments[iseg])
+            // update the map
+            if (counts_map_update >= mapping_interval && octocloud.size() > 0)
             {
-              p->update_map(octocloud);
+              for (auto p: segments[iseg])
+              {
+                p->update_map(octocloud);
+              }
+              counts_map_update = 0;
             }
-            counts_map_update = 0;
-          }
-          else
-          {
-            ++counts_map_update;
+            else
+            {
+              ++counts_map_update;
+            }
           }
         }
       }
