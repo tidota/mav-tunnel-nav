@@ -1,29 +1,32 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="mav_name" default="robot1" />
+  <arg name="rviz_only" default="false" />
 
   <!-- start rviz -->
   <node pkg="rviz" type="rviz" name="rviz_nav" output="screen" args="-d $(find mav_tunnel_nav)/config/rbpf/rbpf.rviz"></node>
 
-  <!-- start gazebo client -->
-  <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen" args=""/>
+  <group unless="$(arg rviz_only)">
+    <!-- start gazebo client -->
+    <node name="gazebo_gui" pkg="gazebo_ros" type="gzclient" respawn="false" output="screen" args=""/>
 
-  <!-- teleop by a joypad -->
-  <group ns="$(arg mav_name)">
+    <!-- teleop by a joypad -->
+    <group ns="$(arg mav_name)">
 
-    <!-- =================================================================== -->
-    <!--                      teleop by the joy pad                          -->
-    <!-- =================================================================== -->
-    <!-- load the settings -->
-    <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
-    <!-- Converts joystick movements into sensors_msgs/Joy messages -->
-    <node name="joy_node" pkg="joy" type="joy_node"/>
-    <!-- Converts sensor_msgs/Joy to mav_msgs/RollPitchYawRateThrust messages -->
-    <!-- <node name="rotors_joy_interface" pkg="rotors_joy_interface" type="rotors_joy_interface">
+      <!-- =================================================================== -->
+      <!--                      teleop by the joy pad                          -->
+      <!-- =================================================================== -->
+      <!-- load the settings -->
       <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
-    </node> -->
-    <!-- Converts joy to teleop input -->
-    <node pkg="mav_tunnel_nav" type="teleop_node" name="teleop_twist_joy"/>
+      <!-- Converts joystick movements into sensors_msgs/Joy messages -->
+      <node name="joy_node" pkg="joy" type="joy_node"/>
+      <!-- Converts sensor_msgs/Joy to mav_msgs/RollPitchYawRateThrust messages -->
+      <!-- <node name="rotors_joy_interface" pkg="rotors_joy_interface" type="rotors_joy_interface">
+        <rosparam command="load" file="$(find mav_tunnel_nav)/config/joypads/sanwa.yaml" />
+      </node> -->
+      <!-- Converts joy to teleop input -->
+      <node pkg="mav_tunnel_nav" type="teleop_node" name="teleop_twist_joy"/>
+    </group>
   </group>
 
 </launch>
