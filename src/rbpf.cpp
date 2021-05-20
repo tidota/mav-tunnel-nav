@@ -324,8 +324,6 @@ double Particle::evaluate(
   const std::map<std::string, double> &range_data,
   const octomap::Pointcloud &scan, const bool use_prev)
 {
-  double log_lik = 0;
-  int hits = 0;
 
   octomap::OcTree *map2use;
   if (use_prev)
@@ -340,6 +338,9 @@ double Particle::evaluate(
     map2use = this->map;
   }
 
+  double log_lik_rng = 0;
+  int hits_rng = 0;
+  double sigma_rng = 1;
   // evaluation by range data
   for (auto range_name: range_topics)
   {
@@ -358,23 +359,55 @@ double Particle::evaluate(
     octomap::point3d direction = oct_pos - oct_target;
     octomap::point3d hit;
     if (map2use->castRay(oct_target, direction, hit,
-        true, dist + 0.2)) //ignoreUnknownCells = true, maxRange
+        true, dist)) //ignoreUnknownCells = true, maxRange
     {
       // if (this->map->coordToKeyChecked(hit, key) &&
       //  (node = this->map->search(key,0 /*depth*/)))
       // {
         double err = (oct_target - hit).norm();
-        double sigma = 0.2; // standard deviation
 
-        log_lik +=
-          -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
-        ++hits;
+        if (err > 0.2)
+        {
+          log_lik_rng +=
+            -std::log(2*3.14159*sigma_rng*sigma_rng)/2.0
+            -err*err/sigma_rng/sigma_rng/2.0;
+        }
+        else
+        {
+          log_lik_rng +=
+            -std::log(2*3.14159*sigma_rng*sigma_rng)/2.0;
+        }
+        ++hits_rng;
+      // }
+    }
+    else if (map2use->castRay(oct_target, -direction, hit,
+        true, 2.0)) //ignoreUnknownCells = true, maxRange
+    {
+      // if (this->map->coordToKeyChecked(hit, key) &&
+      //  (node = this->map->search(key,0 /*depth*/)))
+      // {
+        double err = (oct_target - hit).norm();
+
+        if (err > 0.2)
+        {
+          log_lik_rng +=
+            -std::log(2*3.14159*sigma_rng*sigma_rng)/2.0
+            -err*err/sigma_rng/sigma_rng/2.0;
+        }
+        else
+        {
+          log_lik_rng +=
+            -std::log(2*3.14159*sigma_rng*sigma_rng)/2.0;
+        }
+        ++hits_rng;
       // }
     }
   }
 
+  double log_lik = 0;
+  int hits = 0;
+  double sigma = 1;
   tf::Pose sens_pose = this->pose;
-
   // for all point in the point cloud
   octomap::OcTreeKey key;
   //octomap::OcTreeNode *node;
@@ -394,17 +427,45 @@ double Particle::evaluate(
     octomap::point3d direction = oct_pos - oct_target;
     octomap::point3d hit;
     if (map2use->castRay(oct_target, direction, hit,
-        true, dist + 0.2)) //ignoreUnknownCells = true, maxRange
+        true, dist)) //ignoreUnknownCells = true, maxRange
     {
       // if (this->map->coordToKeyChecked(hit, key) &&
       //  (node = this->map->search(key,0 /*depth*/)))
       // {
         double err = (oct_target - hit).norm();
-        double sigma = 0.2; // standard deviation
+        if (err > 0.2)
+        {
+
+          log_lik +=
+            -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
+        }
+        else
+        {
+          log_lik +=
+            -std::log(2*3.14159*sigma*sigma)/2.0;
+        }
+        ++hits;
+      // }
+    }
+    else if (map2use->castRay(oct_target, -direction, hit,
+            true, 2.0)) //ignoreUnknownCells = true, maxRange
+    {
+      // if (this->map->coordToKeyChecked(hit, key) &&
+      //  (node = this->map->search(key,0 /*depth*/)))
+      // {
+      double err = (oct_target - hit).norm();
+      if (err > 0.2)
+      {
 
         log_lik +=
           -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
-        ++hits;
+      }
+      else
+      {
+        log_lik +=
+          -std::log(2*3.14159*sigma*sigma)/2.0;
+      }
+      ++hits;
       // }
     }
   }
@@ -423,8 +484,11 @@ double Particle::evaluate(
   // }
   // return 0 if the major part of the point cloud landed on unknown cells.
   //ROS_DEBUG_STREAM("hits: " << hits);
-  log_lik /= hits;
-  return (hits > 0)? std::exp(log_lik): 0;
+  if (hits_rng > 0)
+    log_lik_rng /= hits_rng;
+  if (hits > 0)
+    log_lik /= hits;
+  return (hits_rng + hits > 0)? std::exp(log_lik_rng + log_lik): 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
