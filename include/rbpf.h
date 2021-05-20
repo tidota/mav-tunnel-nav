@@ -26,6 +26,10 @@ class Particle
   private: const double motion_noise_lin_sigma;
   private: const double motion_noise_rot_sigma;
 
+  // sigma for sensor noise.
+  private: const double sensor_noise_range_sigma;
+  private: const double sensor_noise_depth_sigma;
+
   private: std::shared_ptr<Particle> prev;
 
   public: Particle(
@@ -35,13 +39,13 @@ class Particle
     const double &threshMin, const double &threshMax,
     const double &new_motion_noise_lin_sigma,
     const double &new_motion_noise_rot_sigma,
+    const double &new_sensor_noise_range_sigma,
+    const double &new_sensor_noise_depth_sigma,
     const std::shared_ptr<Particle>& newPrev = nullptr);
   public: Particle(
     const std::shared_ptr<Particle>& src, const double &resol,
     const double &probHit, const double &probMiss,
-    const double &threshMin, const double &threshMax,
-    const double &new_motion_noise_lin_sigma,
-    const double &new_motion_noise_rot_sigma);
+    const double &threshMin, const double &threshMax);
   public: Particle(const std::shared_ptr<Particle>& src);
   public: Particle(const Particle &src);
   public: Particle();

@@ -207,9 +207,13 @@ Particle::Particle(
   const double &threshMin, const double &threshMax,
   const double &new_motion_noise_lin_sigma,
   const double &new_motion_noise_rot_sigma,
+  const double &new_sensor_noise_range_sigma,
+  const double &new_sensor_noise_depth_sigma,
   const std::shared_ptr<Particle>& newPrev):
     motion_noise_lin_sigma(new_motion_noise_lin_sigma),
     motion_noise_rot_sigma(new_motion_noise_rot_sigma),
+    sensor_noise_range_sigma(new_sensor_noise_range_sigma),
+    sensor_noise_depth_sigma(new_sensor_noise_depth_sigma),
     prev(newPrev)
 {
   this->map = new octomap::OcTree(resol);
@@ -227,11 +231,11 @@ Particle::Particle(
 Particle::Particle(
   const std::shared_ptr<Particle>& src, const double &resol,
   const double &probHit, const double &probMiss,
-  const double &threshMin, const double &threshMax,
-  const double &new_motion_noise_lin_sigma,
-  const double &new_motion_noise_rot_sigma):
+  const double &threshMin, const double &threshMax):
     motion_noise_lin_sigma(src->motion_noise_lin_sigma),
     motion_noise_rot_sigma(src->motion_noise_rot_sigma),
+    sensor_noise_range_sigma(src->sensor_noise_range_sigma),
+    sensor_noise_depth_sigma(src->sensor_noise_depth_sigma),
     prev(src)
 {
   this->pose = src->pose;
@@ -251,6 +255,8 @@ Particle::Particle(const std::shared_ptr<Particle> &src): Particle(*src)
 Particle::Particle(const Particle &src):
   motion_noise_lin_sigma(src.motion_noise_lin_sigma),
   motion_noise_rot_sigma(src.motion_noise_rot_sigma),
+  sensor_noise_range_sigma(src.sensor_noise_range_sigma),
+  sensor_noise_depth_sigma(src.sensor_noise_depth_sigma),
   prev(src.prev)
 {
   // copy the localization data
@@ -263,7 +269,11 @@ Particle::Particle(const Particle &src):
 
 ////////////////////////////////////////////////////////////////////////////////
 Particle::Particle():
-  Particle(0.0, 0.0, 0.0, 0.0, 0.25, 0.7, 0.4, 0.12, 0.97, 0.05, 0.02){}
+  Particle(
+    0.0, 0.0, 0.0, 0.0,
+    0.25, 0.7, 0.4, 0.12, 0.97,
+    0.05, 0.02,
+    1.0, 1.0){}
 
 ////////////////////////////////////////////////////////////////////////////////
 Particle::~Particle()
@@ -324,7 +334,6 @@ double Particle::evaluate(
   const std::map<std::string, double> &range_data,
   const octomap::Pointcloud &scan, const bool use_prev)
 {
-
   octomap::OcTree *map2use;
   if (use_prev)
   {
@@ -340,7 +349,6 @@ double Particle::evaluate(
 
   double log_lik_rng = 0;
   int hits_rng = 0;
-  double sigma_rng = 1;
   // evaluation by range data
   for (auto range_name: range_topics)
   {
@@ -369,13 +377,15 @@ double Particle::evaluate(
         if (err > 0.2)
         {
           log_lik_rng +=
-            -std::log(2*3.14159*sigma_rng*sigma_rng)/2.0
-            -err*err/sigma_rng/sigma_rng/2.0;
+            -std::log(
+              2*3.14159*sensor_noise_range_sigma*sensor_noise_range_sigma)/2.0
+            -err*err/sensor_noise_range_sigma/sensor_noise_range_sigma/2.0;
         }
         else
         {
           log_lik_rng +=
-            -std::log(2*3.14159*sigma_rng*sigma_rng)/2.0;
+            -std::log(
+              2*3.14159*sensor_noise_range_sigma*sensor_noise_range_sigma)/2.0;
         }
         ++hits_rng;
       // }
@@ -391,13 +401,15 @@ double Particle::evaluate(
         if (err > 0.2)
         {
           log_lik_rng +=
-            -std::log(2*3.14159*sigma_rng*sigma_rng)/2.0
-            -err*err/sigma_rng/sigma_rng/2.0;
+            -std::log(
+              2*3.14159*sensor_noise_range_sigma*sensor_noise_range_sigma)/2.0
+            -err*err/sensor_noise_range_sigma/sensor_noise_range_sigma/2.0;
         }
         else
         {
           log_lik_rng +=
-            -std::log(2*3.14159*sigma_rng*sigma_rng)/2.0;
+            -std::log(
+              2*3.14159*sensor_noise_range_sigma*sensor_noise_range_sigma)/2.0;
         }
         ++hits_rng;
       // }
@@ -406,7 +418,6 @@ double Particle::evaluate(
 
   double log_lik = 0;
   int hits = 0;
-  double sigma = 1;
   tf::Pose sens_pose = this->pose;
   // for all point in the point cloud
   octomap::OcTreeKey key;
@@ -437,12 +448,15 @@ double Particle::evaluate(
         {
 
           log_lik +=
-            -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
+            -std::log(
+              2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0
+            -err*err/sensor_noise_depth_sigma/sensor_noise_depth_sigma/2.0;
         }
         else
         {
           log_lik +=
-            -std::log(2*3.14159*sigma*sigma)/2.0;
+            -std::log(
+              2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0;
         }
         ++hits;
       // }
@@ -458,12 +472,15 @@ double Particle::evaluate(
       {
 
         log_lik +=
-          -std::log(2*3.14159*sigma*sigma)/2.0 - err*err/sigma/sigma/2.0;
+          -std::log(
+            2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0
+          -err*err/sensor_noise_depth_sigma/sensor_noise_depth_sigma/2.0;
       }
       else
       {
         log_lik +=
-          -std::log(2*3.14159*sigma*sigma)/2.0;
+          -std::log(
+            2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0;
       }
       ++hits;
       // }
@@ -708,6 +725,12 @@ void pf_main()
   double motion_noise_rot_sigma;
   if(!pnh.getParam("motion_noise_rot_sigma", motion_noise_rot_sigma))
     ROS_ERROR_STREAM("no param: motion_noise_rot_sigma");
+  double sensor_noise_range_sigma;
+  if(!pnh.getParam("sensor_noise_range_sigma", sensor_noise_range_sigma))
+    ROS_ERROR_STREAM("no param: sensor_noise_range_sigma");
+  double sensor_noise_depth_sigma;
+  if(!pnh.getParam("sensor_noise_depth_sigma", sensor_noise_depth_sigma))
+    ROS_ERROR_STREAM("no param: sensor_noise_depth_sigma");
 
   double t_pose_adjust;
   if(!pnh.getParam("t_pose_adjust", t_pose_adjust))
@@ -747,7 +770,8 @@ void pf_main()
       std::make_shared<Particle>(
         init_x, init_y, init_z, init_Y,
         resol, probHit, probMiss, threshMin, threshMax,
-        motion_noise_lin_sigma, motion_noise_rot_sigma));
+        motion_noise_lin_sigma, motion_noise_rot_sigma,
+        sensor_noise_range_sigma, sensor_noise_depth_sigma));
   }
   std::vector< int > segments_index_best(1);
   std::vector<double> cumul_weights_slam(n_particles);
@@ -1244,8 +1268,7 @@ void pf_main()
             new_seg[i]
               = std::make_shared<Particle>(
                   segments[iseg][indx],
-                  resol, probHit, probMiss, threshMin, threshMax,
-                  motion_noise_lin_sigma, motion_noise_rot_sigma);
+                  resol, probHit, probMiss, threshMin, threshMax);
           }
           // build a map anyway
           if (octocloud.size() > 0)
@@ -1529,8 +1552,7 @@ void pf_main()
               new_seg[i]
                 = std::make_shared<Particle>(
                     segments[iseg][indx],
-                    resol, probHit, probMiss, threshMin, threshMax,
-                    motion_noise_lin_sigma, motion_noise_rot_sigma);
+                    resol, probHit, probMiss, threshMin, threshMax);
             }
             // build a map anyway
             if (octocloud.size() > 0)

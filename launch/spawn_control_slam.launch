@@ -145,6 +145,9 @@
       <param name="motion_noise_lin_sigma" value="0.005"/>
       <param name="motion_noise_rot_sigma" value="0.01"/>
 
+      <param name="sensor_noise_range_sigma" value="1.0"/>
+      <param name="sensor_noise_depth_sigma" value="1.0"/>
+
       <param name="t_pose_adjust" value="1.5"/>
       <param name="t_only_mapping" value="2.0"/>
       <param name="mapping_interval" value="3"/>
