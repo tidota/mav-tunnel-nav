@@ -128,7 +128,7 @@
       <param name="robot_frame_id" value="$(arg mav_name)/base_link"/>
 
       <param name="n_particles" value="50"/>
-      <param name="update_freq" value="2"/>
+      <param name="update_freq" value="0.3"/>
 
       <param name="depth_cam_pc_downsample" value="1000"/>
 
@@ -188,22 +188,22 @@
       <param name="enable_cooploc" value="true"/>
       <param name="enable_conservative" value="true"/>
       <param name="conserv_omega" value="0.6"/>
-      <param name="sigma_kde" value="0.05"/>
-      <param name="Nref" value="10"/>
+      <param name="sigma_kde" value="0.2"/>
+      <param name="Nref" value="20"/>
       <param name="seed_cooploc" value="1000"/>
-      <param name="sigmaLocR" value="0.1"/>
-      <param name="sigmaLocT" value="0.05"/>
+      <param name="sigmaLocR" value="1.0"/>
+      <param name="sigmaLocT" value="0.1"/>
       <param name="gl_eval_cons" value="2"/>
       <param name="ml_eval_cons" value="2"/>
 
       <param name="beacon_lifetime" value="1.0"/>
       <param name="cooploc_phase" value="0.4"/>
-      <param name="syncinit_timeout" value="0.5"/>
+      <param name="syncinit_timeout" value="0.1"/>
 
       <param name="auto_enable_by_slam" value="$(arg auto_enable_by_slam)"/>
 
       <!-- parameters for segmentation -->
-      <param name="enable_segmentation" value="true"/>
+      <param name="enable_segmentation" value="false"/>
       <param name="init_seg_phase" value="3.0"/>
       <param name="next_seg_thresh" value="10.0"/>
       <param name="enable_clr4seg" value="true"/>
