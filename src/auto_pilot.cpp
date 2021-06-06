@@ -242,7 +242,11 @@ void control_main()
               else if (auto_pilot_type == "mesh")
               {
                 auto ori = msg.estimated_orientation;
-                double diff = distance_to_neighbor - msg.estimated_distance;
+                const double criteria
+                  = (ori.x >= 0 && ori.y >= 0)? distance_to_neighbor * 0.6:
+                    (ori.x >= 0 && ori.y < 0)?  distance_to_neighbor * 0.7:
+                                                distance_to_neighbor;
+                double diff = criteria - msg.estimated_distance;
                 if (diff > 0)
                 {
                   move_x += -ori.x * diff;
@@ -250,7 +254,7 @@ void control_main()
                 }
 
                 if (msg.source == base_station_name
-                  && msg.estimated_distance < 15.0)
+                  && msg.estimated_distance < 20.0)
                 {
                   near_base = true;
                 }
@@ -420,19 +424,19 @@ void control_main()
           {
             if (auto_pilot_type == "mesh")
             {
+              // NOTE: just keep going if it is close to the base station.
               if (near_base)
                 move_y = 0;
 
               // should move away from right?
 
               // too close to the right
-              double rate = move_y / (distance_to_neighbor * 0.1) / 5;
+              double rate = move_y / distance_to_neighbor * 20;
               if (rate > 1.0)
                 rate = 1.0;
               else if (rate < -1.0)
                 rate = -1.0;
-              control_msg.linear.y
-                = straight_rate * rate;
+              control_msg.linear.y = straight_rate * rate;
 
               // NOTE: should it consider the wall?
               const double lleng
@@ -547,7 +551,7 @@ void control_main()
                 {
                   diff_rate
                     = std::atan2(control_msg.linear.y, control_msg.linear.x)
-                    / M_PI;
+                    / M_PI / 10.0;
                 }
                 control_msg.angular.z = steering_yaw_rate * diff_rate;
               }

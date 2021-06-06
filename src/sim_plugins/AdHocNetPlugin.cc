@@ -260,7 +260,7 @@ void AdHocNetPlugin::OnUpdate()
           }
           else
           {
-            initY = 1.2;
+            initY = 2.0;
           }
           pos = pos.rotate(tf::Vector3(0,0,1), initY);
 
