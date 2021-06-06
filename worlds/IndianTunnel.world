@@ -3,7 +3,7 @@
   <world name="default">
     <scene>
       <background>0.1 0.1 0.1 1</background>
-      <shadows>true</shadows>
+      <shadows>false</shadows>
     </scene>
 <!--
     <physics type="ode">
@@ -45,13 +45,13 @@
     </physics>
 
     <light type="directional" name="directional_light">
-      <pose>0 20 20 0.1 0.1 0</pose>
-      <diffuse>0.75 0.75 0.75 1</diffuse>
-      <specular>0.75 0.75 0.75 1</specular>
+      <pose>0 0 5 0 0 0</pose>
+      <diffuse>1 1 1 1</diffuse>
+      <specular>1 1 1 1</specular>
       <attenuation>
-        <range>300</range>
+        <range>100</range>
       </attenuation>
-      <direction>0.1 0.1 -1</direction>
+      <direction>0 0 -1</direction>
       <cast_shadows>false</cast_shadows>
     </light>
 <!--
