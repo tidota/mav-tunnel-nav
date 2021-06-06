@@ -1,6 +1,6 @@
 comm_range: 30.0
-sigmaDst: 1.0
-sigmaOri: 0.1 #about 5 deg
+sigmaDst: 0.5
+sigmaOri: 0.05 #about 2.5 deg
 beacon_up_topic: beacon_up_topic
 beacon_down_topic: beacon_down_topic
 sync_up_topic: sync_up_topic
@@ -12,4 +12,4 @@ spawn_service_name: spawn_robot
 
 # The distance of the last robot from the base divided by comm_range
 # Once the ratio reaches this value, a new robot is spawned.
-ratio_spawn_comm: 0.15
+ratio_spawn_comm: 0.35

@@ -79,7 +79,7 @@
     <param name="max_linear_y" value="0.3"/>
     <param name="max_linear_z" value="0.5"/>
 
-    <param name="distance_to_neighbor" value="20.0"/>
+    <param name="distance_to_neighbor" value="15.0"/>
     <param name="rel_pose_expiration" value="3.0" />
 
     <param name="beacon_down_topic" value="beacon_down_topic"/>
@@ -128,7 +128,7 @@
       <param name="robot_frame_id" value="$(arg mav_name)/base_link"/>
 
       <param name="n_particles" value="50"/>
-      <param name="update_freq" value="0.3"/>
+      <param name="update_freq" value="2"/>
 
       <param name="depth_cam_pc_downsample" value="1000"/>
 
@@ -145,12 +145,12 @@
       <param name="motion_noise_lin_sigma" value="0.005"/>
       <param name="motion_noise_rot_sigma" value="0.01"/>
 
-      <param name="sensor_noise_range_sigma" value="1.0"/>
-      <param name="sensor_noise_depth_sigma" value="1.0"/>
+      <param name="sensor_noise_range_sigma" value="10.0"/>
+      <param name="sensor_noise_depth_sigma" value="10.0"/>
 
       <param name="t_pose_adjust" value="1.5"/>
       <param name="t_only_mapping" value="2.0"/>
-      <param name="mapping_interval" value="3"/>
+      <param name="mapping_interval" value="5"/>
       <param name="publish_interval" value="0"/>
       <param name="vismap_interval" value="3"/>
       <param name="visloc_interval" value="0"/>
@@ -191,8 +191,8 @@
       <param name="sigma_kde" value="0.2"/>
       <param name="Nref" value="20"/>
       <param name="seed_cooploc" value="1000"/>
-      <param name="sigmaLocR" value="1.0"/>
-      <param name="sigmaLocT" value="0.1"/>
+      <param name="sigmaLocR" value="0.5"/>
+      <param name="sigmaLocT" value="0.05"/>
       <param name="gl_eval_cons" value="2"/>
       <param name="ml_eval_cons" value="2"/>
 
