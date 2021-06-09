@@ -156,6 +156,7 @@
       <param name="visloc_interval" value="0"/>
       <param name="compress_interval" value="7"/>
       <param name="enable_indivLoc" value="true"/>
+      <param name="seed_indivloc" value="1500"/>
       <!-- <param name="locdata_interval" value="1000"/> -->
 
       <param name="octomap_topic" value="octomap"/>

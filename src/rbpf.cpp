@@ -653,9 +653,14 @@ void pf_main()
   }
 
   // random numbers
-  std::random_device rd{};
-  std::mt19937 gen{rd()};
-  std::uniform_real_distribution<> dis(0, 1.0);
+  //std::random_device rd{};
+  //std::mt19937 gen{rd()};
+  int seed_indivloc;
+  if (!pnh.getParam("seed_indivloc", seed_indivloc))
+  ROS_ERROR_STREAM("no param: seed_indivloc");
+  std::mt19937 gen_indivloc{seed_indivloc};
+
+  //std::uniform_real_distribution<> dis(0, 1.0);
 
   tf::TransformBroadcaster tf_broadcaster;
 
@@ -1024,7 +1029,7 @@ void pf_main()
       {
         // move the particle
         // call predict with the relative pose.
-        p->predict(delta_pos, delta_rot, gen);
+        p->predict(delta_pos, delta_rot, gen_indivloc);
       }
 
       std::string dest;
@@ -1488,7 +1493,7 @@ void pf_main()
           {
             // move the particle
             // call predict with the relative pose.
-            p->predict(delta_pos, delta_rot, gen);
+            p->predict(delta_pos, delta_rot, gen_indivloc);
           }
 
           // weight PF (use depth cam)
@@ -1545,7 +1550,7 @@ void pf_main()
               // resampling is disabled.
               int indx;
               if (enable_indivLoc)
-                indx = drawIndex(cumul_weights_slam, gen);
+                indx = drawIndex(cumul_weights_slam, gen_indivloc);
               else
                 indx = i;
 
@@ -1576,7 +1581,7 @@ void pf_main()
             std::vector<int> indx_list(n_particles);
             for (int i = 0; i < n_particles; ++i)
             {
-              indx_list[i] = drawIndex(cumul_weights_slam, gen);
+              indx_list[i] = drawIndex(cumul_weights_slam, gen_indivloc);
             }
 
             std::vector< std::shared_ptr<Particle> > new_generation;
