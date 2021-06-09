@@ -76,6 +76,20 @@ void DriftOdometryPlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
     random_generator_.seed(
         _sdf->GetElement("randomEngineSeed")->Get<unsigned int>());
   }
+  else if (_sdf->HasElement("randomEngineSeedByName"))
+  {
+    // NOTE: create a RNG seed based on the given string.
+    std::string name
+      = _sdf->GetElement("randomEngineSeedByName")->Get<std::string>();
+    unsigned int val = 0;
+    for (auto c: name)
+    {
+      val += (unsigned int)c * 17;
+      val %= 37;
+    }
+    val *= 43;
+    random_generator_.seed(val);
+  }
   else
   {
     random_generator_.seed(

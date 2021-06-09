@@ -65,6 +65,7 @@
           <covarianceImage>package://rotors_gazebo/resource/${odometry_map}</covarianceImage> <!-- a bitmap image describing where the sensor works (white), and where not (black) -->
           <covarianceImageScale>${image_scale}</covarianceImageScale> <!-- the scale of the image in the gazebo world, if set to 1.0, 1 pixel in the image corresponds to 1 meter in the world -->
         </xacro:if>
+        <randomEngineSeedByName>${namespace}</randomEngineSeedByName>
       </plugin>
     </gazebo>
   </xacro:macro>
