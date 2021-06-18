@@ -176,7 +176,7 @@ void pf_main()
           ros::Time(0), ground_truth_tf);
         pose = ground_truth_tf;
       }
-      catch (tf::TransformException ex)
+      catch (tf::TransformException& ex)
       {
         ROS_INFO_STREAM(
           "Transfrom from " << robot_frame_id <<
