@@ -454,6 +454,30 @@ void pf_main()
   tf::Pose init_segment_pose;
   ros::Time init_segment_time;
 
+  // === entry detection ===
+  // the name of the next robot for map transfer
+  std::string next_robot_name;
+  {
+    std::string robot_name_prefix;
+    int robot_num;
+    {
+      std::stringstream sp;
+      std::stringstream sn;
+      for (auto c: robot_name)
+      {
+        if (std::isalpha(c))
+          sp << c;
+        else
+          sn << c;
+      }
+      sp >> robot_name_prefix;
+      sn >> robot_num;
+    }
+    std::stringstream ss;
+    ss << robot_name_prefix << (robot_num + 2);
+    next_robot_name = ss.str();
+  }
+
   tf::Pose pose_prev;
   tf::Pose pose_curr;
   //tf::Transform vel;
@@ -980,6 +1004,47 @@ void pf_main()
     }
     else if (state == LocalSLAM && now <= last_update + update_phase) // in the default state
     {
+      // TODO: check if the previous robot is in the oldest map
+      if (segments.size() > 1)
+      {
+        // get the location of the previous robot
+        if (beacon_buffer.count(next_robot_name)
+          && now <= beacon_lasttime[next_robot_name] + beacon_lifetime)
+        {
+          auto beacon_info = beacon_buffer[next_robot_name];
+          tf::Vector3 next_robot_loc_wrt_here(
+            beacon_info.estimated_orientation.x
+              * beacon_info.estimated_distance,
+            beacon_info.estimated_orientation.y
+              * beacon_info.estimated_distance,
+            beacon_info.estimated_orientation.z
+              * beacon_info.estimated_distance);
+          tf::Vector3 next_robot_loc
+            = segments[iseg][segments_index_best[iseg]]->getPose()
+              * next_robot_loc_wrt_here;
+          double x = next_robot_loc.getX();
+          double y = next_robot_loc.getY();
+          double z = next_robot_loc.getZ();
+
+          // get the range of the oldest submap
+          auto map = segments[0][segments_index_best[0]]->getMap();
+          double min_x, min_y, min_z;
+          map->getMetricMin(min_x, min_y, min_z);
+          double max_x, max_y, max_z;
+          map->getMetricMax(max_x, max_y, max_z);
+
+          // determine if the location is within the range
+          if (min_x <= x && x <= max_x
+           && min_y <= y && y <= max_y
+           && min_z <= z && z <= max_z)
+          {
+            // NOTE: initiate map_transfer
+            ROS_ERROR("HIT!!!!!!!!!!");
+          }
+
+        }
+      }
+
       if (enable_cooploc)
       {
         if (now < last_cooploc + cooploc_phase)

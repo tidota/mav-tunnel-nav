@@ -204,7 +204,7 @@
       <param name="auto_enable_by_slam" value="$(arg auto_enable_by_slam)"/>
 
       <!-- parameters for segmentation -->
-      <param name="enable_segmentation" value="false"/>
+      <param name="enable_segmentation" value="true"/>
       <param name="init_seg_phase" value="3.0"/>
       <param name="next_seg_thresh" value="10.0"/>
       <param name="enable_clr4seg" value="true"/>
