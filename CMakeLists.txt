@@ -220,7 +220,7 @@ add_executable(imu_odom src/imu_odom.cpp)
 add_dependencies(imu_odom ${catkin_EXPORTED_TARGETS})
 target_link_libraries(imu_odom ${catkin_LIBRARIES})
 
-add_executable(rbpf src/rbpf.cpp)
+add_executable(rbpf src/rbpf.cpp src/particle.cpp)
 add_dependencies(rbpf
   ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(rbpf
