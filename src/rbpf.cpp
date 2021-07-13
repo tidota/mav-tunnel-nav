@@ -163,9 +163,9 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   //std::uniform_real_distribution<> dis(0, 1.0);
 
 
-  if(!pnh.getParam("odom_reset_topic", odom_reset_topic))
-    ROS_ERROR_STREAM("no param: odom_reset_topic");
-  odom_reset_pub = nh.advertise<nav_msgs::Odometry>(odom_reset_topic, 1);
+  // if(!pnh.getParam("odom_reset_topic", odom_reset_topic))
+  //   ROS_ERROR_STREAM("no param: odom_reset_topic");
+  // odom_reset_pub = nh.advertise<nav_msgs::Odometry>(odom_reset_topic, 1);
 
   std::string octomap_topic;
   if(!pnh.getParam("octomap_topic", octomap_topic))

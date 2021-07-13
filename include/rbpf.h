@@ -31,67 +31,69 @@
 class RBPF
 {
 private:
-  std::string odom_topic;
-  std::string odom_reset_topic;
-  std::string pc_topic;
-  std::string world_frame_id;
-  std::string robot_frame_id;
-
-  nav_msgs::Odometry odom_buff;
-  std::mutex odom_mutex;
-
-  sensor_msgs::PointCloud2 pc_buff;
-  std::mutex pc_mutex;
-
-  std::vector<std::string> range_topics;
-  std::map<std::string, tf::Pose> range_poses;
-  std::map<std::string, double> range_buff;
-  std::mutex range_mutex;
-  double range_max, range_min;
-
-  std::mutex beacon_mutex;
-  std::map<std::string, mav_tunnel_nav::Beacon> beacon_buffer;
-  std::map<std::string, ros::Time> beacon_lasttime;
-
-  std::mutex sync_mutex;
-  std::string last_sync_src;
-  std::deque<mav_tunnel_nav::SrcDst> sync_msgs_buffer;
-
-  std::mutex data_mutex;
-  std::map<std::string, mav_tunnel_nav::Particles> data_buffer;
-  std::map<std::string, ros::Time> data_lasttime;
-  std::string last_data_src;
   enum INTERACT_STATE
     { Init, LocalSLAM, SyncInit, DataSending, SyncReact, DataWaiting, Update };
   INTERACT_STATE state;
 
-  ros::Subscriber beacon_sub;
-  ros::Subscriber sync_sub;
-  ros::Subscriber data_sub;
-  ros::Subscriber odom_sub;
-  ros::Subscriber pc_sub;
-  std::vector<ros::Subscriber> range_subs;
-
-  // =======
-
   std::string robot_name;
   double comm_range;
 
+  std::string world_frame_id;
+  std::string robot_frame_id;
+
+  ros::Subscriber odom_sub;
+  std::mutex odom_mutex;
+  std::string odom_topic;
+  // std::string odom_reset_topic;
+  nav_msgs::Odometry odom_buff;
+  tf::Pose pose_prev;
+  tf::Pose pose_curr;
+
+  ros::Subscriber pc_sub;
+  std::mutex pc_mutex;
+  std::string pc_topic;
+  sensor_msgs::PointCloud2 pc_buff;
+  PointCloudT::Ptr depth_cam_pc;
+  tf::Pose camera_pose;
+
+  std::vector<ros::Subscriber> range_subs;
+  std::mutex range_mutex;
+  std::vector<std::string> range_topics;
+  std::map<std::string, tf::Pose> range_poses;
+  std::map<std::string, double> range_buff;
+  double range_max, range_min;
+
+  ros::Subscriber beacon_sub;
+  std::mutex beacon_mutex;
+  std::map<std::string, mav_tunnel_nav::Beacon> beacon_buffer;
+  std::map<std::string, ros::Time> beacon_lasttime;
+
   ros::Publisher sync_pub;
+  ros::Subscriber sync_sub;
+  std::mutex sync_mutex;
+  std::deque<mav_tunnel_nav::SrcDst> sync_msgs_buffer;
+  std::string last_sync_src;
+  mav_tunnel_nav::SrcDst sync_msg;
+
   ros::Publisher data_pub;
+  ros::Subscriber data_sub;
+  std::mutex data_mutex;
+  std::map<std::string, mav_tunnel_nav::Particles> data_buffer;
+  std::map<std::string, ros::Time> data_lasttime;
+  std::string last_data_src;
+  mav_tunnel_nav::Particles data_msg;
 
-  std::mt19937 gen_indivloc;
-
-  tf::TransformBroadcaster tf_broadcaster;
+  std::shared_ptr<tf::TransformListener> tf_listener;
 
   ros::Publisher odom_reset_pub;
   ros::Publisher map_pub;
   ros::Publisher marker_occupied_pub;
   ros::Publisher vis_poses_pub;
+  tf::TransformBroadcaster tf_broadcaster;
+  bool save_traj;
+  std::string traj_filename;
 
   int n_particles;
-
-  ros::Duration update_phase;
 
   double init_x;
   double init_y;
@@ -122,71 +124,52 @@ private:
   int counts_map_update;
   int counts_compress;
   // int counts_locdata = 0;
-  bool enable_indivLoc;
 
-  std::deque< std::vector< std::shared_ptr<Particle> > > segments;
-  unsigned int nseg;
-  std::deque< int > segments_index_best;
+  bool enable_indivLoc;
+  ros::Duration update_phase;
+  std::mt19937 gen_indivloc;
+
   std::vector<double> cumul_weights_slam;
   std::vector<double> errors;
 
+  // segments
+  bool enable_segmentation;
+  std::deque< std::vector< std::shared_ptr<Particle> > > segments;
+  unsigned int nseg;
+  std::deque< int > segments_index_best;
   tf::Pose init_segment_pose;
   ros::Time init_segment_time;
-
   std::string next_robot_name;
-
-  tf::Pose pose_prev;
-  tf::Pose pose_curr;
-
-  PointCloudT::Ptr depth_cam_pc;
-
-  tf::Pose camera_pose;
-
-  std::shared_ptr<tf::TransformListener> tf_listener;
-
-  bool save_traj;
-  std::string traj_filename;
-
-  ros::Time last_update;
-  ros::Time initial_update;
+  ros::Duration init_seg_phase;
+  double next_seg_thresh;
+  bool enable_clr4seg;
 
   // parameters for cooperative localization
   int Nref;
   int seed_cooploc;
   bool enable_cooploc;
   bool enable_conservative;
-
   double conserv_omega;
   double sigma_kde;
+  std::mt19937 gen_cooploc;
+  std::default_random_engine gen_cooploc_select;
+
+  // For data exchange.
+  double sigma_kde_squared_x2;
+  std::vector<double> cumul_weights;
+  std::vector<double> cumul_weights_comp;
+
+  ros::Time last_update;
+  ros::Time initial_update;
+  ros::Duration beacon_lifetime;
+  ros::Duration cooploc_phase;
+  ros::Duration syncinit_timeout;
 
   double sigmaLocR;
   double sigmaLocT;
   // parameters for evaluation
   double gl_eval_cons;
   double ml_eval_cons;
-
-  ros::Duration beacon_lifetime;
-  ros::Duration cooploc_phase;
-  ros::Duration syncinit_timeout;
-
-
-  std::mt19937 gen_cooploc;
-  std::default_random_engine gen_cooploc_select;
-
-
-  bool enable_segmentation;
-  ros::Duration init_seg_phase;
-  double next_seg_thresh;
-  bool enable_clr4seg;
-
-  // === For data exchange. ==
-  double sigma_kde_squared_x2;
-  mav_tunnel_nav::Particles data_msg;
-  std::vector<double> cumul_weights;
-  std::vector<double> cumul_weights_comp;
-
-  // For synchronization
-  mav_tunnel_nav::SrcDst sync_msg;
 
   // auto enable: call the ROS service to fly.
   bool auto_enable_by_slam;
