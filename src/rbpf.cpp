@@ -52,46 +52,335 @@
 
 #include <visualization_msgs/MarkerArray.h>
 
-#define PI 3.14159265
-
 #include "rbpf.h"
 
-std::string odom_topic;
-std::string odom_reset_topic;
-std::string pc_topic;
-std::string world_frame_id;
-std::string robot_frame_id;
+////////////////////////////////////////////////////////////////////////////////
+RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
+  depth_cam_pc(new PointCloudT())
+{
+  state = Init;
 
-nav_msgs::Odometry odom_buff;
-std::mutex odom_mutex;
+  // get this robot's name
+  if (!pnh.getParam("robot_name", robot_name))
+    ROS_ERROR_STREAM("no ros parameter: robot_name");
 
-sensor_msgs::PointCloud2 pc_buff;
-std::mutex pc_mutex;
+  // subscriber for beacon
+  std::string beacon_down_topic;
+  if (nh.getParam("/beacon_down_topic", beacon_down_topic)) // global param
+  {
+    beacon_sub
+      = nh.subscribe(beacon_down_topic, 1000, &RBPF::beaconCallback, this);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: beacon_down_topic");
+  }
+  // subscriber for synchronization of exchange
+  std::string sync_down_topic;
+  if (nh.getParam("/sync_down_topic", sync_down_topic)) // global param
+  {
+    sync_sub
+      = nh.subscribe(sync_down_topic, 1000, &RBPF::syncCallback, this);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: sync_down_topic");
+  }
+  // subscriber for data exchange
+  std::string data_down_topic;
+  if (nh.getParam("/data_down_topic", data_down_topic)) // global param
+  {
+    data_sub
+      = nh.subscribe(data_down_topic, 1000, &RBPF::dataCallback, this);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: data_down_topic");
+  }
 
-std::vector<std::string> range_topics;
-std::map<std::string, tf::Pose> range_poses;
-std::map<std::string, double> range_buff;
-std::mutex range_mutex;
-double range_max, range_min;
+  pnh.getParam("odom_topic", odom_topic);
+  pnh.getParam("pc_topic", pc_topic);
+  odom_sub = nh.subscribe(odom_topic, 1000, &RBPF::odomCallback, this);
+  pc_sub = nh.subscribe(pc_topic, 1000, &RBPF::pcCallback, this);
 
-std::mutex beacon_mutex;
-std::map<std::string, mav_tunnel_nav::Beacon> beacon_buffer;
-std::map<std::string, ros::Time> beacon_lasttime;
+  pnh.getParam("range_max", range_max);
+  pnh.getParam("range_min", range_min);
+  std::string str_buff;
+  pnh.param<std::string>("range_list", str_buff, "");
+  std::stringstream ss(str_buff);
+  std::string token;
+  double x,y,z,P,R,Y;
+  while (ss >> token >> x >> y >> z >> R >> P >> Y)
+  {
+    range_subs.push_back(
+      nh.subscribe(token, 1000, &RBPF::rangeCallback, this)
+    );
+    range_topics.push_back(token);
+    tf::Vector3 pos(x, y, z);
+    tf::Quaternion rot;
+    rot.setRPY(R * M_PI / 180.0, P * M_PI / 180.0, Y * M_PI / 180.0);
+    tf::Pose range_pose(rot, pos);
+    range_poses[token] = range_pose;
+  }
 
-std::mutex sync_mutex;
-std::string last_sync_src;
-std::deque<mav_tunnel_nav::SrcDst> sync_msgs_buffer;
 
-std::mutex data_mutex;
-std::map<std::string, mav_tunnel_nav::Particles> data_buffer;
-std::map<std::string, ros::Time> data_lasttime;
-std::string last_data_src;
-enum INTERACT_STATE
-  { Init, LocalSLAM, SyncInit, DataSending, SyncReact, DataWaiting, Update };
-INTERACT_STATE state = Init;
+  // ====================
+
+
+  if (!nh.getParam("/comm_range", comm_range))
+    ROS_ERROR_STREAM("no parameter for rbpf: comm_range");
+
+  // publisher for synchronization of exchange
+  std::string sync_up_topic;
+  if (nh.getParam("/sync_up_topic", sync_up_topic)) // global param
+  {
+    sync_pub = nh.advertise<mav_tunnel_nav::SrcDst>(sync_up_topic, 1);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: sync_up_topic");
+  }
+
+  // publisher for data exchange
+  std::string data_up_topic;
+  if (nh.getParam("/data_up_topic", data_up_topic)) // global param
+  {
+    data_pub = nh.advertise<mav_tunnel_nav::Particles>(data_up_topic, 1);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: data_up_topic");
+  }
+
+  // random numbers
+  //std::random_device rd{};
+  //std::mt19937 gen{rd()};
+  int seed_indivloc;
+  if (!pnh.getParam("seed_indivloc", seed_indivloc))
+  ROS_ERROR_STREAM("no param: seed_indivloc");
+  gen_indivloc.seed(seed_indivloc);
+
+  //std::uniform_real_distribution<> dis(0, 1.0);
+
+
+  if(!pnh.getParam("odom_reset_topic", odom_reset_topic))
+    ROS_ERROR_STREAM("no param: odom_reset_topic");
+  odom_reset_pub = nh.advertise<nav_msgs::Odometry>(odom_reset_topic, 1);
+
+  std::string octomap_topic;
+  if(!pnh.getParam("octomap_topic", octomap_topic))
+    ROS_ERROR_STREAM("no param: octomap_topic");
+  map_pub = nh.advertise<mav_tunnel_nav::OctomapWithSegId>(octomap_topic, 1);
+  marker_occupied_pub
+    = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
+  vis_poses_pub
+    = nh.advertise<geometry_msgs::PoseArray>("loc_vis_poses", 1, true);
+
+  if(!pnh.getParam("world_frame_id", world_frame_id))
+    ROS_ERROR_STREAM("no param: world_frame_id");
+  if(!pnh.getParam("robot_frame_id", robot_frame_id))
+    ROS_ERROR_STREAM("no param: robot_frame_id");
+
+  // === Initialize PF ===
+  double update_freq;
+  if(!pnh.getParam("n_particles", n_particles))
+    ROS_ERROR_STREAM("no param: n_particles");
+  if(!pnh.getParam("update_freq", update_freq))
+    ROS_ERROR_STREAM("no param: update_freq");
+  update_phase = ros::Duration(1.0/update_freq);
+
+  // int depth_cam_pc_downsample;
+  // if(!pnh.getParam("depth_cam_pc_downsample", depth_cam_pc_downsample))
+  //   ROS_ERROR_STREAM("no param: depth_cam_pc_downsample");
+
+  if(!pnh.getParam("init_x", init_x))
+    ROS_ERROR_STREAM("no param: init_x");
+  if(!pnh.getParam("init_y", init_y))
+    ROS_ERROR_STREAM("no param: init_y");
+  if(!pnh.getParam("init_z", init_z))
+    ROS_ERROR_STREAM("no param: init_z");
+  if(!pnh.getParam("init_Y", init_Y))
+    ROS_ERROR_STREAM("no param: init_Y");
+  if(!pnh.getParam("map_resol", resol))
+    ROS_ERROR_STREAM("no param: map_resol");
+  if(!pnh.getParam("map_probHit", probHit))
+    ROS_ERROR_STREAM("no param: map_probHit");
+  if(!pnh.getParam("map_probMiss", probMiss))
+    ROS_ERROR_STREAM("no param: map_probMiss");
+  if(!pnh.getParam("map_threshMin", threshMin))
+    ROS_ERROR_STREAM("no param: map_threshMin");
+  if(!pnh.getParam("map_threshMax", threshMax))
+    ROS_ERROR_STREAM("no param: map_threshMax");
+  if(!pnh.getParam("motion_noise_lin_sigma", motion_noise_lin_sigma))
+    ROS_ERROR_STREAM("no param: motion_noise_lin_sigma");
+  if(!pnh.getParam("motion_noise_rot_sigma", motion_noise_rot_sigma))
+    ROS_ERROR_STREAM("no param: motion_noise_rot_sigma");
+  if(!pnh.getParam("sensor_noise_range_sigma", sensor_noise_range_sigma))
+    ROS_ERROR_STREAM("no param: sensor_noise_range_sigma");
+  if(!pnh.getParam("sensor_noise_depth_sigma", sensor_noise_depth_sigma))
+    ROS_ERROR_STREAM("no param: sensor_noise_depth_sigma");
+
+  double t_pose_adjust;
+  if(!pnh.getParam("t_pose_adjust", t_pose_adjust))
+    ROS_ERROR_STREAM("no param: t_pose_adjust");
+  phase_pose_adjust = ros::Duration(t_pose_adjust);
+  double t_only_mapping;
+  if(!pnh.getParam("t_only_mapping", t_only_mapping))
+    ROS_ERROR_STREAM("no param: t_only_mapping");
+  phase_only_mapping = ros::Duration(t_only_mapping);
+  if(!pnh.getParam("mapping_interval", mapping_interval))
+    ROS_ERROR_STREAM("no param: mapping_interval");
+  if(!pnh.getParam("publish_interval", publish_interval))
+    ROS_ERROR_STREAM("no param: publish_interval");
+  if(!pnh.getParam("vismap_interval", vismap_interval))
+    ROS_ERROR_STREAM("no param: vismap_interval");
+  if(!pnh.getParam("visloc_interval", visloc_interval))
+    ROS_ERROR_STREAM("no param: visloc_interval");
+  if(!pnh.getParam("compress_interval", compress_interval))
+    ROS_ERROR_STREAM("no param: compress_interval");
+  if(!pnh.getParam("enable_indivLoc", enable_indivLoc))
+    ROS_ERROR_STREAM("no param: enable_indivLoc");
+  // int locdata_interval;
+  // pnh.getParam("locdata_interval", locdata_interval);
+  counts_publish = 0;
+  counts_visualize_map = 0;
+  counts_visualize_loc = 0;
+  counts_map_update = 0;
+  counts_compress = 0;
+
+  //       each vector of particles represent a segment.
+  nseg = 0;
+  segments.resize(1);
+  for (int i = 0; i < n_particles; ++i)
+  {
+    segments.back().push_back(
+      std::make_shared<Particle>(
+        init_x, init_y, init_z, init_Y,
+        resol, probHit, probMiss, threshMin, threshMax,
+        motion_noise_lin_sigma, motion_noise_rot_sigma,
+        sensor_noise_range_sigma, sensor_noise_depth_sigma));
+  }
+  segments_index_best.resize(1);
+  cumul_weights_slam.resize(n_particles);
+  errors.resize(n_particles);
+
+  // === entry detection ===
+  // the name of the next robot for map transfer
+  {
+    std::string robot_name_prefix;
+    int robot_num;
+    {
+      std::stringstream sp;
+      std::stringstream sn;
+      for (auto c: robot_name)
+      {
+        if (std::isalpha(c))
+          sp << c;
+        else
+          sn << c;
+      }
+      sp >> robot_name_prefix;
+      sn >> robot_num;
+    }
+    std::stringstream ss;
+    ss << robot_name_prefix << (robot_num + 2);
+    next_robot_name = ss.str();
+  }
+
+  //tf::Transform vel;
+
+  tf::Quaternion rotation;
+  rotation.setRPY(-M_PI/2.0, 0, -M_PI/2.0);
+  //const tf::Pose camera_pose(rotation, tf::Vector3(0, 0, 0));
+  camera_pose = tf::Pose(rotation, tf::Vector3(0.03, 0, -0.06));
+
+  tf_listener = std::make_shared<tf::TransformListener>();
+  save_traj = false;
+  if (pnh.getParam("save_traj", save_traj))
+  {
+    traj_filename
+      = "./" + robot_name + "_"
+        + std::to_string((int)(ros::WallTime::now().toSec()))
+        + "_traj.txt";
+  }
+  else
+  {
+    save_traj = false;
+  }
+
+  // =================
+
+  // parameters for cooperative localization
+  if (!pnh.getParam("Nref", Nref))
+    ROS_ERROR_STREAM("no param: Nref");
+  if (!pnh.getParam("seed_cooploc", seed_cooploc))
+    ROS_ERROR_STREAM("no param: seed_cooploc");
+  if (!pnh.getParam("enable_cooploc", enable_cooploc))
+    ROS_ERROR_STREAM("no param: enable_cooploc");
+  if (!pnh.getParam("enable_conservative", enable_conservative))
+    ROS_ERROR_STREAM("no param: enable_conservative");
+
+  if (!pnh.getParam("conserv_omega", conserv_omega))
+    ROS_ERROR_STREAM("no param: conserv_omega");
+  if (!pnh.getParam("sigma_kde", sigma_kde))
+    ROS_ERROR_STREAM("no param: sigma_kde");
+
+  if (!pnh.getParam("sigmaLocR", sigmaLocR))
+    ROS_ERROR_STREAM("no param: sigmaLocR");
+  if (!pnh.getParam("sigmaLocT", sigmaLocT))
+    ROS_ERROR_STREAM("no param: sigmaLocT");
+  // parameters for evaluation
+  if (!pnh.getParam("gl_eval_cons", gl_eval_cons))
+    ROS_ERROR_STREAM("no param: gl_eval_cons");
+  if (!pnh.getParam("ml_eval_cons", ml_eval_cons))
+    ROS_ERROR_STREAM("no param: ml_eval_cons");
+
+  double beacon_lifetime_buff;
+  if (!pnh.getParam("beacon_lifetime", beacon_lifetime_buff))
+    ROS_ERROR_STREAM("no param: beacon_lifetime");
+  beacon_lifetime = ros::Duration(beacon_lifetime_buff);
+  double cooploc_phase_buff;
+  if (!pnh.getParam("cooploc_phase", cooploc_phase_buff))
+    ROS_ERROR_STREAM("no param: cooploc_phase");
+  cooploc_phase = ros::Duration(cooploc_phase_buff);
+  double syncinit_timeout_buff;
+  if (!pnh.getParam("syncinit_timeout", syncinit_timeout_buff))
+    ROS_ERROR_STREAM("no param: syncinit_timeout");
+  syncinit_timeout = ros::Duration(syncinit_timeout_buff);
+
+  gen_cooploc.seed(seed_cooploc);
+
+  if (!pnh.getParam("enable_segmentation", enable_segmentation))
+    ROS_ERROR_STREAM("no param: enable_segmentation");
+  double init_seg_phase_buff;
+  if (!pnh.getParam("init_seg_phase", init_seg_phase_buff))
+    ROS_ERROR_STREAM("no param: init_seg_phase");
+  init_seg_phase = ros::Duration(init_seg_phase_buff);
+  if (!pnh.getParam("next_seg_thresh", next_seg_thresh))
+    ROS_ERROR_STREAM("no param: next_seg_thresh");
+  if (!pnh.getParam("enable_clr4seg", enable_clr4seg))
+    ROS_ERROR_STREAM("no param: enable_clr4seg");
+
+  // === For data exchange. ==
+  // 95 % of difference should be in approx. 2.7 * sigma_kde
+  // https://stats.stackexchange.com/questions/35012/mahalanobis-distance-and-percentage-of-the-distribution-represented
+  sigma_kde_squared_x2 = 2 * sigma_kde * sigma_kde;
+  data_msg.source = robot_name;
+  cumul_weights.resize(n_particles);
+  cumul_weights_comp.resize(n_particles);
+
+  // For synchronization
+  sync_msg.source = robot_name;
+
+
+  if (!pnh.getParam("auto_enable_by_slam", auto_enable_by_slam))
+    auto_enable_by_slam = false;
+  srv_client
+    = nh.serviceClient<std_srvs::SetBool>("/" + robot_name + "/enable");
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
+void RBPF::beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 {
   if (state != Init && msg->destination.size() > 0)
   {
@@ -102,7 +391,7 @@ void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
+void RBPF::syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 {
   if (state == LocalSLAM)
   {
@@ -112,7 +401,7 @@ void syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
+void RBPF::dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
 {
   if (state == SyncInit || state == DataWaiting)
   {
@@ -133,7 +422,7 @@ void dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
+void RBPF::odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
   // update odom_pose by the odometry data.
   std::lock_guard<std::mutex> lk(odom_mutex);
@@ -141,14 +430,14 @@ void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void pcCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
+void RBPF::pcCallback(const sensor_msgs::PointCloud2::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(pc_mutex);
   pc_buff = *msg;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
+void RBPF::rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
 {
   std::lock_guard<std::mutex> lk(range_mutex);
   // frame_id looks like "ray_xxxx_link". we need "xxxx" part.
@@ -170,7 +459,7 @@ void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-inline int drawIndex(
+inline int RBPF::drawIndex(
   const std::vector<double>& cumul_weights, std::mt19937& gen)
 {
   std::uniform_real_distribution<>
@@ -200,13 +489,9 @@ inline int drawIndex(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-inline void prepareDataMsg(
-  mav_tunnel_nav::Particles& data_msg, std::string& destination,
-  std::vector<double>& cumul_weights, std::vector<double>& cumul_weights_comp,
-  const double& conserv_omega, const double& sigma_kde_squared_x2,
-  const std::vector< std::shared_ptr<Particle> >& particles,
-  const int& Nref, std::mt19937& gen_cooploc,
-  const bool enable_conservative = true)
+inline void RBPF::prepareDataMsg(
+  mav_tunnel_nav::Particles& data_msg, const std::string& destination,
+  const std::vector< std::shared_ptr<Particle> >& particles)
 {
   const int n_particles = particles.size();
 
@@ -284,236 +569,9 @@ inline void prepareDataMsg(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void pf_main()
+void RBPF::pf_main()
 {
-  ros::NodeHandle nh;
-  ros::NodeHandle pnh("~");
-
-  // get this robot's name
-  std::string robot_name;
-  if (!pnh.getParam("robot_name", robot_name))
-    ROS_ERROR_STREAM("no ros parameter: robot_name");
-
-  double comm_range;
-  if (!nh.getParam("/comm_range", comm_range))
-    ROS_ERROR_STREAM("no parameter for rbpf: comm_range");
-
-  // publisher for synchronization of exchange
-  std::string sync_up_topic;
-  ros::Publisher sync_pub;
-  if (nh.getParam("/sync_up_topic", sync_up_topic)) // global param
-  {
-    sync_pub = nh.advertise<mav_tunnel_nav::SrcDst>(sync_up_topic, 1);
-  }
-  else
-  {
-    ROS_ERROR_STREAM("no parameter: sync_up_topic");
-  }
-
-  // publisher for data exchange
-  std::string data_up_topic;
-  ros::Publisher data_pub;
-  if (nh.getParam("/data_up_topic", data_up_topic)) // global param
-  {
-    data_pub = nh.advertise<mav_tunnel_nav::Particles>(data_up_topic, 1);
-  }
-  else
-  {
-    ROS_ERROR_STREAM("no parameter: data_up_topic");
-  }
-
-  // random numbers
-  //std::random_device rd{};
-  //std::mt19937 gen{rd()};
-  int seed_indivloc;
-  if (!pnh.getParam("seed_indivloc", seed_indivloc))
-  ROS_ERROR_STREAM("no param: seed_indivloc");
-  std::mt19937 gen_indivloc{seed_indivloc};
-
-  //std::uniform_real_distribution<> dis(0, 1.0);
-
-  tf::TransformBroadcaster tf_broadcaster;
-
-  if(!pnh.getParam("odom_reset_topic", odom_reset_topic))
-    ROS_ERROR_STREAM("no param: odom_reset_topic");
-  ros::Publisher odom_reset_pub
-    = nh.advertise<nav_msgs::Odometry>(odom_reset_topic, 1);
-
-  std::string octomap_topic;
-  if(!pnh.getParam("octomap_topic", octomap_topic))
-    ROS_ERROR_STREAM("no param: octomap_topic");
-  ros::Publisher map_pub
-    = nh.advertise<mav_tunnel_nav::OctomapWithSegId>(octomap_topic, 1);
-  ros::Publisher marker_occupied_pub
-    = nh.advertise<visualization_msgs::MarkerArray>("map_marker_occupied", 1);
-  ros::Publisher vis_poses_pub
-    = nh.advertise<geometry_msgs::PoseArray>("loc_vis_poses", 1, true);
-
-  if(!pnh.getParam("world_frame_id", world_frame_id))
-    ROS_ERROR_STREAM("no param: world_frame_id");
-  if(!pnh.getParam("robot_frame_id", robot_frame_id))
-    ROS_ERROR_STREAM("no param: robot_frame_id");
-
-  // === Initialize PF ===
-  int n_particles;
-  double update_freq;
-  if(!pnh.getParam("n_particles", n_particles))
-    ROS_ERROR_STREAM("no param: n_particles");
-  if(!pnh.getParam("update_freq", update_freq))
-    ROS_ERROR_STREAM("no param: update_freq");
-  const ros::Duration update_phase(1.0/update_freq);
-
-  int depth_cam_pc_downsample;
-  if(!pnh.getParam("depth_cam_pc_downsample", depth_cam_pc_downsample))
-    ROS_ERROR_STREAM("no param: depth_cam_pc_downsample");
-
-  double init_x;
-  double init_y;
-  double init_z;
-  double init_Y;
-  double resol;
-  double probHit;
-  double probMiss;
-  double threshMin;
-  double threshMax;
-  if(!pnh.getParam("init_x", init_x))
-    ROS_ERROR_STREAM("no param: init_x");
-  if(!pnh.getParam("init_y", init_y))
-    ROS_ERROR_STREAM("no param: init_y");
-  if(!pnh.getParam("init_z", init_z))
-    ROS_ERROR_STREAM("no param: init_z");
-  if(!pnh.getParam("init_Y", init_Y))
-    ROS_ERROR_STREAM("no param: init_Y");
-  if(!pnh.getParam("map_resol", resol))
-    ROS_ERROR_STREAM("no param: map_resol");
-  if(!pnh.getParam("map_probHit", probHit))
-    ROS_ERROR_STREAM("no param: map_probHit");
-  if(!pnh.getParam("map_probMiss", probMiss))
-    ROS_ERROR_STREAM("no param: map_probMiss");
-  if(!pnh.getParam("map_threshMin", threshMin))
-    ROS_ERROR_STREAM("no param: map_threshMin");
-  if(!pnh.getParam("map_threshMax", threshMax))
-    ROS_ERROR_STREAM("no param: map_threshMax");
-  double motion_noise_lin_sigma;
-  if(!pnh.getParam("motion_noise_lin_sigma", motion_noise_lin_sigma))
-    ROS_ERROR_STREAM("no param: motion_noise_lin_sigma");
-  double motion_noise_rot_sigma;
-  if(!pnh.getParam("motion_noise_rot_sigma", motion_noise_rot_sigma))
-    ROS_ERROR_STREAM("no param: motion_noise_rot_sigma");
-  double sensor_noise_range_sigma;
-  if(!pnh.getParam("sensor_noise_range_sigma", sensor_noise_range_sigma))
-    ROS_ERROR_STREAM("no param: sensor_noise_range_sigma");
-  double sensor_noise_depth_sigma;
-  if(!pnh.getParam("sensor_noise_depth_sigma", sensor_noise_depth_sigma))
-    ROS_ERROR_STREAM("no param: sensor_noise_depth_sigma");
-
-  double t_pose_adjust;
-  if(!pnh.getParam("t_pose_adjust", t_pose_adjust))
-    ROS_ERROR_STREAM("no param: t_pose_adjust");
-  const ros::Duration phase_pose_adjust(t_pose_adjust);
-  double t_only_mapping;
-  if(!pnh.getParam("t_only_mapping", t_only_mapping))
-    ROS_ERROR_STREAM("no param: t_only_mapping");
-  const ros::Duration phase_only_mapping(t_only_mapping);
-  int mapping_interval;
-  if(!pnh.getParam("mapping_interval", mapping_interval))
-    ROS_ERROR_STREAM("no param: mapping_interval");
-  int publish_interval;
-  if(!pnh.getParam("publish_interval", publish_interval))
-    ROS_ERROR_STREAM("no param: publish_interval");
-  int vismap_interval;
-  if(!pnh.getParam("vismap_interval", vismap_interval))
-    ROS_ERROR_STREAM("no param: vismap_interval");
-  int visloc_interval;
-  if(!pnh.getParam("visloc_interval", visloc_interval))
-    ROS_ERROR_STREAM("no param: visloc_interval");
-  int compress_interval;
-  if(!pnh.getParam("compress_interval", compress_interval))
-    ROS_ERROR_STREAM("no param: compress_interval");
-  bool enable_indivLoc;
-  if(!pnh.getParam("enable_indivLoc", enable_indivLoc))
-    ROS_ERROR_STREAM("no param: enable_indivLoc");
-  // int locdata_interval;
-  // pnh.getParam("locdata_interval", locdata_interval);
-
-  //       each vector of particles represent a segment.
-  std::deque< std::vector< std::shared_ptr<Particle> > > segments(1);
-  unsigned int nseg = 0;
-  for (int i = 0; i < n_particles; ++i)
-  {
-    segments.back().push_back(
-      std::make_shared<Particle>(
-        init_x, init_y, init_z, init_Y,
-        resol, probHit, probMiss, threshMin, threshMax,
-        motion_noise_lin_sigma, motion_noise_rot_sigma,
-        sensor_noise_range_sigma, sensor_noise_depth_sigma));
-  }
-  std::deque< int > segments_index_best(1);
-  std::vector<double> cumul_weights_slam(n_particles);
-  std::vector<double> errors(n_particles);
-  tf::Pose init_segment_pose;
-  ros::Time init_segment_time;
-
-  // === entry detection ===
-  // the name of the next robot for map transfer
-  std::string next_robot_name;
-  {
-    std::string robot_name_prefix;
-    int robot_num;
-    {
-      std::stringstream sp;
-      std::stringstream sn;
-      for (auto c: robot_name)
-      {
-        if (std::isalpha(c))
-          sp << c;
-        else
-          sn << c;
-      }
-      sp >> robot_name_prefix;
-      sn >> robot_num;
-    }
-    std::stringstream ss;
-    ss << robot_name_prefix << (robot_num + 2);
-    next_robot_name = ss.str();
-  }
-
-  tf::Pose pose_prev;
-  tf::Pose pose_curr;
-  //tf::Transform vel;
-
-  PointCloudT::Ptr depth_cam_pc(new PointCloudT());
-  tf::Quaternion rotation;
-  rotation.setRPY(-PI/2.0, 0, -PI/2.0);
-  //const tf::Pose camera_pose(rotation, tf::Vector3(0, 0, 0));
-  const tf::Pose camera_pose(rotation, tf::Vector3(0.03, 0, -0.06));
-
-  std::shared_ptr<tf::TransformListener> tf_listener
-    = std::make_shared<tf::TransformListener>();
-  bool save_traj = false;
-  std::string traj_filename;
-  if (pnh.getParam("save_traj", save_traj))
-  {
-    traj_filename
-      = "./" + robot_name + "_"
-        + std::to_string((int)(ros::WallTime::now().toSec()))
-        + "_traj.txt";
-  }
-  else
-  {
-    save_traj = false;
-  }
-
-  int counts_publish = 0;
-  int counts_visualize_map = 0;
-  int counts_visualize_loc = 0;
-  int counts_map_update = 0;
-  int counts_compress = 0;
-  // int counts_locdata = 0;
-
-  std::uniform_int_distribution<int> dwnsmp_start(0, depth_cam_pc_downsample-1);
-
-  ros::Time last_update = ros::Time::now();
+  last_update = ros::Time::now();
   // wait for the tf of initial ground truth
   while (ros::ok())
   {
@@ -542,7 +600,7 @@ void pf_main()
   }
 
   // initialize the estimated pose
-  ros::Time initial_update = ros::Time::now();
+  initial_update = ros::Time::now();
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
@@ -580,7 +638,6 @@ void pf_main()
 
   // Initialization of prev pose
   // Odometry data
-  tf::Transform diff_pose;
   {
     std::lock_guard<std::mutex> lk(odom_mutex);
     tf::Vector3 pos(
@@ -596,91 +653,11 @@ void pf_main()
     pose_prev.setRotation(dir);
   }
 
-  // parameters for cooperative localization
-  int Nref;
-  if (!pnh.getParam("Nref", Nref))
-    ROS_ERROR_STREAM("no param: Nref");
-  int seed_cooploc;
-  if (!pnh.getParam("seed_cooploc", seed_cooploc))
-    ROS_ERROR_STREAM("no param: seed_cooploc");
-  bool enable_cooploc;
-  if (!pnh.getParam("enable_cooploc", enable_cooploc))
-    ROS_ERROR_STREAM("no param: enable_cooploc");
-  bool enable_conservative;
-  if (!pnh.getParam("enable_conservative", enable_conservative))
-    ROS_ERROR_STREAM("no param: enable_conservative");
-
-  double conserv_omega;
-  if (!pnh.getParam("conserv_omega", conserv_omega))
-    ROS_ERROR_STREAM("no param: conserv_omega");
-  double sigma_kde;
-  if (!pnh.getParam("sigma_kde", sigma_kde))
-    ROS_ERROR_STREAM("no param: sigma_kde");
-
-  double sigmaLocR;
-  if (!pnh.getParam("sigmaLocR", sigmaLocR))
-    ROS_ERROR_STREAM("no param: sigmaLocR");
-  double sigmaLocT;
-  if (!pnh.getParam("sigmaLocT", sigmaLocT))
-    ROS_ERROR_STREAM("no param: sigmaLocT");
-  // parameters for evaluation
-  double gl_eval_cons;
-  if (!pnh.getParam("gl_eval_cons", gl_eval_cons))
-    ROS_ERROR_STREAM("no param: gl_eval_cons");
-  double ml_eval_cons;
-  if (!pnh.getParam("ml_eval_cons", ml_eval_cons))
-    ROS_ERROR_STREAM("no param: ml_eval_cons");
-
-  double beacon_lifetime_buff;
-  if (!pnh.getParam("beacon_lifetime", beacon_lifetime_buff))
-    ROS_ERROR_STREAM("no param: beacon_lifetime");
-  const ros::Duration beacon_lifetime(beacon_lifetime_buff);
-  double cooploc_phase_buff;
-  if (!pnh.getParam("cooploc_phase", cooploc_phase_buff))
-    ROS_ERROR_STREAM("no param: cooploc_phase");
-  const ros::Duration cooploc_phase(cooploc_phase_buff);
-  double syncinit_timeout_buff;
-  if (!pnh.getParam("syncinit_timeout", syncinit_timeout_buff))
-    ROS_ERROR_STREAM("no param: syncinit_timeout");
-  const ros::Duration syncinit_timeout(syncinit_timeout_buff);
-
-  std::mt19937 gen_cooploc;
-  gen_cooploc.seed(seed_cooploc);
-
-  std::default_random_engine gen_cooploc_select;
-
-  ros::Time last_cooploc = ros::Time::now();
-  ros::Time last_syncinit;
-
-  bool enable_segmentation;
-  if (!pnh.getParam("enable_segmentation", enable_segmentation))
-    ROS_ERROR_STREAM("no param: enable_segmentation");
-  double init_seg_phase_buff;
-  if (!pnh.getParam("init_seg_phase", init_seg_phase_buff))
-    ROS_ERROR_STREAM("no param: init_seg_phase");
-  ros::Duration init_seg_phase(init_seg_phase_buff);
-  double next_seg_thresh;
-  if (!pnh.getParam("next_seg_thresh", next_seg_thresh))
-    ROS_ERROR_STREAM("no param: next_seg_thresh");
-  bool enable_clr4seg;
-  if (!pnh.getParam("enable_clr4seg", enable_clr4seg))
-    ROS_ERROR_STREAM("no param: enable_clr4seg");
-
-  // === For data exchange. ==
-  // 95 % of difference should be in approx. 2.7 * sigma_kde
-  // https://stats.stackexchange.com/questions/35012/mahalanobis-distance-and-percentage-of-the-distribution-represented
-  const double sigma_kde_squared_x2 = 2 * sigma_kde * sigma_kde;
-  mav_tunnel_nav::Particles data_msg;
-  data_msg.source = robot_name;
-  std::vector<double> cumul_weights(n_particles);
-  std::vector<double> cumul_weights_comp(n_particles);
-
-  // For synchronization
-  mav_tunnel_nav::SrcDst sync_msg;
-  sync_msg.source = robot_name;
-
   initial_update = ros::Time::now();
+  ros::Time last_cooploc = initial_update;
+  ros::Time last_syncinit = initial_update;
   last_update = initial_update;
+
   // the main loop
   while (ros::ok())
   {
@@ -732,10 +709,7 @@ void pf_main()
       else
         dest = last_data_src;
 
-      prepareDataMsg(
-        data_msg, dest, cumul_weights, cumul_weights_comp,
-        conserv_omega, sigma_kde_squared_x2, segments.back(), Nref, gen_cooploc,
-        enable_conservative);
+      prepareDataMsg(data_msg, dest, segments.back());
 
       // send data to the other
       data_pub.publish(data_msg);
@@ -1174,14 +1148,8 @@ void pf_main()
           //   exit(-100);
           // }
           // auto enable: call the ROS service to fly.
-          bool auto_enable_by_slam;
-          if (!pnh.getParam("auto_enable_by_slam", auto_enable_by_slam))
-            auto_enable_by_slam = false;
           if (auto_enable_by_slam)
           {
-            ros::ServiceClient srv_client
-              = nh.serviceClient<std_srvs::SetBool>(
-                  "/" + robot_name + "/enable");
             std_srvs::SetBool srv;
             srv.request.data = true;
             srv_client.call(srv);
@@ -1536,9 +1504,9 @@ void pf_main()
               if (enable_clr4seg)
               {
                 double val = 0.8 * isgm;
-                cosR = std::cos(PI*val);
-                cosG = std::cos(PI*(2.0/3.0+val));
-                cosB = std::cos(PI*(4.0/3.0+val));
+                cosR = std::cos(M_PI*val);
+                cosG = std::cos(M_PI*(2.0/3.0+val));
+                cosB = std::cos(M_PI*(4.0/3.0+val));
               }
 
               if (m->isNodeOccupied(*it))
@@ -1564,9 +1532,9 @@ void pf_main()
                 else
                 {
                   double brightness = (isgm + 1.0)/(nseg + 1.0);
-                  cosR = std::cos(PI*z/10.0)*0.8+0.2;
-                  cosG = std::cos(PI*(2.0/3.0+z/10.0))*0.8+0.2;
-                  cosB = std::cos(PI*(4.0/3.0+z/10.0))*0.8+0.2;
+                  cosR = std::cos(M_PI*z/10.0)*0.8+0.2;
+                  cosG = std::cos(M_PI*(2.0/3.0+z/10.0))*0.8+0.2;
+                  cosB = std::cos(M_PI*(4.0/3.0+z/10.0))*0.8+0.2;
                   clr.r = (cosR > 0)? cosR * brightness: 0;
                   clr.g = (cosG > 0)? cosG * brightness: 0;
                   clr.b = (cosB > 0)? cosB * brightness: 0;
@@ -1656,72 +1624,9 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
-  // get this robot's name
-  std::string robot_name;
-  if (!pnh.getParam("robot_name", robot_name))
-    ROS_ERROR_STREAM("no ros parameter: robot_name");
+  std::shared_ptr<RBPF> rbpf = std::make_shared<RBPF>(nh, pnh);
 
-  // subscriber for beacon
-  std::string beacon_down_topic;
-  ros::Subscriber beacon_sub;
-  if (nh.getParam("/beacon_down_topic", beacon_down_topic)) // global param
-  {
-    beacon_sub = nh.subscribe(beacon_down_topic, 1000, beaconCallback);
-  }
-  else
-  {
-    ROS_ERROR_STREAM("no parameter: beacon_down_topic");
-  }
-  // subscriber for synchronization of exchange
-  std::string sync_down_topic;
-  ros::Subscriber sync_sub;
-  if (nh.getParam("/sync_down_topic", sync_down_topic)) // global param
-  {
-    sync_sub = nh.subscribe(sync_down_topic, 1000, syncCallback);
-  }
-  else
-  {
-    ROS_ERROR_STREAM("no parameter: sync_down_topic");
-  }
-  // subscriber for data exchange
-  std::string data_down_topic;
-  ros::Subscriber data_sub;
-  if (nh.getParam("/data_down_topic", data_down_topic)) // global param
-  {
-    data_sub = nh.subscribe(data_down_topic, 1000, dataCallback);
-  }
-  else
-  {
-    ROS_ERROR_STREAM("no parameter: data_down_topic");
-  }
-
-  pnh.getParam("odom_topic", odom_topic);
-  pnh.getParam("pc_topic", pc_topic);
-  ros::Subscriber odom_sub = nh.subscribe(odom_topic, 1000, odomCallback);
-  ros::Subscriber pc_sub = nh.subscribe(pc_topic, 1000, pcCallback);
-
-  pnh.getParam("range_max", range_max);
-  pnh.getParam("range_min", range_min);
-  std::string str_buff;
-  pnh.param<std::string>("range_list", str_buff, "");
-  std::stringstream ss(str_buff);
-  std::string token;
-  double x,y,z,P,R,Y;
-  std::vector<ros::Subscriber> range_subs;
-  while (ss >> token >> x >> y >> z >> R >> P >> Y)
-  {
-    range_subs.push_back(
-      nh.subscribe(token, 1000, rangeCallback)
-    );
-    range_topics.push_back(token);
-    tf::Vector3 pos(x, y, z);
-    tf::Quaternion rot;
-    rot.setRPY(R * PI / 180.0, P * PI / 180.0, Y * PI / 180.0);
-    tf::Pose range_pose(rot, pos);
-    range_poses[token] = range_pose;
-  }
-
-  std::thread t(pf_main);
+  std::thread t(&RBPF::pf_main, rbpf.get());
 
   ros::spin();
 
