@@ -569,6 +569,743 @@ inline void RBPF::prepareDataMsg(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void RBPF::updateCurrPoseOfOdom()
+{
+  std::lock_guard<std::mutex> lk(odom_mutex);
+  tf::Vector3 pos(
+    odom_buff.pose.pose.position.x,
+    odom_buff.pose.pose.position.y,
+    odom_buff.pose.pose.position.z);
+  tf::Quaternion dir(
+    odom_buff.pose.pose.orientation.x,
+    odom_buff.pose.pose.orientation.y,
+    odom_buff.pose.pose.orientation.z,
+    odom_buff.pose.pose.orientation.w);
+  pose_curr.setOrigin(pos);
+  pose_curr.setRotation(dir);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::getRanges(std::map<std::string, double>& range_data)
+{
+  std::lock_guard<std::mutex> lk(range_mutex);
+  for (auto item: range_buff)
+  {
+    range_data[item.first] = item.second;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::getPC(octomap::Pointcloud& octocloud)
+{
+  // Depthcam data
+  std::lock_guard<std::mutex> lk(pc_mutex);
+  if (pc_buff.height * pc_buff.width > 1)
+  {
+    pcl::fromROSMsg(pc_buff, *depth_cam_pc);
+
+    pcl::VoxelGrid<PointT> downSizeFilter;
+    downSizeFilter.setLeafSize(resol, resol, resol);
+    downSizeFilter.setInputCloud(depth_cam_pc);
+    downSizeFilter.filter(*depth_cam_pc);
+    for (unsigned int i = 0; i < depth_cam_pc->points.size(); ++i)
+    {
+      // if (pcl_isfinite(depth_cam_pc->points[i].x) &&
+      //     pcl_isfinite(depth_cam_pc->points[i].y) &&
+      //     pcl_isfinite(depth_cam_pc->points[i].z))
+      // {
+        tf::Vector3 point = camera_pose * tf::Vector3(
+                                    depth_cam_pc->points[i].x,
+                                    depth_cam_pc->points[i].y,
+                                    depth_cam_pc->points[i].z);
+        octocloud.push_back(
+          octomap::point3d(point.x(), point.y(), point.z()));
+      // }
+    }
+    // std::vector<int> indices;
+    // pcl::removeNaNFromPointCloud(*depth_cam_pc, *depth_cam_pc, indices);
+    //
+    // for (unsigned int i = 0; i < indices.size(); ++i)
+    // {
+    //   // if (pcl_isfinite(depth_cam_pc->points[i].x) &&
+    //   //     pcl_isfinite(depth_cam_pc->points[i].y) &&
+    //   //     pcl_isfinite(depth_cam_pc->points[i].z))
+    //   // {
+    //     tf::Vector3 point = camera_pose * tf::Vector3(
+    //                                 depth_cam_pc->points[indices[i]].x,
+    //                                 depth_cam_pc->points[indices[i]].y,
+    //                                 depth_cam_pc->points[indices[i]].z);
+    //     octocloud.push_back(
+    //       octomap::point3d(point.x(), point.y(), point.z()));
+    //   // }
+    // }
+    pc_buff.height = 0;
+    pc_buff.width = 0;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::indivSlamPredict(const tf::Transform& diff_pose)
+{
+  const tf::Vector3 delta_pos = diff_pose.getOrigin();
+  const tf::Quaternion delta_rot = diff_pose.getRotation();
+  for (auto p: segments.back())
+  {
+    // move the particle
+    // call predict with the relative pose.
+    p->predict(delta_pos, delta_rot, gen_indivloc);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::indivSlamEvaluate(
+  const ros::Time& now,
+  const std::map<std::string, double>& range_data,
+  const octomap::Pointcloud& octocloud)
+{
+  for (int i = 0; i < n_particles; ++i)
+  {
+    cumul_weights_slam[i] = 0;
+  }
+  int index_best = 0;
+  double max_weight = 0;
+  double weight_sum = 0;
+  for (int i = 0; i < n_particles; ++i)
+  {
+    // if the current time is not far away from the initial time
+    if (nseg != 0 && now <= init_segment_time + init_seg_phase)
+    {
+      // call evaluate with the flag which is set to true.
+      cumul_weights_slam[i]
+        = segments.back()[i]->evaluate(
+            range_data, range_min, range_max, range_topics, range_poses,
+            octocloud, true);
+    }
+    else // otherwise, just call evaluate in the default way.
+    {
+      // Calculate a probability ranging from 0 to 1.
+      cumul_weights_slam[i]
+        = segments.back()[i]->evaluate(
+            range_data, range_min, range_max, range_topics, range_poses,
+            octocloud);
+    }
+
+    if (i == 0 || max_weight < cumul_weights_slam[i])
+    {
+      max_weight = cumul_weights_slam[i];
+      index_best = i;
+    }
+    if (i > 0)
+      cumul_weights_slam[i] += cumul_weights_slam[i-1];
+  }
+  weight_sum = cumul_weights_slam[n_particles-1];
+  if (weight_sum != 0)
+    max_weight /= weight_sum;
+  segments_index_best.back() = index_best;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::indivSlamResample()
+{
+  // resample PF (and update map)
+  std::vector<int> indx_list(n_particles);
+  for (int i = 0; i < n_particles; ++i)
+  {
+    indx_list[i] = drawIndex(cumul_weights_slam, gen_indivloc);
+  }
+
+  std::vector< std::shared_ptr<Particle> > new_generation;
+  std::vector<int> indx_unused(n_particles, -1);
+  for (int i = 0; i < n_particles; ++i)
+  {
+    const int prev_indx = indx_unused[indx_list[i]];
+    if (prev_indx == -1)
+    {
+      new_generation.push_back(
+        std::move(segments.back()[indx_list[i]]));
+      indx_unused[indx_list[i]] = i;
+    }
+    else
+    {
+      new_generation.push_back(
+        std::make_shared<Particle>(*new_generation[prev_indx]));
+    }
+  }
+  // Copy the children to the parents.
+  segments.back().swap(new_generation);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool RBPF::updateMap(const octomap::Pointcloud& octocloud)
+{
+  bool success = false;
+  if (octocloud.size() > 0)
+  {
+    for (auto p: segments.back())
+    {
+      p->update_map(octocloud);
+    }
+    success = true;
+  }
+  return success;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::compressMap()
+{
+  // compress maps
+  for (auto p: segments.back())
+  {
+    p->compress_map();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string RBPF::checkSyncReq(const ros::Time& now)
+{
+  std::string syncreq_src = "";
+
+  std::lock_guard<std::mutex> lk(sync_mutex);
+  while(sync_msgs_buffer.size() > 0)
+  {
+    mav_tunnel_nav::SrcDst msg = sync_msgs_buffer.front();
+    sync_msgs_buffer.pop_front();
+    if (now - msg.stamp < syncinit_timeout * 0.7)
+    {
+      syncreq_src = msg.source;
+      break;
+    }
+  }
+  return syncreq_src;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool RBPF::initiateSync(const ros::Time& now)
+{
+  bool initiated = false;
+
+  // decide if it should initiate interactions with a neighbor.
+
+  // list up candidates to sync.
+  std::vector<std::string> candidates;
+  for (auto p: beacon_lasttime)
+  {
+    // NOTE: add an candiate if the packet is "fresh" enough and it is
+    //       within 90% of comm range.
+    if (now <= p.second + beacon_lifetime
+      && beacon_buffer[p.first].estimated_distance < 0.9 * comm_range)
+    {
+      candidates.push_back(p.first);
+    }
+  }
+
+  if (candidates.size() > 0)
+  {
+    // randomly select a neighbor to interact.
+    std::uniform_int_distribution<int> dist(0, candidates.size() - 1);
+
+    // send a sync packet.
+    sync_msg.stamp = ros::Time::now();
+    sync_msg.destination = candidates[dist(gen_cooploc_select)];
+    sync_pub.publish(sync_msg);
+
+    initiated = true;
+  }
+  return initiated;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::exchangeData()
+{
+  // Odometry data
+  tf::Transform diff_pose;
+  updateCurrPoseOfOdom();
+  diff_pose = pose_prev.inverse() * pose_curr;
+  pose_prev = pose_curr;
+
+  // predict PF (use odometory)
+  const tf::Vector3 delta_pos = diff_pose.getOrigin();
+  const tf::Quaternion delta_rot = diff_pose.getRotation();
+  for (auto p: segments.back())
+  {
+    // move the particle
+    // call predict with the relative pose.
+    p->predict(delta_pos, delta_rot, gen_indivloc);
+  }
+
+  std::string dest;
+  if (state == SyncReact)
+    dest = last_sync_src;
+  else
+    dest = last_data_src;
+
+  prepareDataMsg(data_msg, dest, segments.back());
+
+  // send data to the other
+  data_pub.publish(data_msg);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::cooplocUpdate()
+{
+  mav_tunnel_nav::Particles msg;
+  {
+    std::lock_guard<std::mutex> lk(data_mutex);
+    msg = data_buffer[last_data_src];
+    //data_lasttime[last_data_src]
+  }
+  // === calculate weights for resampling === //
+  // so what it has at this point?
+  // cumul_weights
+  // msg.estimated_distance
+  // msg.estimated_orientation
+  // msg.cumul_weights
+  // msg.particles
+
+  // convert geometry_msgs::Point to tf::Vector3.
+  tf::Vector3 msg_estimated_orientation(
+    msg.estimated_orientation.x,
+    msg.estimated_orientation.y,
+    msg.estimated_orientation.z);
+
+  // cumulative weights for resampling.
+  std::vector<double> cumul_weights_update(n_particles);
+
+  double weight_max = 0;
+  int index_best = -1;
+
+  // for all particles
+  for (int ip = 0; ip < n_particles; ++ip)
+  {
+    // initialize the wegith
+    cumul_weights_update[ip] = 0;
+    // get the particle's pose
+    tf::Pose robot_pose = segments.back()[ip]->getPose();
+    // for Nref
+    for (unsigned int i = 0; i < msg.particles.size(); ++i)
+    {
+      // get a particle of the other robot by msg.cumul_weights
+      auto neighbor_pose_msg = msg.particles[i];
+      tf::Pose neighbor_pose(
+        tf::Quaternion(
+          neighbor_pose_msg.orientation.x,
+          neighbor_pose_msg.orientation.y,
+          neighbor_pose_msg.orientation.z,
+          neighbor_pose_msg.orientation.w),
+        tf::Vector3(
+          neighbor_pose_msg.position.x,
+          neighbor_pose_msg.position.y,
+          neighbor_pose_msg.position.z));
+      // simulate a measurement based on the sampled poses.
+      tf::Vector3 sampled_loc
+        = (neighbor_pose.inverse() * robot_pose).getOrigin();
+      double sampled_range = sampled_loc.length();
+      tf::Vector3 sampled_orientation = sampled_loc / sampled_range;
+
+      // difference from the actual sensory data
+      double diff_range = sampled_range - msg.estimated_distance;
+      double diff_rad
+        = std::acos(sampled_orientation.dot(msg_estimated_orientation));
+
+      // calculate weight and add it
+      if (msg.particles.size() == 1) // in case of global
+      {
+        cumul_weights_update[ip]
+          += std::exp(
+              -(diff_range*diff_range)
+                /sigmaLocR/sigmaLocR/gl_eval_cons
+              -(diff_rad*diff_rad)
+                /sigmaLocT/sigmaLocT/gl_eval_cons);
+      }
+      else
+      {
+        cumul_weights_update[ip]
+          += std::exp(
+              -(diff_range*diff_range)
+                /sigmaLocR/sigmaLocR/ml_eval_cons
+              -(diff_rad*diff_rad)
+                /sigmaLocT/sigmaLocT/ml_eval_cons);
+      }
+    }
+
+    //   multiply with the original weights
+    cumul_weights_update[ip]
+      *= ((ip > 0)? cumul_weights[ip] - cumul_weights[ip-1]:
+                    cumul_weights[0]);
+
+    if (index_best == -1 || cumul_weights_update[ip] > weight_max)
+    {
+      index_best = ip;
+      weight_max = cumul_weights_update[ip];
+    }
+
+    // make it cumuluative
+    if (ip > 0)
+      cumul_weights_update[ip] += cumul_weights_update[ip - 1];
+  }
+
+  // resampling
+  std::vector<int> indx_list(n_particles);
+  for (int ip = 0; ip < n_particles; ++ip)
+  {
+    indx_list[ip] = drawIndex(cumul_weights_update, gen_cooploc);
+  }
+
+  std::vector< std::shared_ptr<Particle> > new_generation;
+  std::vector<int> indx_unused(n_particles, -1);
+  for (int ip = 0; ip < n_particles; ++ip)
+  {
+    const int prev_indx = indx_unused[indx_list[ip]];
+    if (prev_indx == -1)
+    {
+      new_generation.push_back(std::move(segments.back()[indx_list[ip]]));
+      indx_unused[indx_list[ip]] = ip;
+    }
+    else
+    {
+      new_generation.push_back(
+        std::make_shared<Particle>(*new_generation[prev_indx]));
+    }
+  }
+  segments.back().swap(new_generation);
+  segments_index_best.back() = index_best;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::doSegment(const ros::Time& now)
+{
+  // set the initial pose of the segment to that of the best particle.
+  init_segment_pose = segments.back()[segments_index_best.back()]->getPose();
+  // set the initial time of the segment to the current one.
+  init_segment_time = now;
+
+  // create a new segment
+  std::vector< std::shared_ptr<Particle> > new_seg(
+    n_particles, nullptr);
+  segments_index_best.push_back(segments_index_best.back());
+  // copy each resampled particle.
+  for (int i = 0; i < n_particles; ++i)
+  {
+    // if individual localization is disabled, just pass i so the
+    // resampling is disabled.
+    int indx;
+    if (enable_indivLoc)
+      indx = drawIndex(cumul_weights_slam, gen_indivloc);
+    else
+      indx = i;
+
+    new_seg[i]
+      = std::make_shared<Particle>(
+          segments.back()[indx],
+          resol, probHit, probMiss, threshMin, threshMax);
+  }
+  // add the segment to the list.
+  segments.push_back(new_seg);
+  // increment nseg
+  ++nseg;
+
+  // set counts to the interval to force to build a map anyway
+  counts_map_update = mapping_interval;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool RBPF::isTimeToSegment()
+{
+  bool do_segment = false;
+  tf::Pose best_pose;
+  if (enable_segmentation)
+  {
+    best_pose = segments.back()[segments_index_best.back()]->getPose();
+    tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
+    if (pose_in_seg.getOrigin().length() > next_seg_thresh)
+      do_segment = true;
+  }
+  return do_segment;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+bool RBPF::checkEntry(const ros::Time& now)
+{
+  bool entry_detected = false;
+  if (segments.size() > 1)
+  {
+    // get the location of the previous robot
+    if (beacon_buffer.count(next_robot_name)
+      && now <= beacon_lasttime[next_robot_name] + beacon_lifetime)
+    {
+      auto beacon_info = beacon_buffer[next_robot_name];
+      tf::Vector3 next_robot_loc_wrt_here(
+        beacon_info.estimated_orientation.x
+          * beacon_info.estimated_distance,
+        beacon_info.estimated_orientation.y
+          * beacon_info.estimated_distance,
+        beacon_info.estimated_orientation.z
+          * beacon_info.estimated_distance);
+      tf::Vector3 next_robot_loc
+        = segments.back()[segments_index_best.back()]->getPose()
+          * next_robot_loc_wrt_here;
+      double x = next_robot_loc.getX();
+      double y = next_robot_loc.getY();
+      double z = next_robot_loc.getZ();
+
+      // get the range of the oldest submap
+      auto map = segments.front()[segments_index_best.front()]->getMap();
+      double min_x, min_y, min_z;
+      map->getMetricMin(min_x, min_y, min_z);
+      double max_x, max_y, max_z;
+      map->getMetricMax(max_x, max_y, max_z);
+
+      // determine if the location is within the range
+      if (min_x <= x && x <= max_x
+       && min_y <= y && y <= max_y
+       && min_z <= z && z <= max_z)
+      {
+        entry_detected = true;
+      }
+    }
+  }
+  return entry_detected;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::publishTF(const ros::Time& now)
+{
+  tf::StampedTransform tf_stamped(
+    segments.back()[segments_index_best.back()]->getPose(), now,
+    world_frame_id, robot_frame_id);
+  tf_broadcaster.sendTransform(tf_stamped);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::publishPoses(const ros::Time& now)
+{
+  geometry_msgs::PoseArray poseArray;
+  poseArray.header.frame_id = world_frame_id;
+  poseArray.header.stamp = now;
+  poseArray.poses.resize(n_particles);
+  for (int i = 0; i < n_particles; ++i)
+  {
+    tf::Pose pose = segments.back()[i]->getPose();
+    tf::Vector3 position = pose.getOrigin();
+    tf::Quaternion orientation = pose.getRotation();
+    poseArray.poses[i].position.x = position.x();
+    poseArray.poses[i].position.y = position.y();
+    poseArray.poses[i].position.z = position.z();
+    poseArray.poses[i].orientation.x = orientation.x();
+    poseArray.poses[i].orientation.y = orientation.y();
+    poseArray.poses[i].orientation.z = orientation.z();
+    poseArray.poses[i].orientation.w = orientation.w();
+  }
+  vis_poses_pub.publish(poseArray);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::publishCurrentSubMap(const ros::Time& now)
+{
+  mav_tunnel_nav::OctomapWithSegId map;
+  map.header.frame_id = world_frame_id;
+  map.header.stamp = now;
+  std::stringstream ss;
+  ss << robot_name << "-" << std::setw(3) << std::setfill('0') << nseg;
+  map.segid = ss.str();
+  if (octomap_msgs::fullMapToMsg(
+      *segments.back()[segments_index_best.back()]->getMap(), map.octomap))
+    map_pub.publish(map);
+  else
+    ROS_ERROR("Error serializing OctoMap");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::saveTraj()
+{
+  std::fstream
+    fin(traj_filename, std::fstream::out | std::fstream::app);
+  if (!fin)
+  {
+    ROS_ERROR_STREAM("FILE NOT OPEN: " << traj_filename);
+  }
+  else
+  {
+    // save ground truth x, y, z
+    tf::StampedTransform ground_truth_tf;
+    try
+    {
+      tf_listener->waitForTransform(
+        world_frame_id, robot_name + "_groundtruth",
+        ros::Time(0), ros::Duration(1));
+      tf_listener->lookupTransform(
+        world_frame_id, robot_name + "_groundtruth",
+        ros::Time(0), ground_truth_tf);
+      tf::Vector3 loc = ground_truth_tf.getOrigin();
+      fin << loc.x() << " "
+          << loc.y() << " "
+          << loc.z() << " ";
+    }
+    catch (tf::TransformException& ex)
+    {
+      ROS_ERROR_STREAM(
+        "Transfrom from " << robot_name + "_groundtruth" <<
+        " to " << world_frame_id << " is not available yet.");
+      fin << "0 0 0 ";
+    }
+
+    double x, y, z;
+    x = 0;
+    y = 0;
+    z = 0;
+    for (int i = 0; i < n_particles; ++i)
+    {
+      tf::Vector3 buff = segments.back()[i]->getPose().getOrigin();
+      x += buff.x()/n_particles;
+      y += buff.y()/n_particles;
+      z += buff.z()/n_particles;
+    }
+    tf::Vector3 average_loc(x, y, z);
+    // save estimated loc x, y, z
+    fin << average_loc.x() << " "
+        << average_loc.y() << " "
+        << average_loc.z() << std::endl;
+    fin.close();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::publishVisMap(const ros::Time& now)
+{
+  const unsigned int index_offset = nseg - segments.size() + 1;
+  for (unsigned int isgm = index_offset; isgm <= nseg; ++isgm)
+  {
+    const unsigned int index = isgm - index_offset;
+    const octomap::OcTree* m
+      = segments[index][segments_index_best[index]]->getMap();
+    visualization_msgs::MarkerArray occupiedNodesVis;
+    occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
+    for (
+      octomap::OcTree::iterator it = m->begin(m->getTreeDepth()),
+      end = m->end(); it != end; ++it)
+    {
+      if (m->isNodeAtThreshold(*it))
+      {
+        double x = it.getX();
+        double z = it.getZ();
+        double y = it.getY();
+
+        unsigned idx = it.getDepth();
+        geometry_msgs::Point cubeCenter;
+        cubeCenter.x = x;
+        cubeCenter.y = y;
+        cubeCenter.z = z;
+
+        std_msgs::ColorRGBA clr;
+        clr.a = 1.0;
+        double cosR;
+        double cosG;
+        double cosB;
+
+        if (enable_clr4seg)
+        {
+          double val = 0.8 * isgm;
+          cosR = std::cos(M_PI*val);
+          cosG = std::cos(M_PI*(2.0/3.0+val));
+          cosB = std::cos(M_PI*(4.0/3.0+val));
+        }
+
+        if (m->isNodeOccupied(*it))
+        {
+          occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
+
+          if (enable_clr4seg)
+          {
+            double brightness = -z/20.0;
+            while (brightness < 0)
+              brightness += 1.0;
+            while (brightness > 1.0)
+              brightness -= 1.0;
+            if (brightness >= 0.5)
+              brightness = (brightness - 0.5)*2.0;
+            else
+              brightness = -(brightness - 0.5)*2.0;
+            brightness = brightness * 0.8 + 0.2;
+            clr.r = (cosR > 0)? cosR * brightness: 0;
+            clr.g = (cosG > 0)? cosG * brightness: 0;
+            clr.b = (cosB > 0)? cosB * brightness: 0;
+          }
+          else
+          {
+            double brightness = (isgm + 1.0)/(nseg + 1.0);
+            cosR = std::cos(M_PI*z/10.0)*0.8+0.2;
+            cosG = std::cos(M_PI*(2.0/3.0+z/10.0))*0.8+0.2;
+            cosB = std::cos(M_PI*(4.0/3.0+z/10.0))*0.8+0.2;
+            clr.r = (cosR > 0)? cosR * brightness: 0;
+            clr.g = (cosG > 0)? cosG * brightness: 0;
+            clr.b = (cosB > 0)? cosB * brightness: 0;
+          }
+
+          occupiedNodesVis.markers[idx].colors.push_back(clr);
+        }
+      }
+    }
+    // std_msgs::ColorRGBA m_color_occupied;
+    // m_color_occupied.r = 1;
+    // m_color_occupied.g = 1;
+    // m_color_occupied.b = 0.3;
+    // m_color_occupied.a = 0.5;
+    for (unsigned i = 0; i < occupiedNodesVis.markers.size(); ++i)
+    {
+      double size = m->getNodeSize(i);
+
+      occupiedNodesVis.markers[i].header.frame_id = "world";
+      occupiedNodesVis.markers[i].header.stamp = now;
+      occupiedNodesVis.markers[i].ns
+        = robot_name + "-" + std::to_string(isgm);
+      occupiedNodesVis.markers[i].id = i;
+      occupiedNodesVis.markers[i].type
+        = visualization_msgs::Marker::CUBE_LIST;
+      occupiedNodesVis.markers[i].scale.x = size;
+      occupiedNodesVis.markers[i].scale.y = size;
+      occupiedNodesVis.markers[i].scale.z = size;
+
+      // without this line, rviz complains orientation is uninitialized.
+      occupiedNodesVis.markers[i].pose.orientation.w = 1;
+
+      //occupiedNodesVis.markers[i].color = m_color_occupied;
+
+      if (occupiedNodesVis.markers[i].points.size() > 0)
+        occupiedNodesVis.markers[i].action
+          = visualization_msgs::Marker::ADD;
+      else
+        occupiedNodesVis.markers[i].action
+          = visualization_msgs::Marker::DELETE;
+    }
+    marker_occupied_pub.publish(occupiedNodesVis);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::publishVisPoses(const ros::Time& now)
+{
+  // publish poses
+  geometry_msgs::PoseArray poseArray;
+  poseArray.header.frame_id = world_frame_id;
+  poseArray.header.stamp = now;
+  poseArray.poses.resize(n_particles);
+  for (int i = 0; i < n_particles; ++i)
+  {
+    tf::Pose pose = segments.back()[i]->getPose();
+    tf::Vector3 position = pose.getOrigin();
+    tf::Quaternion orientation = pose.getRotation();
+    poseArray.poses[i].position.x = position.x();
+    poseArray.poses[i].position.y = position.y();
+    poseArray.poses[i].position.z = position.z();
+    poseArray.poses[i].orientation.x = orientation.x();
+    poseArray.poses[i].orientation.y = orientation.y();
+    poseArray.poses[i].orientation.z = orientation.z();
+    poseArray.poses[i].orientation.w = orientation.w();
+  }
+  vis_poses_pub.publish(poseArray);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void RBPF::pf_main()
 {
   last_update = ros::Time::now();
@@ -638,20 +1375,8 @@ void RBPF::pf_main()
 
   // Initialization of prev pose
   // Odometry data
-  {
-    std::lock_guard<std::mutex> lk(odom_mutex);
-    tf::Vector3 pos(
-      odom_buff.pose.pose.position.x,
-      odom_buff.pose.pose.position.y,
-      odom_buff.pose.pose.position.z);
-    tf::Quaternion dir(
-      odom_buff.pose.pose.orientation.x,
-      odom_buff.pose.pose.orientation.y,
-      odom_buff.pose.pose.orientation.z,
-      odom_buff.pose.pose.orientation.w);
-    pose_prev.setOrigin(pos);
-    pose_prev.setRotation(dir);
-  }
+  updateCurrPoseOfOdom();
+  pose_prev = pose_curr;
 
   initial_update = ros::Time::now();
   ros::Time last_cooploc = initial_update;
@@ -675,44 +1400,7 @@ void RBPF::pf_main()
     }
     else if (state == SyncReact || state == DataSending)
     {
-      // Odometry data
-      tf::Transform diff_pose;
-      {
-        std::lock_guard<std::mutex> lk(odom_mutex);
-        tf::Vector3 pos(
-          odom_buff.pose.pose.position.x,
-          odom_buff.pose.pose.position.y,
-          odom_buff.pose.pose.position.z);
-        tf::Quaternion dir(
-          odom_buff.pose.pose.orientation.x,
-          odom_buff.pose.pose.orientation.y,
-          odom_buff.pose.pose.orientation.z,
-          odom_buff.pose.pose.orientation.w);
-        pose_curr.setOrigin(pos);
-        pose_curr.setRotation(dir);
-        diff_pose = pose_prev.inverse() * pose_curr;
-        pose_prev = pose_curr;
-      }
-      // predict PF (use odometory)
-      const tf::Vector3 delta_pos = diff_pose.getOrigin();
-      const tf::Quaternion delta_rot = diff_pose.getRotation();
-      for (auto p: segments.back())
-      {
-        // move the particle
-        // call predict with the relative pose.
-        p->predict(delta_pos, delta_rot, gen_indivloc);
-      }
-
-      std::string dest;
-      if (state == SyncReact)
-        dest = last_sync_src;
-      else
-        dest = last_data_src;
-
-      prepareDataMsg(data_msg, dest, segments.back());
-
-      // send data to the other
-      data_pub.publish(data_msg);
+      exchangeData();
 
       if (state == SyncReact)
         state = DataWaiting;
@@ -736,156 +1424,13 @@ void RBPF::pf_main()
     }
     else if (state == Update)
     {
-      mav_tunnel_nav::Particles msg;
-      {
-        std::lock_guard<std::mutex> lk(data_mutex);
-        msg = data_buffer[last_data_src];
-        //data_lasttime[last_data_src]
-      }
-      // === calculate weights for resampling === //
-      // so what it has at this point?
-      // cumul_weights
-      // msg.estimated_distance
-      // msg.estimated_orientation
-      // msg.cumul_weights
-      // msg.particles
+      cooplocUpdate();
 
-      // convert geometry_msgs::Point to tf::Vector3.
-      tf::Vector3 msg_estimated_orientation(
-        msg.estimated_orientation.x,
-        msg.estimated_orientation.y,
-        msg.estimated_orientation.z);
+      // publish the location
+      publishTF(now);
 
-      // cumulative weights for resampling.
-      std::vector<double> cumul_weights_update(n_particles);
-
-      double weight_max = 0;
-      int index_best = -1;
-
-      // for all particles
-      for (int ip = 0; ip < n_particles; ++ip)
-      {
-        // initialize the wegith
-        cumul_weights_update[ip] = 0;
-        // get the particle's pose
-        tf::Pose robot_pose = segments.back()[ip]->getPose();
-        // for Nref
-        for (unsigned int i = 0; i < msg.particles.size(); ++i)
-        {
-          // get a particle of the other robot by msg.cumul_weights
-          auto neighbor_pose_msg = msg.particles[i];
-          tf::Pose neighbor_pose(
-            tf::Quaternion(
-              neighbor_pose_msg.orientation.x,
-              neighbor_pose_msg.orientation.y,
-              neighbor_pose_msg.orientation.z,
-              neighbor_pose_msg.orientation.w),
-            tf::Vector3(
-              neighbor_pose_msg.position.x,
-              neighbor_pose_msg.position.y,
-              neighbor_pose_msg.position.z));
-          // simulate a measurement based on the sampled poses.
-          tf::Vector3 sampled_loc
-            = (neighbor_pose.inverse() * robot_pose).getOrigin();
-          double sampled_range = sampled_loc.length();
-          tf::Vector3 sampled_orientation = sampled_loc / sampled_range;
-
-          // difference from the actual sensory data
-          double diff_range = sampled_range - msg.estimated_distance;
-          double diff_rad
-            = std::acos(sampled_orientation.dot(msg_estimated_orientation));
-
-          // calculate weight and add it
-          if (msg.particles.size() == 1) // in case of global
-          {
-            cumul_weights_update[ip]
-              += std::exp(
-                  -(diff_range*diff_range)
-                    /sigmaLocR/sigmaLocR/gl_eval_cons
-                  -(diff_rad*diff_rad)
-                    /sigmaLocT/sigmaLocT/gl_eval_cons);
-          }
-          else
-          {
-            cumul_weights_update[ip]
-              += std::exp(
-                  -(diff_range*diff_range)
-                    /sigmaLocR/sigmaLocR/ml_eval_cons
-                  -(diff_rad*diff_rad)
-                    /sigmaLocT/sigmaLocT/ml_eval_cons);
-          }
-        }
-
-        //   multiply with the original weights
-        cumul_weights_update[ip]
-          *= ((ip > 0)? cumul_weights[ip] - cumul_weights[ip-1]:
-                        cumul_weights[0]);
-
-        if (index_best == -1 || cumul_weights_update[ip] > weight_max)
-        {
-          index_best = ip;
-          weight_max = cumul_weights_update[ip];
-        }
-
-        // make it cumuluative
-        if (ip > 0)
-          cumul_weights_update[ip] += cumul_weights_update[ip - 1];
-      }
-
-      // resampling
-      std::vector<int> indx_list(n_particles);
-      for (int ip = 0; ip < n_particles; ++ip)
-      {
-        indx_list[ip] = drawIndex(cumul_weights_update, gen_cooploc);
-      }
-
-      std::vector< std::shared_ptr<Particle> > new_generation;
-      std::vector<int> indx_unused(n_particles, -1);
-      for (int ip = 0; ip < n_particles; ++ip)
-      {
-        const int prev_indx = indx_unused[indx_list[ip]];
-        if (prev_indx == -1)
-        {
-          new_generation.push_back(std::move(segments.back()[indx_list[ip]]));
-          indx_unused[indx_list[ip]] = ip;
-        }
-        else
-        {
-          new_generation.push_back(
-            std::make_shared<Particle>(*new_generation[prev_indx]));
-        }
-      }
-      segments.back().swap(new_generation);
-
-      {
-        // publish the location
-        tf::StampedTransform tf_stamped(
-          segments.back()[index_best]->getPose(), now,
-          world_frame_id, robot_frame_id);
-        tf_broadcaster.sendTransform(tf_stamped);
-      }
-
-      {
-        // publish poses
-        geometry_msgs::PoseArray poseArray;
-        poseArray.header.frame_id = world_frame_id;
-        poseArray.header.stamp = now;
-        poseArray.poses.resize(n_particles);
-        for (int i = 0; i < n_particles; ++i)
-        {
-          tf::Pose pose = segments.back()[i]->getPose();
-          tf::Vector3 position = pose.getOrigin();
-          tf::Quaternion orientation = pose.getRotation();
-          poseArray.poses[i].position.x = position.x();
-          poseArray.poses[i].position.y = position.y();
-          poseArray.poses[i].position.z = position.z();
-          poseArray.poses[i].orientation.x = orientation.x();
-          poseArray.poses[i].orientation.y = orientation.y();
-          poseArray.poses[i].orientation.z = orientation.z();
-          poseArray.poses[i].orientation.w = orientation.w();
-        }
-        vis_poses_pub.publish(poseArray);
-      }
+      // publish poses
+      publishPoses(now);
 
       if (!enable_indivLoc)
       {
@@ -893,83 +1438,25 @@ void RBPF::pf_main()
         // perform mapping and segmentation here.
         // if far away from the init position of the segment
         octomap::Pointcloud octocloud;
-        {
-          // Depthcam data
-          std::lock_guard<std::mutex> lk(pc_mutex);
-          if (pc_buff.height * pc_buff.width > 1)
-          {
-            pcl::fromROSMsg(pc_buff, *depth_cam_pc);
+        getPC(octocloud);
 
-            pcl::VoxelGrid<PointT> downSizeFilter;
-            downSizeFilter.setLeafSize(resol, resol, resol);
-            downSizeFilter.setInputCloud(depth_cam_pc);
-            downSizeFilter.filter(*depth_cam_pc);
-            for (unsigned int i = 0; i < depth_cam_pc->points.size(); ++i)
-            {
-              tf::Vector3 point = camera_pose * tf::Vector3(
-                                          depth_cam_pc->points[i].x,
-                                          depth_cam_pc->points[i].y,
-                                          depth_cam_pc->points[i].z);
-              octocloud.push_back(
-                octomap::point3d(point.x(), point.y(), point.z()));
-            }
-            pc_buff.height = 0;
-            pc_buff.width = 0;
-          }
-        }
-        bool do_segment = false;
-        tf::Pose best_pose;
-        if (enable_segmentation)
+        if (isTimeToSegment())
         {
-          best_pose = segments.back()[index_best]->getPose();
-          tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
-          if (pose_in_seg.getOrigin().length() > next_seg_thresh)
-            do_segment = true;
-        }
-
-        if (do_segment)
-        {
-          // create a new segment
-          std::vector< std::shared_ptr<Particle> > new_seg(
-            n_particles, nullptr);
-          segments_index_best.push_back(index_best);
-          // copy each resampled particle.
-          for (int i = 0; i < n_particles; ++i)
-          {
-            int indx = i;
-
-            new_seg[i]
-              = std::make_shared<Particle>(
-                  segments.back()[indx],
-                  resol, probHit, probMiss, threshMin, threshMax);
-          }
-          // build a map anyway
-          if (octocloud.size() > 0)
-          {
-            for (int i = 0; i < n_particles; ++i)
-              new_seg[i]->update_map(octocloud);
-          }
-          counts_map_update = 0;
-          // add the segment to the list.
-          segments.push_back(new_seg);
-          // increment nseg
-          ++nseg;
-          // set the initial pose of the segment to that of the best particle.
-          init_segment_pose = best_pose;
-          // set the initial time of the segment to the current one.
-          init_segment_time = now;
-        }
-        else if (counts_map_update >= mapping_interval && octocloud.size() > 0)
-        {
-          for (auto p: segments.back())
-          {
-            p->update_map(octocloud);
-          }
-          counts_map_update = 0;
+          doSegment(now);
+          if (updateMap(octocloud))
+            counts_map_update = 0;
         }
         else
         {
-          ++counts_map_update;
+          if (counts_map_update >= mapping_interval)
+          {
+            if (updateMap(octocloud))
+              counts_map_update = 0;
+          }
+          else
+          {
+            ++counts_map_update;
+          }
         }
       }
 
@@ -978,91 +1465,29 @@ void RBPF::pf_main()
     }
     else if (state == LocalSLAM && now <= last_update + update_phase) // in the default state
     {
-      // TODO: check if the previous robot is in the oldest map
-      if (segments.size() > 1)
+      // NOTE: check if the previous robot is in the oldest map
+      if (checkEntry(now))
       {
-        // get the location of the previous robot
-        if (beacon_buffer.count(next_robot_name)
-          && now <= beacon_lasttime[next_robot_name] + beacon_lifetime)
-        {
-          auto beacon_info = beacon_buffer[next_robot_name];
-          tf::Vector3 next_robot_loc_wrt_here(
-            beacon_info.estimated_orientation.x
-              * beacon_info.estimated_distance,
-            beacon_info.estimated_orientation.y
-              * beacon_info.estimated_distance,
-            beacon_info.estimated_orientation.z
-              * beacon_info.estimated_distance);
-          tf::Vector3 next_robot_loc
-            = segments.back()[segments_index_best.back()]->getPose()
-              * next_robot_loc_wrt_here;
-          double x = next_robot_loc.getX();
-          double y = next_robot_loc.getY();
-          double z = next_robot_loc.getZ();
-
-          // get the range of the oldest submap
-          auto map = segments.front()[segments_index_best.front()]->getMap();
-          double min_x, min_y, min_z;
-          map->getMetricMin(min_x, min_y, min_z);
-          double max_x, max_y, max_z;
-          map->getMetricMax(max_x, max_y, max_z);
-
-          // determine if the location is within the range
-          if (min_x <= x && x <= max_x
-           && min_y <= y && y <= max_y
-           && min_z <= z && z <= max_z)
-          {
-            // NOTE: initiate map_transfer
-            ROS_ERROR("HIT!!!!!!!!!!");
-          }
-
-        }
+        // TODO: initiate map_transfer
+        ROS_ERROR("HIT!!!!");
       }
 
       if (enable_cooploc)
       {
         if (now < last_cooploc + cooploc_phase)
         {
-          std::lock_guard<std::mutex> lk(sync_mutex);
-          while(state == LocalSLAM && sync_msgs_buffer.size() > 0)
+          std::string syncreq_src = checkSyncReq(now);
+          if (syncreq_src.size() > 0)
           {
-            mav_tunnel_nav::SrcDst msg = sync_msgs_buffer.front();
-            sync_msgs_buffer.pop_front();
-            if (now - msg.stamp < syncinit_timeout * 0.7)
-            {
-              last_sync_src = msg.source;
-              state = SyncReact;
-              last_syncinit = now;
-            }
+            last_sync_src = syncreq_src;
+            state = SyncReact;
+            last_syncinit = now;
           }
         }
         else
         {
-          // decide if it should initiate interactions with a neighbor.
-
-          // list up candidates to sync.
-          std::vector<std::string> candidates;
-          for (auto p: beacon_lasttime)
+          if (initiateSync(now))
           {
-            // NOTE: add an candiate if the packet is "fresh" enough and it is
-            //       within 90% of comm range.
-            if (now <= p.second + beacon_lifetime
-              && beacon_buffer[p.first].estimated_distance < 0.9 * comm_range)
-            {
-              candidates.push_back(p.first);
-            }
-          }
-
-          if (candidates.size() > 0)
-          {
-            // randomly select a neighbor to interact.
-            std::uniform_int_distribution<int> dist(0, candidates.size() - 1);
-
-            // send a sync packet.
-            sync_msg.stamp = ros::Time::now();
-            sync_msg.destination = candidates[dist(gen_cooploc_select)];
-            sync_pub.publish(sync_msg);
-
             last_syncinit = now;
             state = SyncInit;
           }
@@ -1075,78 +1500,15 @@ void RBPF::pf_main()
       last_update = now;
 
       std::map<std::string, double> range_data;
-      {
-        std::lock_guard<std::mutex> lk(range_mutex);
-        for (auto item: range_buff)
-        {
-          range_data[item.first] = item.second;
-        }
-      }
+      getRanges(range_data);
       octomap::Pointcloud octocloud;
-      {
-        // Depthcam data
-        std::lock_guard<std::mutex> lk(pc_mutex);
-        if (pc_buff.height * pc_buff.width > 1)
-        {
-          pcl::fromROSMsg(pc_buff, *depth_cam_pc);
+      getPC(octocloud);
 
-          pcl::VoxelGrid<PointT> downSizeFilter;
-          downSizeFilter.setLeafSize(resol, resol, resol);
-          downSizeFilter.setInputCloud(depth_cam_pc);
-          downSizeFilter.filter(*depth_cam_pc);
-          for (unsigned int i = 0; i < depth_cam_pc->points.size(); ++i)
-          {
-            // if (pcl_isfinite(depth_cam_pc->points[i].x) &&
-            //     pcl_isfinite(depth_cam_pc->points[i].y) &&
-            //     pcl_isfinite(depth_cam_pc->points[i].z))
-            // {
-              tf::Vector3 point = camera_pose * tf::Vector3(
-                                          depth_cam_pc->points[i].x,
-                                          depth_cam_pc->points[i].y,
-                                          depth_cam_pc->points[i].z);
-              octocloud.push_back(
-                octomap::point3d(point.x(), point.y(), point.z()));
-            // }
-          }
-          // std::vector<int> indices;
-          // pcl::removeNaNFromPointCloud(*depth_cam_pc, *depth_cam_pc, indices);
-          //
-          // for (unsigned int i = 0; i < indices.size(); ++i)
-          // {
-          //   // if (pcl_isfinite(depth_cam_pc->points[i].x) &&
-          //   //     pcl_isfinite(depth_cam_pc->points[i].y) &&
-          //   //     pcl_isfinite(depth_cam_pc->points[i].z))
-          //   // {
-          //     tf::Vector3 point = camera_pose * tf::Vector3(
-          //                                 depth_cam_pc->points[indices[i]].x,
-          //                                 depth_cam_pc->points[indices[i]].y,
-          //                                 depth_cam_pc->points[indices[i]].z);
-          //     octocloud.push_back(
-          //       octomap::point3d(point.x(), point.y(), point.z()));
-          //   // }
-          // }
-          pc_buff.height = 0;
-          pc_buff.width = 0;
-        }
-      }
-
-      int index_best = 0;
-      double max_weight = 0;
-      double weight_sum = 0;
       if (state == LocalSLAM ||
         now > initial_update + phase_pose_adjust + phase_only_mapping)
       {
         if (state == Init)
         {
-          // if (robot_name == "robot2")
-          // {
-          //   ROS_INFO("start local SLAM!!!!");
-          //   ROS_INFO_STREAM("now: " << now);
-          //   ROS_INFO_STREAM("initial_update: " << initial_update);
-          //   ROS_INFO_STREAM("the time limit: " << (initial_update + phase_pose_adjust + phase_only_mapping));
-          //   ROS_INFO_STREAM("phase_only_mapping: " << phase_only_mapping.toSec());
-          //   exit(-100);
-          // }
           // auto enable: call the ROS service to fly.
           if (auto_enable_by_slam)
           {
@@ -1165,179 +1527,30 @@ void RBPF::pf_main()
 
           // Odometry data
           tf::Transform diff_pose;
-          {
-            std::lock_guard<std::mutex> lk(odom_mutex);
-            tf::Vector3 pos(
-              odom_buff.pose.pose.position.x,
-              odom_buff.pose.pose.position.y,
-              odom_buff.pose.pose.position.z);
-            tf::Quaternion dir(
-              odom_buff.pose.pose.orientation.x,
-              odom_buff.pose.pose.orientation.y,
-              odom_buff.pose.pose.orientation.z,
-              odom_buff.pose.pose.orientation.w);
-            pose_curr.setOrigin(pos);
-            pose_curr.setRotation(dir);
-            diff_pose = pose_prev.inverse() * pose_curr;
-            pose_prev = pose_curr;
-          }
-
-          // initialize weights and errors
-          for (int i = 0; i < n_particles; ++i)
-          {
-            cumul_weights_slam[i] = 0;
-            errors[i] = 0;
-          }
+          updateCurrPoseOfOdom();
+          diff_pose = pose_prev.inverse() * pose_curr;
+          pose_prev = pose_curr;
 
           // predict PF (use odometory)
-          const tf::Vector3 delta_pos = diff_pose.getOrigin();
-          const tf::Quaternion delta_rot = diff_pose.getRotation();
-          for (auto p: segments.back())
-          {
-            // move the particle
-            // call predict with the relative pose.
-            p->predict(delta_pos, delta_rot, gen_indivloc);
-          }
+          indivSlamPredict(diff_pose);
 
           // weight PF (use depth cam)
-          for (int i = 0; i < n_particles; ++i)
-          {
-            // if the current time is not far away from the initial time
-            if (nseg != 0 && now <= init_segment_time + init_seg_phase)
-            {
-              // call evaluate with the flag which is set to true.
-              cumul_weights_slam[i]
-                = segments.back()[i]->evaluate(
-                    range_data, range_min, range_max, range_topics, range_poses,
-                    octocloud, true);
-            }
-            else // otherwise, just call evaluate in the default way.
-            {
-              // Calculate a probability ranging from 0 to 1.
-              cumul_weights_slam[i]
-                = segments.back()[i]->evaluate(
-                    range_data, range_min, range_max, range_topics, range_poses,
-                    octocloud);
-            }
-
-            if (i == 0 || max_weight < cumul_weights_slam[i])
-            {
-              max_weight = cumul_weights_slam[i];
-              index_best = i;
-            }
-            if (i > 0)
-              cumul_weights_slam[i] += cumul_weights_slam[i-1];
-          }
-          weight_sum = cumul_weights_slam[n_particles-1];
-          if (weight_sum != 0)
-            max_weight /= weight_sum;
-          segments_index_best.back() = index_best;
+          indivSlamEvaluate(now, range_data, octocloud);
 
           // if far away from the init position of the segment
-          bool do_segment = false;
-          tf::Pose best_pose;
-          if (enable_segmentation)
+          if (isTimeToSegment())
           {
-            best_pose = segments.back()[index_best]->getPose();
-            tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
-            if (pose_in_seg.getOrigin().length() > next_seg_thresh)
-              do_segment = true;
-          }
-
-          if (do_segment)
-          {
-            // create a new segment
-            std::vector< std::shared_ptr<Particle> > new_seg(
-              n_particles, nullptr);
-            segments_index_best.push_back(index_best);
-            // copy each resampled particle.
-            for (int i = 0; i < n_particles; ++i)
-            {
-              // if individual localization is disabled, just pass i so the
-              // resampling is disabled.
-              int indx;
-              if (enable_indivLoc)
-                indx = drawIndex(cumul_weights_slam, gen_indivloc);
-              else
-                indx = i;
-
-              new_seg[i]
-                = std::make_shared<Particle>(
-                    segments.back()[indx],
-                    resol, probHit, probMiss, threshMin, threshMax);
-            }
-            // build a map anyway
-            if (octocloud.size() > 0)
-            {
-              for (int i = 0; i < n_particles; ++i)
-                new_seg[i]->update_map(octocloud);
-            }
-            counts_map_update = 0;
-            // add the segment to the list.
-            segments.push_back(new_seg);
-            // increment nseg
-            ++nseg;
-            // set the initial pose of the segment to that of the best particle.
-            init_segment_pose = best_pose;
-            // set the initial time of the segment to the current one.
-            init_segment_time = now;
-          }
-          else if (weight_sum != 0)
-          {
-            // resample PF (and update map)
-            std::vector<int> indx_list(n_particles);
-            for (int i = 0; i < n_particles; ++i)
-            {
-              indx_list[i] = drawIndex(cumul_weights_slam, gen_indivloc);
-            }
-
-            std::vector< std::shared_ptr<Particle> > new_generation;
-            std::vector<int> indx_unused(n_particles, -1);
-            for (int i = 0; i < n_particles; ++i)
-            {
-              const int prev_indx = indx_unused[indx_list[i]];
-              if (prev_indx == -1)
-              {
-                new_generation.push_back(
-                  std::move(segments.back()[indx_list[i]]));
-                indx_unused[indx_list[i]] = i;
-
-                // update the map
-                if (counts_map_update >= mapping_interval
-                  && octocloud.size() > 0)
-                {
-                  new_generation[i]->update_map(octocloud);
-                }
-              }
-              else
-              {
-                new_generation.push_back(
-                  std::make_shared<Particle>(*new_generation[prev_indx]));
-              }
-            }
-            // Copy the children to the parents.
-            segments.back().swap(new_generation);
-
-            // update the map count
-            if (counts_map_update >= mapping_interval)
-            {
+            doSegment(now);
+            if (updateMap(octocloud))
               counts_map_update = 0;
-            }
-            else
-            {
-              ++counts_map_update;
-            }
           }
           else
           {
-            // update the map
-            if (counts_map_update >= mapping_interval && octocloud.size() > 0)
+            indivSlamResample();
+            if (counts_map_update >= mapping_interval)
             {
-              for (auto p: segments.back())
-              {
-                p->update_map(octocloud);
-              }
-              counts_map_update = 0;
+              if (updateMap(octocloud))
+                counts_map_update = 0;
             }
             else
             {
@@ -1346,22 +1559,16 @@ void RBPF::pf_main()
           }
         }
       }
-      else if (octocloud.size() > 0)
+      else
       {
         // mapping only at the beginning
-        for (auto p: segments.back())
-        {
-          p->update_map(octocloud);
-        }
+        if (updateMap(octocloud))
+          counts_map_update = 0;
       }
 
-      // compress maps
       if (counts_compress >= compress_interval)
       {
-        for (auto p: segments.back())
-        {
-          p->compress_map();
-        }
+        compressMap();
         counts_compress = 0;
       }
       else
@@ -1369,215 +1576,26 @@ void RBPF::pf_main()
         ++counts_compress;
       }
 
-      double x, y, z;
-      x = 0;
-      y = 0;
-      z = 0;
-      for (int i = 0; i < n_particles; ++i)
-      {
-        tf::Vector3 buff = segments.back()[i]->getPose().getOrigin();
-        x += buff.x()/n_particles;
-        y += buff.y()/n_particles;
-        z += buff.z()/n_particles;
-      }
-      tf::Vector3 average_loc(x, y, z);
-
       // publish data
       if (counts_publish >= publish_interval)
       {
-        mav_tunnel_nav::OctomapWithSegId map;
-        map.header.frame_id = world_frame_id;
-        map.header.stamp = now;
-        std::stringstream ss;
-        ss << robot_name << "-" << std::setw(3) << std::setfill('0') << nseg;
-        map.segid = ss.str();
-        if (octomap_msgs::fullMapToMsg(
-            *segments.back()[segments_index_best.back()]->getMap(), map.octomap))
-          map_pub.publish(map);
-        else
-          ROS_ERROR("Error serializing OctoMap");
-
-        tf::StampedTransform tf_stamped(
-          segments.back()[segments_index_best.back()]->getPose(), now,
-          world_frame_id, robot_frame_id);
-        tf_broadcaster.sendTransform(tf_stamped);
-        counts_publish = 0;
-
+        publishCurrentSubMap(now);
+        publishTF(now);
         if (save_traj)
         {
-          std::fstream
-            fin(traj_filename, std::fstream::out | std::fstream::app);
-          if (!fin)
-          {
-            ROS_ERROR_STREAM("FILE NOT OPEN: " << traj_filename);
-          }
-          else
-          {
-            // save ground truth x, y, z
-            tf::StampedTransform ground_truth_tf;
-            try
-            {
-              tf_listener->waitForTransform(
-                world_frame_id, robot_name + "_groundtruth",
-                ros::Time(0), ros::Duration(1));
-              tf_listener->lookupTransform(
-                world_frame_id, robot_name + "_groundtruth",
-                ros::Time(0), ground_truth_tf);
-              tf::Vector3 loc = ground_truth_tf.getOrigin();
-              fin << loc.x() << " "
-                  << loc.y() << " "
-                  << loc.z() << " ";
-            }
-            catch (tf::TransformException& ex)
-            {
-              ROS_ERROR_STREAM(
-                "Transfrom from " << robot_name + "_groundtruth" <<
-                " to " << world_frame_id << " is not available yet.");
-              fin << "0 0 0 ";
-            }
-            // save estimated loc x, y, z
-            fin << average_loc.x() << " "
-                << average_loc.y() << " "
-                << average_loc.z() << std::endl;
-            fin.close();
-          }
+          saveTraj();
         }
+        counts_publish = 0;
       }
       else
       {
         ++counts_publish;
       }
 
-      // if (counts_locdata >= locdata_interval)
-      // {
-      //   nav_msgs::Odometry locdata;
-      //   locdata.header.frame_id = world_frame_id;
-      //   locdata.header.stamp = now;
-      //   locdata.child_frame_id = robot_frame_id;
-      //   locdata.pose.pose.position.x = average_loc.x();
-      //   locdata.pose.pose.position.y = average_loc.y();
-      //   locdata.pose.pose.position.z = average_loc.z();
-      //   locdata.twist.twist.linear.x = 0;
-      //   locdata.twist.twist.linear.y = 0;
-      //   locdata.twist.twist.linear.z = 0;
-      //   odom_reset_pub.publish(locdata);
-      //   counts_locdata = 0;
-      // }
-      // else
-      // {
-      //   ++counts_locdata;
-      // }
-
       // visualization
       if (counts_visualize_map >= vismap_interval)
       {
-        const unsigned int index_offset = nseg - segments.size() + 1;
-        for (unsigned int isgm = index_offset; isgm <= nseg; ++isgm)
-        {
-          const unsigned int index = isgm - index_offset;
-          const octomap::OcTree* m
-            = segments[index][segments_index_best[index]]->getMap();
-          visualization_msgs::MarkerArray occupiedNodesVis;
-          occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
-          for (
-            octomap::OcTree::iterator it = m->begin(m->getTreeDepth()),
-            end = m->end(); it != end; ++it)
-          {
-            if (m->isNodeAtThreshold(*it))
-            {
-              double x = it.getX();
-              double z = it.getZ();
-              double y = it.getY();
-
-              unsigned idx = it.getDepth();
-              geometry_msgs::Point cubeCenter;
-              cubeCenter.x = x;
-              cubeCenter.y = y;
-              cubeCenter.z = z;
-
-              std_msgs::ColorRGBA clr;
-              clr.a = 1.0;
-              double cosR;
-              double cosG;
-              double cosB;
-
-              if (enable_clr4seg)
-              {
-                double val = 0.8 * isgm;
-                cosR = std::cos(M_PI*val);
-                cosG = std::cos(M_PI*(2.0/3.0+val));
-                cosB = std::cos(M_PI*(4.0/3.0+val));
-              }
-
-              if (m->isNodeOccupied(*it))
-              {
-                occupiedNodesVis.markers[idx].points.push_back(cubeCenter);
-
-                if (enable_clr4seg)
-                {
-                  double brightness = -z/20.0;
-                  while (brightness < 0)
-                    brightness += 1.0;
-                  while (brightness > 1.0)
-                    brightness -= 1.0;
-                  if (brightness >= 0.5)
-                    brightness = (brightness - 0.5)*2.0;
-                  else
-                    brightness = -(brightness - 0.5)*2.0;
-                  brightness = brightness * 0.8 + 0.2;
-                  clr.r = (cosR > 0)? cosR * brightness: 0;
-                  clr.g = (cosG > 0)? cosG * brightness: 0;
-                  clr.b = (cosB > 0)? cosB * brightness: 0;
-                }
-                else
-                {
-                  double brightness = (isgm + 1.0)/(nseg + 1.0);
-                  cosR = std::cos(M_PI*z/10.0)*0.8+0.2;
-                  cosG = std::cos(M_PI*(2.0/3.0+z/10.0))*0.8+0.2;
-                  cosB = std::cos(M_PI*(4.0/3.0+z/10.0))*0.8+0.2;
-                  clr.r = (cosR > 0)? cosR * brightness: 0;
-                  clr.g = (cosG > 0)? cosG * brightness: 0;
-                  clr.b = (cosB > 0)? cosB * brightness: 0;
-                }
-
-                occupiedNodesVis.markers[idx].colors.push_back(clr);
-              }
-            }
-          }
-          // std_msgs::ColorRGBA m_color_occupied;
-          // m_color_occupied.r = 1;
-          // m_color_occupied.g = 1;
-          // m_color_occupied.b = 0.3;
-          // m_color_occupied.a = 0.5;
-          for (unsigned i = 0; i < occupiedNodesVis.markers.size(); ++i)
-          {
-            double size = m->getNodeSize(i);
-
-            occupiedNodesVis.markers[i].header.frame_id = "world";
-            occupiedNodesVis.markers[i].header.stamp = now;
-            occupiedNodesVis.markers[i].ns
-              = robot_name + "-" + std::to_string(isgm);
-            occupiedNodesVis.markers[i].id = i;
-            occupiedNodesVis.markers[i].type
-              = visualization_msgs::Marker::CUBE_LIST;
-            occupiedNodesVis.markers[i].scale.x = size;
-            occupiedNodesVis.markers[i].scale.y = size;
-            occupiedNodesVis.markers[i].scale.z = size;
-
-            // without this line, rviz complains orientation is uninitialized.
-            occupiedNodesVis.markers[i].pose.orientation.w = 1;
-
-            //occupiedNodesVis.markers[i].color = m_color_occupied;
-
-            if (occupiedNodesVis.markers[i].points.size() > 0)
-              occupiedNodesVis.markers[i].action
-                = visualization_msgs::Marker::ADD;
-            else
-              occupiedNodesVis.markers[i].action
-                = visualization_msgs::Marker::DELETE;
-          }
-          marker_occupied_pub.publish(occupiedNodesVis);
-        }
+        publishVisMap(now);
         counts_visualize_map = 0;
       }
       else
@@ -1587,26 +1605,7 @@ void RBPF::pf_main()
 
       if (counts_visualize_loc >= visloc_interval)
       {
-        // publish poses
-        geometry_msgs::PoseArray poseArray;
-        poseArray.header.frame_id = world_frame_id;
-        poseArray.header.stamp = now;
-        poseArray.poses.resize(n_particles);
-        for (int i = 0; i < n_particles; ++i)
-        {
-          tf::Pose pose = segments.back()[i]->getPose();
-          tf::Vector3 position = pose.getOrigin();
-          tf::Quaternion orientation = pose.getRotation();
-          poseArray.poses[i].position.x = position.x();
-          poseArray.poses[i].position.y = position.y();
-          poseArray.poses[i].position.z = position.z();
-          poseArray.poses[i].orientation.x = orientation.x();
-          poseArray.poses[i].orientation.y = orientation.y();
-          poseArray.poses[i].orientation.z = orientation.z();
-          poseArray.poses[i].orientation.w = orientation.w();
-        }
-        vis_poses_pub.publish(poseArray);
-
+        publishVisPoses(now);
         counts_visualize_loc = 0;
       }
       else

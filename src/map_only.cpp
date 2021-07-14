@@ -43,7 +43,9 @@
 
 #define PI 3.14159265
 
-#include "rbpf.h"
+//#include "rbpf.h"
+typedef pcl::PointXYZRGB PointT;
+typedef pcl::PointCloud<PointT> PointCloudT;
 
 std::string odom_topic;
 std::string odom_reset_topic;

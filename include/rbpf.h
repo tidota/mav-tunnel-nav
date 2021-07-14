@@ -177,7 +177,9 @@ private:
 
 public:
   RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh);
+  void pf_main();
 
+private:
   void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg);
   void syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg);
   void dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg);
@@ -191,7 +193,37 @@ public:
     mav_tunnel_nav::Particles& data_msg, const std::string& destination,
     const std::vector< std::shared_ptr<Particle> >& particles);
 
-  void pf_main();
+  void updateCurrPoseOfOdom();
+  void getRanges(std::map<std::string, double>& range_data);
+  void getPC(octomap::Pointcloud& octocloud);
+
+  void indivSlamPredict(const tf::Transform& diff_pose);
+  void indivSlamEvaluate(
+    const ros::Time& now,
+    const std::map<std::string, double>& range_data,
+    const octomap::Pointcloud& octocloud);
+  void indivSlamResample();
+
+  bool updateMap(const octomap::Pointcloud& octocloud);
+  void compressMap();
+
+  std::string checkSyncReq(const ros::Time& now);
+  bool initiateSync(const ros::Time& now);
+  void exchangeData();
+  void cooplocUpdate();
+
+  void doSegment(const ros::Time& now);
+  bool isTimeToSegment();
+  bool checkEntry(const ros::Time& now);
+
+  void publishTF(const ros::Time& now);
+  void publishPoses(const ros::Time& now);
+  void publishCurrentSubMap(const ros::Time& now);
+
+  void saveTraj();
+
+  void publishVisMap(const ros::Time& now);
+  void publishVisPoses(const ros::Time& now);
 };
 
 #endif
