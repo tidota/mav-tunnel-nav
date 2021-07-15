@@ -391,7 +391,7 @@ void RBPF::beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg)
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
 {
-  if (state == LocalSLAM)
+  if (state == IndivSLAM)
   {
     std::lock_guard<std::mutex> lk(sync_mutex);
     sync_msgs_buffer.push_back(*msg);
@@ -1424,7 +1424,7 @@ void RBPF::pf_main()
           srv_client.call(srv);
         }
 
-        state = LocalSLAM;
+        state = IndivSLAM;
       }
       else
       {
@@ -1435,7 +1435,7 @@ void RBPF::pf_main()
 
       indivSlamMiscProc(now);
     }
-    else if (state == LocalSLAM)
+    else if (state == IndivSLAM)
     {
       if (now > last_update + update_phase)
       {
@@ -1521,12 +1521,12 @@ void RBPF::pf_main()
     }
     else if (state == SyncInit)
     {
-      // NOTE: If timed out, it will switch back to LocalSLAM. Otherwise, the
+      // NOTE: If timed out, it will switch back to IndivSLAM. Otherwise, the
       //       state is switched to DataSending by the callback once the data
       //       from the other robot is received.
       if (now >= last_syncinit + syncinit_timeout)
       {
-        state = LocalSLAM;
+        state = IndivSLAM;
       }
     }
     else if (state == SyncReact)
@@ -1551,7 +1551,7 @@ void RBPF::pf_main()
       if (now >= last_syncinit + syncinit_timeout)
       {
         ROS_ERROR_STREAM("" << robot_name << ": timeout in DataWaiting");
-        state = LocalSLAM;
+        state = IndivSLAM;
       }
     }
     else if (state == Update)
@@ -1563,7 +1563,7 @@ void RBPF::pf_main()
       publishVisPoses(now);
 
       last_cooploc = now;
-      state = LocalSLAM;
+      state = IndivSLAM;
     }
     else
     {

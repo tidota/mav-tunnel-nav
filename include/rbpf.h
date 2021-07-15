@@ -32,7 +32,7 @@ class RBPF
 {
 private:
   enum INTERACT_STATE
-    { Init, LocalSLAM, SyncInit, DataSending, SyncReact, DataWaiting, Update };
+    { Init, IndivSLAM, SyncInit, DataSending, SyncReact, DataWaiting, Update };
   INTERACT_STATE state;
 
   std::string robot_name;
