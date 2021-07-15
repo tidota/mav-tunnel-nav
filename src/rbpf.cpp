@@ -1068,6 +1068,57 @@ bool RBPF::checkEntry(const ros::Time& now)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void RBPF::indivSlamMiscProc(const ros::Time& now)
+{
+  if (counts_compress >= compress_interval)
+  {
+    compressMap();
+    counts_compress = 0;
+  }
+  else
+  {
+    ++counts_compress;
+  }
+
+  // publish data
+  if (counts_publish >= publish_interval)
+  {
+    publishCurrentSubMap(now);
+    publishTF(now);
+    if (save_traj)
+    {
+      saveTraj();
+    }
+    counts_publish = 0;
+  }
+  else
+  {
+    ++counts_publish;
+  }
+
+  // visualization
+  if (counts_visualize_map >= vismap_interval)
+  {
+    publishVisMap(now);
+    counts_visualize_map = 0;
+  }
+  else
+  {
+    ++counts_visualize_map;
+  }
+
+  if (counts_visualize_loc >= visloc_interval)
+  {
+    publishVisPoses(now);
+    counts_visualize_loc = 0;
+  }
+  else
+  {
+    ++counts_visualize_loc;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void RBPF::publishTF(const ros::Time& now)
 {
   tf::StampedTransform tf_stamped(
@@ -1309,7 +1360,8 @@ void RBPF::publishVisPoses(const ros::Time& now)
 void RBPF::pf_main()
 {
   last_update = ros::Time::now();
-  // wait for the tf of initial ground truth
+
+  // wait for the tf of initial ground truth to be published
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
@@ -1338,6 +1390,8 @@ void RBPF::pf_main()
 
   // initialize the estimated pose
   initial_update = ros::Time::now();
+
+  // wait for the robot's body to get stable after being deployed
   while (ros::ok())
   {
     ros::Time now = ros::Time::now();
@@ -1388,7 +1442,123 @@ void RBPF::pf_main()
   {
     ros::Time now = ros::Time::now();
 
-    if (state == SyncInit)
+    if (state == Init)
+    {
+      // initialize the time step
+      last_update = now;
+
+      std::map<std::string, double> range_data;
+      getRanges(range_data);
+      octomap::Pointcloud octocloud;
+      getPC(octocloud);
+
+      if (now > initial_update + phase_pose_adjust + phase_only_mapping)
+      {
+        // auto enable: call the ROS service to fly.
+        if (auto_enable_by_slam)
+        {
+          std_srvs::SetBool srv;
+          srv.request.data = true;
+          srv_client.call(srv);
+        }
+
+        state = LocalSLAM;
+      }
+      else
+      {
+        // mapping only at the beginning
+        if (updateMap(octocloud))
+          counts_map_update = 0;
+      }
+
+      indivSlamMiscProc(now);
+    }
+    else if (state == LocalSLAM)
+    {
+      if (now <= last_update + update_phase)
+      {
+        // NOTE: check if the previous robot is in the oldest map
+        if (checkEntry(now))
+        {
+          // TODO: initiate map_transfer
+          ROS_ERROR("HIT!!!!");
+        }
+
+        if (enable_cooploc)
+        {
+          if (now < last_cooploc + cooploc_phase)
+          {
+            std::string syncreq_src = checkSyncReq(now);
+            if (syncreq_src.size() > 0)
+            {
+              last_sync_src = syncreq_src;
+              state = SyncReact;
+              last_syncinit = now;
+            }
+          }
+          else
+          {
+            if (initiateSync(now))
+            {
+              last_syncinit = now;
+              state = SyncInit;
+            }
+          }
+        }
+      }
+      else
+      {
+        // initialize the time step
+        last_update = now;
+
+        std::map<std::string, double> range_data;
+        getRanges(range_data);
+        octomap::Pointcloud octocloud;
+        getPC(octocloud);
+
+        if (enable_indivLoc)
+        {
+          // ===== update on the particles ===== //
+          // - individual SLAM: update based on local sensory data.
+
+          // Odometry data
+          tf::Transform diff_pose;
+          updateCurrPoseOfOdom();
+          diff_pose = pose_prev.inverse() * pose_curr;
+          pose_prev = pose_curr;
+
+          // predict PF (use odometory)
+          indivSlamPredict(diff_pose);
+
+          // weight PF (use depth cam)
+          indivSlamEvaluate(now, range_data, octocloud);
+
+          // if far away from the init position of the segment
+          if (isTimeToSegment())
+          {
+            doSegment(now);
+            if (updateMap(octocloud))
+              counts_map_update = 0;
+          }
+          else
+          {
+            indivSlamResample();
+            if (counts_map_update >= mapping_interval)
+            {
+              if (updateMap(octocloud))
+                counts_map_update = 0;
+            }
+            else
+            {
+              ++counts_map_update;
+            }
+          }
+        }
+
+        indivSlamMiscProc(now);
+      }
+    }
+    else if (state == SyncInit)
     {
       // NOTE: If timed out, it will switch back to LocalSLAM. Otherwise, the
       //       state is switched to DataSending by the callback once the data
@@ -1398,14 +1568,15 @@ void RBPF::pf_main()
         state = LocalSLAM;
       }
     }
-    else if (state == SyncReact || state == DataSending)
+    else if (state == SyncReact)
     {
       exchangeData();
-
-      if (state == SyncReact)
-        state = DataWaiting;
-      else
-        state = Update;
+      state = DataWaiting;
+    }
+    else if (state == DataSending)
+    {
+      exchangeData();
+      state = Update;
     }
     else if (state == DataWaiting)
     {
@@ -1463,155 +1634,10 @@ void RBPF::pf_main()
       last_cooploc = now;
       state = LocalSLAM;
     }
-    else if (state == LocalSLAM && now <= last_update + update_phase) // in the default state
+    else
     {
-      // NOTE: check if the previous robot is in the oldest map
-      if (checkEntry(now))
-      {
-        // TODO: initiate map_transfer
-        ROS_ERROR("HIT!!!!");
-      }
-
-      if (enable_cooploc)
-      {
-        if (now < last_cooploc + cooploc_phase)
-        {
-          std::string syncreq_src = checkSyncReq(now);
-          if (syncreq_src.size() > 0)
-          {
-            last_sync_src = syncreq_src;
-            state = SyncReact;
-            last_syncinit = now;
-          }
-        }
-        else
-        {
-          if (initiateSync(now))
-          {
-            last_syncinit = now;
-            state = SyncInit;
-          }
-        }
-      }
-    }
-    else // perform the local SLAM
-    {
-      // initialize the time step
-      last_update = now;
-
-      std::map<std::string, double> range_data;
-      getRanges(range_data);
-      octomap::Pointcloud octocloud;
-      getPC(octocloud);
-
-      if (state == LocalSLAM ||
-        now > initial_update + phase_pose_adjust + phase_only_mapping)
-      {
-        if (state == Init)
-        {
-          // auto enable: call the ROS service to fly.
-          if (auto_enable_by_slam)
-          {
-            std_srvs::SetBool srv;
-            srv.request.data = true;
-            srv_client.call(srv);
-          }
-
-          state = LocalSLAM;
-        }
-
-        if (enable_indivLoc)
-        {
-          // ===== update on the particles ===== //
-          // - individual SLAM: update based on local sensory data.
-
-          // Odometry data
-          tf::Transform diff_pose;
-          updateCurrPoseOfOdom();
-          diff_pose = pose_prev.inverse() * pose_curr;
-          pose_prev = pose_curr;
-
-          // predict PF (use odometory)
-          indivSlamPredict(diff_pose);
-
-          // weight PF (use depth cam)
-          indivSlamEvaluate(now, range_data, octocloud);
-
-          // if far away from the init position of the segment
-          if (isTimeToSegment())
-          {
-            doSegment(now);
-            if (updateMap(octocloud))
-              counts_map_update = 0;
-          }
-          else
-          {
-            indivSlamResample();
-            if (counts_map_update >= mapping_interval)
-            {
-              if (updateMap(octocloud))
-                counts_map_update = 0;
-            }
-            else
-            {
-              ++counts_map_update;
-            }
-          }
-        }
-      }
-      else
-      {
-        // mapping only at the beginning
-        if (updateMap(octocloud))
-          counts_map_update = 0;
-      }
-
-      if (counts_compress >= compress_interval)
-      {
-        compressMap();
-        counts_compress = 0;
-      }
-      else
-      {
-        ++counts_compress;
-      }
-
-      // publish data
-      if (counts_publish >= publish_interval)
-      {
-        publishCurrentSubMap(now);
-        publishTF(now);
-        if (save_traj)
-        {
-          saveTraj();
-        }
-        counts_publish = 0;
-      }
-      else
-      {
-        ++counts_publish;
-      }
-
-      // visualization
-      if (counts_visualize_map >= vismap_interval)
-      {
-        publishVisMap(now);
-        counts_visualize_map = 0;
-      }
-      else
-      {
-        ++counts_visualize_map;
-      }
-
-      if (counts_visualize_loc >= visloc_interval)
-      {
-        publishVisPoses(now);
-        counts_visualize_loc = 0;
-      }
-      else
-      {
-        ++counts_visualize_loc;
-      }
+      // should not be here
+      ROS_ERROR_STREAM("Invalid State: " << state);
     }
   }
 }

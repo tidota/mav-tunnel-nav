@@ -216,6 +216,8 @@ private:
   bool isTimeToSegment();
   bool checkEntry(const ros::Time& now);
 
+  void indivSlamMiscProc(const ros::Time& now);
+
   void publishTF(const ros::Time& now);
   void publishPoses(const ros::Time& now);
   void publishCurrentSubMap(const ros::Time& now);
