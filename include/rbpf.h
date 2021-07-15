@@ -115,7 +115,6 @@ private:
   int mapping_interval;
   int publish_interval;
   int vismap_interval;
-  int visloc_interval;
   int compress_interval;
 
   int counts_publish;
@@ -219,7 +218,6 @@ private:
   void indivSlamMiscProc(const ros::Time& now);
 
   void publishTF(const ros::Time& now);
-  void publishPoses(const ros::Time& now);
   void publishCurrentSubMap(const ros::Time& now);
 
   void saveTraj();

@@ -153,7 +153,6 @@
       <param name="mapping_interval" value="5"/>
       <param name="publish_interval" value="0"/>
       <param name="vismap_interval" value="3"/>
-      <param name="visloc_interval" value="0"/>
       <param name="compress_interval" value="7"/>
       <param name="enable_indivLoc" value="true"/>
       <param name="seed_indivloc" value="1500"/>

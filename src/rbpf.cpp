@@ -234,8 +234,6 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
     ROS_ERROR_STREAM("no param: publish_interval");
   if(!pnh.getParam("vismap_interval", vismap_interval))
     ROS_ERROR_STREAM("no param: vismap_interval");
-  if(!pnh.getParam("visloc_interval", visloc_interval))
-    ROS_ERROR_STREAM("no param: visloc_interval");
   if(!pnh.getParam("compress_interval", compress_interval))
     ROS_ERROR_STREAM("no param: compress_interval");
   if(!pnh.getParam("enable_indivLoc", enable_indivLoc))
@@ -986,13 +984,7 @@ void RBPF::doSegment(const ros::Time& now)
   // copy each resampled particle.
   for (int i = 0; i < n_particles; ++i)
   {
-    // if individual localization is disabled, just pass i so the
-    // resampling is disabled.
-    int indx;
-    if (enable_indivLoc)
-      indx = drawIndex(cumul_weights_slam, gen_indivloc);
-    else
-      indx = i;
+    int indx = i;
 
     new_seg[i]
       = std::make_shared<Particle>(
@@ -1081,6 +1073,8 @@ void RBPF::indivSlamMiscProc(const ros::Time& now)
   }
 
   // publish data
+  publishVisPoses(now);
+
   if (counts_publish >= publish_interval)
   {
     publishCurrentSubMap(now);
@@ -1107,15 +1101,6 @@ void RBPF::indivSlamMiscProc(const ros::Time& now)
     ++counts_visualize_map;
   }
 
-  if (counts_visualize_loc >= visloc_interval)
-  {
-    publishVisPoses(now);
-    counts_visualize_loc = 0;
-  }
-  else
-  {
-    ++counts_visualize_loc;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1125,29 +1110,6 @@ void RBPF::publishTF(const ros::Time& now)
     segments.back()[segments_index_best.back()]->getPose(), now,
     world_frame_id, robot_frame_id);
   tf_broadcaster.sendTransform(tf_stamped);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void RBPF::publishPoses(const ros::Time& now)
-{
-  geometry_msgs::PoseArray poseArray;
-  poseArray.header.frame_id = world_frame_id;
-  poseArray.header.stamp = now;
-  poseArray.poses.resize(n_particles);
-  for (int i = 0; i < n_particles; ++i)
-  {
-    tf::Pose pose = segments.back()[i]->getPose();
-    tf::Vector3 position = pose.getOrigin();
-    tf::Quaternion orientation = pose.getRotation();
-    poseArray.poses[i].position.x = position.x();
-    poseArray.poses[i].position.y = position.y();
-    poseArray.poses[i].position.z = position.z();
-    poseArray.poses[i].orientation.x = orientation.x();
-    poseArray.poses[i].orientation.y = orientation.y();
-    poseArray.poses[i].orientation.z = orientation.z();
-    poseArray.poses[i].orientation.w = orientation.w();
-  }
-  vis_poses_pub.publish(poseArray);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1475,7 +1437,57 @@ void RBPF::pf_main()
     }
     else if (state == LocalSLAM)
     {
-      if (now <= last_update + update_phase)
+      if (now > last_update + update_phase)
+      {
+        // initialize the time step
+        last_update = now;
+
+        octomap::Pointcloud octocloud;
+        getPC(octocloud);
+
+        if (enable_indivLoc)
+        {
+          std::map<std::string, double> range_data;
+          getRanges(range_data);
+
+          // Odometry data
+          tf::Transform diff_pose;
+          updateCurrPoseOfOdom();
+          diff_pose = pose_prev.inverse() * pose_curr;
+          pose_prev = pose_curr;
+
+          // predict PF (use odometory)
+          indivSlamPredict(diff_pose);
+
+          // weight PF (use depth cam)
+          indivSlamEvaluate(now, range_data, octocloud);
+
+          indivSlamResample();
+        }
+
+        // if far away from the init position of the segment
+        if (isTimeToSegment())
+        {
+          doSegment(now);
+          if (updateMap(octocloud))
+            counts_map_update = 0;
+        }
+        else
+        {
+          if (counts_map_update >= mapping_interval)
+          {
+            if (updateMap(octocloud))
+              counts_map_update = 0;
+          }
+          else
+          {
+            ++counts_map_update;
+          }
+        }
+
+        indivSlamMiscProc(now);
+      }
+      else
       {
         // NOTE: check if the previous robot is in the oldest map
         if (checkEntry(now))
@@ -1505,57 +1517,6 @@ void RBPF::pf_main()
             }
           }
         }
-      }
-      else
-      {
-        // initialize the time step
-        last_update = now;
-
-        std::map<std::string, double> range_data;
-        getRanges(range_data);
-        octomap::Pointcloud octocloud;
-        getPC(octocloud);
-
-        if (enable_indivLoc)
-        {
-          // ===== update on the particles ===== //
-          // - individual SLAM: update based on local sensory data.
-
-          // Odometry data
-          tf::Transform diff_pose;
-          updateCurrPoseOfOdom();
-          diff_pose = pose_prev.inverse() * pose_curr;
-          pose_prev = pose_curr;
-
-          // predict PF (use odometory)
-          indivSlamPredict(diff_pose);
-
-          // weight PF (use depth cam)
-          indivSlamEvaluate(now, range_data, octocloud);
-
-          // if far away from the init position of the segment
-          if (isTimeToSegment())
-          {
-            doSegment(now);
-            if (updateMap(octocloud))
-              counts_map_update = 0;
-          }
-          else
-          {
-            indivSlamResample();
-            if (counts_map_update >= mapping_interval)
-            {
-              if (updateMap(octocloud))
-                counts_map_update = 0;
-            }
-            else
-            {
-              ++counts_map_update;
-            }
-          }
-        }
-
-        indivSlamMiscProc(now);
       }
     }
     else if (state == SyncInit)
@@ -1599,37 +1560,7 @@ void RBPF::pf_main()
 
       // publish the location
       publishTF(now);
-
-      // publish poses
-      publishPoses(now);
-
-      if (!enable_indivLoc)
-      {
-        // if the individual localization is disabled,
-        // perform mapping and segmentation here.
-        // if far away from the init position of the segment
-        octomap::Pointcloud octocloud;
-        getPC(octocloud);
-
-        if (isTimeToSegment())
-        {
-          doSegment(now);
-          if (updateMap(octocloud))
-            counts_map_update = 0;
-        }
-        else
-        {
-          if (counts_map_update >= mapping_interval)
-          {
-            if (updateMap(octocloud))
-              counts_map_update = 0;
-          }
-          else
-          {
-            ++counts_map_update;
-          }
-        }
-      }
+      publishVisPoses(now);
 
       last_cooploc = now;
       state = LocalSLAM;
