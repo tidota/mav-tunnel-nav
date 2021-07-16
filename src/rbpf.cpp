@@ -258,7 +258,6 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
         motion_noise_lin_sigma, motion_noise_rot_sigma,
         sensor_noise_range_sigma, sensor_noise_depth_sigma));
   }
-  segments_index_best.resize(1);
   cumul_weights_slam.resize(n_particles);
   errors.resize(n_particles);
 
@@ -665,9 +664,6 @@ void RBPF::indivSlamEvaluate(
   {
     cumul_weights_slam[i] = 0;
   }
-  int index_best = 0;
-  double max_weight = 0;
-  double weight_sum = 0;
   for (int i = 0; i < n_particles; ++i)
   {
     // if the current time is not far away from the initial time
@@ -688,18 +684,9 @@ void RBPF::indivSlamEvaluate(
             octocloud);
     }
 
-    if (i == 0 || max_weight < cumul_weights_slam[i])
-    {
-      max_weight = cumul_weights_slam[i];
-      index_best = i;
-    }
     if (i > 0)
       cumul_weights_slam[i] += cumul_weights_slam[i-1];
   }
-  weight_sum = cumul_weights_slam[n_particles-1];
-  if (weight_sum != 0)
-    max_weight /= weight_sum;
-  segments_index_best.back() = index_best;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -869,9 +856,6 @@ void RBPF::cooplocUpdate()
   // cumulative weights for resampling.
   std::vector<double> cumul_weights_update(n_particles);
 
-  double weight_max = 0;
-  int index_best = -1;
-
   // for all particles
   for (int ip = 0; ip < n_particles; ++ip)
   {
@@ -931,12 +915,6 @@ void RBPF::cooplocUpdate()
       *= ((ip > 0)? cumul_weights[ip] - cumul_weights[ip-1]:
                     cumul_weights[0]);
 
-    if (index_best == -1 || cumul_weights_update[ip] > weight_max)
-    {
-      index_best = ip;
-      weight_max = cumul_weights_update[ip];
-    }
-
     // make it cumuluative
     if (ip > 0)
       cumul_weights_update[ip] += cumul_weights_update[ip - 1];
@@ -966,21 +944,18 @@ void RBPF::cooplocUpdate()
     }
   }
   segments.back().swap(new_generation);
-  segments_index_best.back() = index_best;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::doSegment(const ros::Time& now)
 {
   // set the initial pose of the segment to that of the best particle.
-  init_segment_pose = segments.back()[segments_index_best.back()]->getPose();
+  init_segment_pose = segments.back()[0]->getPose();
   // set the initial time of the segment to the current one.
   init_segment_time = now;
 
   // create a new segment
-  std::vector< std::shared_ptr<Particle> > new_seg(
-    n_particles, nullptr);
-  segments_index_best.push_back(segments_index_best.back());
+  std::vector< std::shared_ptr<Particle> > new_seg(n_particles, nullptr);
   // copy each resampled particle.
   for (int i = 0; i < n_particles; ++i)
   {
@@ -1007,7 +982,7 @@ bool RBPF::isTimeToSegment()
   tf::Pose best_pose;
   if (enable_segmentation)
   {
-    best_pose = segments.back()[segments_index_best.back()]->getPose();
+    best_pose = segments.back()[0]->getPose();
     tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
     if (pose_in_seg.getOrigin().length() > next_seg_thresh)
       do_segment = true;
@@ -1034,14 +1009,13 @@ bool RBPF::checkEntry(const ros::Time& now)
         beacon_info.estimated_orientation.z
           * beacon_info.estimated_distance);
       tf::Vector3 next_robot_loc
-        = segments.back()[segments_index_best.back()]->getPose()
-          * next_robot_loc_wrt_here;
+        = segments.back()[0]->getPose() * next_robot_loc_wrt_here;
       double x = next_robot_loc.getX();
       double y = next_robot_loc.getY();
       double z = next_robot_loc.getZ();
 
       // get the range of the oldest submap
-      auto map = segments.front()[segments_index_best.front()]->getMap();
+      auto map = segments.front()[0]->getMap();
       double min_x, min_y, min_z;
       map->getMetricMin(min_x, min_y, min_z);
       double max_x, max_y, max_z;
@@ -1107,8 +1081,7 @@ void RBPF::indivSlamMiscProc(const ros::Time& now)
 void RBPF::publishTF(const ros::Time& now)
 {
   tf::StampedTransform tf_stamped(
-    segments.back()[segments_index_best.back()]->getPose(), now,
-    world_frame_id, robot_frame_id);
+    segments.back()[0]->getPose(), now, world_frame_id, robot_frame_id);
   tf_broadcaster.sendTransform(tf_stamped);
 }
 
@@ -1121,8 +1094,7 @@ void RBPF::publishCurrentSubMap(const ros::Time& now)
   std::stringstream ss;
   ss << robot_name << "-" << std::setw(3) << std::setfill('0') << nseg;
   map.segid = ss.str();
-  if (octomap_msgs::fullMapToMsg(
-      *segments.back()[segments_index_best.back()]->getMap(), map.octomap))
+  if (octomap_msgs::fullMapToMsg(*segments.back()[0]->getMap(), map.octomap))
     map_pub.publish(map);
   else
     ROS_ERROR("Error serializing OctoMap");
@@ -1189,8 +1161,7 @@ void RBPF::publishVisMap(const ros::Time& now)
   for (unsigned int isgm = index_offset; isgm <= nseg; ++isgm)
   {
     const unsigned int index = isgm - index_offset;
-    const octomap::OcTree* m
-      = segments[index][segments_index_best[index]]->getMap();
+    const octomap::OcTree* m = segments[index][0]->getMap();
     visualization_msgs::MarkerArray occupiedNodesVis;
     occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
     for (
