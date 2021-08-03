@@ -80,6 +80,8 @@ add_message_files(
   Beacon.msg
   SrcDst.msg
   OctomapWithSegId.msg
+  Submap.msg
+  SubmapAck.msg
 #   Message1.msg
 #   Message2.msg
 )

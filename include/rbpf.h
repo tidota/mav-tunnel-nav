@@ -15,6 +15,8 @@
 #include <mav_tunnel_nav/Beacon.h>
 #include <mav_tunnel_nav/Particles.h>
 #include <mav_tunnel_nav/OctomapWithSegId.h>
+#include <mav_tunnel_nav/Submap.h>
+#include <mav_tunnel_nav/SubmapAck.h>
 
 #include <ros/ros.h>
 
@@ -82,6 +84,16 @@ private:
   std::map<std::string, ros::Time> data_lasttime;
   std::string last_data_src;
   mav_tunnel_nav::Particles data_msg;
+
+  ros::Publisher submap_pub;
+  ros::Subscriber submap_sub;
+  std::mutex submap_mutex;
+  std::map<std::string, std::deque<mav_tunnel_nav::Submap> > submap_buffer;
+  ros::Publisher submap_ack_pub;
+  ros::Subscriber submap_ack_sub;
+  std::mutex submap_ack_mutex;
+  std::map<std::string, std::deque<mav_tunnel_nav::SubmapAck> >
+    submap_ack_buffer;
 
   std::shared_ptr<tf::TransformListener> tf_listener;
 
