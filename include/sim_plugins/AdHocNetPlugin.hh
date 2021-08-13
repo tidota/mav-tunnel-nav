@@ -31,6 +31,8 @@
 #include <mav_tunnel_nav/SrcDst.h>
 #include <mav_tunnel_nav/Beacon.h>
 #include <mav_tunnel_nav/Particles.h>
+#include <mav_tunnel_nav/Submap.h>
+#include <mav_tunnel_nav/SubmapAck.h>
 
 namespace adhoc
 {
@@ -67,6 +69,15 @@ namespace gazebo
     /// \brief Callback executed when new particle data is received.
     /// \param[in] msg The particle message.
     private: void OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg);
+
+    /// \brief Callback executed when new submap data is received.
+    /// \param[in] msg The submap message.
+    private: void OnSubmapMsg(const mav_tunnel_nav::Submap::ConstPtr& msg);
+
+    /// \brief Callback executed when new submap ack data is received.
+    /// \param[in] msg The submap ack message.
+    private:
+      void OnSubmapAckMsg(const mav_tunnel_nav::SubmapAck::ConstPtr& msg);
 
     /// \brief Helper function to check the line of sight condition of the given
     ///        two robots.
@@ -135,6 +146,16 @@ namespace gazebo
     //   std::vector< std::shared_ptr<mav_tunnel_nav::ParticlesMsg> > data_buff;
     // /// \brief mutex for data
     // private: std::mutex beacon_data;
+
+    /// \brief subscribers for submap
+    private: std::map<std::string, ros::Subscriber> submap_subs;
+    /// \brief publishers for submap
+    private: std::map<std::string, ros::Publisher> submap_pubs;
+
+    /// \brief subscribers for submap_ack
+    private: std::map<std::string, ros::Subscriber> submap_ack_subs;
+    /// \brief publishers for submap_ack
+    private: std::map<std::string, ros::Publisher> submap_ack_pubs;
 
     /// \brief the type of auto pilot
     private: std::string auto_pilot_type;

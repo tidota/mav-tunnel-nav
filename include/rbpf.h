@@ -193,6 +193,8 @@ private:
   void beaconCallback(const mav_tunnel_nav::Beacon::ConstPtr& msg);
   void syncCallback(const mav_tunnel_nav::SrcDst::ConstPtr& msg);
   void dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg);
+  void submapCallback(const mav_tunnel_nav::Submap::ConstPtr& msg);
+  void submapAckCallback(const mav_tunnel_nav::SubmapAck::ConstPtr& msg);
   void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
   void pcCallback(const sensor_msgs::PointCloud2::ConstPtr& msg);
   void rangeCallback(const sensor_msgs::Range::ConstPtr& new_range);

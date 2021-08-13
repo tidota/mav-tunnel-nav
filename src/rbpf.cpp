@@ -98,6 +98,30 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
     ROS_ERROR_STREAM("no parameter: data_down_topic");
   }
 
+  // subscriber for submap
+  std::string submap_down_topic;
+  if (nh.getParam("/submap_down_topic", submap_down_topic)) // global param
+  {
+    submap_sub
+      = nh.subscribe(submap_down_topic, 1000, &RBPF::submapCallback, this);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: submap_down_topic");
+  }
+  // subscriber for submap_ack
+  std::string submap_ack_down_topic;
+  if (nh.getParam("/submap_ack_down_topic", submap_ack_down_topic)) // global param
+  {
+    submap_ack_sub
+      = nh.subscribe(
+          submap_ack_down_topic, 1000, &RBPF::submapAckCallback, this);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: submap_ack_down_topic");
+  }
+
   pnh.getParam("odom_topic", odom_topic);
   pnh.getParam("pc_topic", pc_topic);
   odom_sub = nh.subscribe(odom_topic, 1000, &RBPF::odomCallback, this);
@@ -150,6 +174,28 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   else
   {
     ROS_ERROR_STREAM("no parameter: data_up_topic");
+  }
+
+  // publisher for submap
+  std::string submap_up_topic;
+  if (nh.getParam("/submap_up_topic", submap_up_topic)) // global param
+  {
+    submap_pub = nh.advertise<mav_tunnel_nav::Submap>(submap_up_topic, 1);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: submap_up_topic");
+  }
+  // publisher for submap_ack
+  std::string submap_ack_up_topic;
+  if (nh.getParam("/submap_ack_up_topic", submap_ack_up_topic)) // global param
+  {
+    submap_ack_pub
+      = nh.advertise<mav_tunnel_nav::SubmapAck>(submap_ack_up_topic, 1);
+  }
+  else
+  {
+    ROS_ERROR_STREAM("no parameter: submap_ack_up_topic");
   }
 
   // random numbers
@@ -416,6 +462,18 @@ void RBPF::dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
       state = Update;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::submapCallback(const mav_tunnel_nav::Submap::ConstPtr& msg)
+{
+  // TODO: implement submapCallback
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void RBPF::submapAckCallback(const mav_tunnel_nav::SubmapAck::ConstPtr& msg)
+{
+  // TODO: implement submapAckCallback
 }
 
 ////////////////////////////////////////////////////////////////////////////////

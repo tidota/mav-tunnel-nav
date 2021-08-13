@@ -7,6 +7,10 @@ sync_up_topic: sync_up_topic
 sync_down_topic: sync_down_topic
 data_up_topic: data_up_topic
 data_down_topic: data_down_topic
+submap_up_topic: submap_up_topic
+submap_down_topic: submap_down_topic
+submap_ack_up_topic: submap_ack_up_topic
+submap_ack_down_topic: submap_ack_down_topic
 
 spawn_service_name: spawn_robot
 

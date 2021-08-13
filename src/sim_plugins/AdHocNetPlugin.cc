@@ -66,6 +66,19 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
   this->nh.param(
     "data_down_topic", data_down_topic, data_down_topic);
 
+  std::string submap_up_topic;
+  this->nh.param(
+    "submap_up_topic", submap_up_topic, submap_up_topic);
+  std::string submap_down_topic;
+  this->nh.param(
+    "submap_down_topic", submap_down_topic, submap_down_topic);
+  std::string submap_ack_up_topic;
+  this->nh.param(
+    "submap_ack_up_topic", submap_ack_up_topic, submap_ack_up_topic);
+  std::string submap_ack_down_topic;
+  this->nh.param(
+    "submap_ack_down_topic", submap_ack_down_topic, submap_ack_down_topic);
+
   for (auto robot: this->robotList)
   {
     this->beacon_subs[robot]
@@ -91,6 +104,22 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
     this->data_pubs[robot]
       = this->nh.advertise<mav_tunnel_nav::Particles>(
           "/" + robot + "/" + data_down_topic, 1);
+
+    this->submap_subs[robot]
+      = this->nh.subscribe(
+          "/" + robot + "/" + submap_up_topic, 1000,
+          &AdHocNetPlugin::OnSubmapMsg, this);
+    this->submap_pubs[robot]
+      = this->nh.advertise<mav_tunnel_nav::Submap>(
+          "/" + robot + "/" + submap_down_topic, 1);
+
+    this->submap_ack_subs[robot]
+      = this->nh.subscribe(
+          "/" + robot + "/" + submap_ack_up_topic, 1000,
+          &AdHocNetPlugin::OnSubmapAckMsg, this);
+    this->submap_pubs[robot]
+      = this->nh.advertise<mav_tunnel_nav::SubmapAck>(
+          "/" + robot + "/" + submap_ack_down_topic, 1);
   }
 
   double ratio_spawn_comm;
@@ -250,7 +279,7 @@ void AdHocNetPlugin::OnUpdate()
         mav_tunnel_nav::SpawnRobot srv;
         if (this->auto_pilot_type == "mesh")
         {
-          // TODO: spawn at different places
+          // NOTE: spawn at different places
 
           tf::Vector3 pos(2.0, 0, 0.2);
           double initY;
@@ -595,6 +624,34 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
         }
 
       }
+    }
+  }
+}
+
+//////////////////////////////////////////////////
+void AdHocNetPlugin::OnSubmapMsg(const mav_tunnel_nav::Submap::ConstPtr& msg)
+{
+  if (this->submap_subs.count(msg->source) > 0
+   && this->submap_pubs.count(msg->destination) > 0)
+  {
+    // if the destination is in the range
+    if (getTopoInfo(msg->source, msg->destination))
+    {
+      this->submap_pubs[msg->destination].publish(*msg);
+    }
+  }
+}
+
+//////////////////////////////////////////////////
+void AdHocNetPlugin::OnSubmapAckMsg(const mav_tunnel_nav::SubmapAck::ConstPtr& msg)
+{
+  if (this->submap_ack_subs.count(msg->source) > 0
+   && this->submap_ack_pubs.count(msg->destination) > 0)
+  {
+    // if the destination is in the range
+    if (getTopoInfo(msg->source, msg->destination))
+    {
+      this->submap_ack_pubs[msg->destination].publish(*msg);
     }
   }
 }
