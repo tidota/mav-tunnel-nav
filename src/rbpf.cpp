@@ -467,13 +467,25 @@ void RBPF::dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::submapCallback(const mav_tunnel_nav::Submap::ConstPtr& msg)
 {
-  // TODO: implement submapCallback
+  std::lock_guard<std::mutex> lk(submap_mutex);
+  if (submap_buffer.count(msg->source) > 0)
+  {
+    std::deque<mav_tunnel_nav::Submap> dq;
+    submap_buffer[msg->source] = dq;
+  }
+  submap_buffer[msg->source].push_back(*msg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::submapAckCallback(const mav_tunnel_nav::SubmapAck::ConstPtr& msg)
 {
-  // TODO: implement submapAckCallback
+  std::lock_guard<std::mutex> lk(submap_ack_mutex);
+  if (submap_ack_buffer.count(msg->source) > 0)
+  {
+    std::deque<mav_tunnel_nav::SubmapAck> dq;
+    submap_ack_buffer[msg->source] = dq;
+  }
+  submap_ack_buffer[msg->source].push_back(*msg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1523,6 +1535,20 @@ void RBPF::pf_main()
         {
           // TODO: initiate map_transfer
           ROS_ERROR("HIT!!!!");
+        }
+
+        // NOTE: check if the robot received a submap
+        if (submap_buffer.size() > 0)
+        {
+          // TODO: integrate the received submap
+
+          // TODO: send an acknowledgement.
+        }
+
+        // NOTE: check if the robot received an acknowledgement
+        if (submap_ack_buffer.size() > 0)
+        {
+          // TODO: delete the corresponding submap
         }
 
         if (enable_cooploc)
