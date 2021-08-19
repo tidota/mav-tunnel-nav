@@ -145,8 +145,10 @@ private:
 
   // segments
   bool enable_segmentation;
-  std::deque< std::vector< std::shared_ptr<Particle> > > segments;
+  std::map<int, std::vector< std::shared_ptr<Particle> > > segments;
   unsigned int nseg;
+  std::set<int> indx_passed;
+  std::set<int> indx_deleted;
   unsigned int npassed;
   tf::Pose init_segment_pose;
   ros::Time init_segment_time;
@@ -227,7 +229,7 @@ private:
 
   void doSegment(const ros::Time& now);
   bool isTimeToSegment();
-  bool checkEntry(const ros::Time& now);
+  int checkEntry(const ros::Time& now);
 
   void indivSlamMiscProc(const ros::Time& now);
 

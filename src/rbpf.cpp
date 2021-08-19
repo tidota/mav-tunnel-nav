@@ -295,10 +295,10 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   //       each vector of particles represent a segment.
   nseg = 1;
   npassed = 0;
-  segments.resize(1);
+  segments[0] = std::vector< std::shared_ptr<Particle> >();
   for (int i = 0; i < n_particles; ++i)
   {
-    segments.back().push_back(
+    segments[nseg-1].push_back(
       std::make_shared<Particle>(
         init_x, init_y, init_z, init_Y,
         resol, probHit, probMiss, threshMin, threshMax,
@@ -717,7 +717,7 @@ void RBPF::indivSlamPredict(const tf::Transform& diff_pose)
 {
   const tf::Vector3 delta_pos = diff_pose.getOrigin();
   const tf::Quaternion delta_rot = diff_pose.getRotation();
-  for (auto p: segments.back())
+  for (auto p: segments[nseg-1])
   {
     // move the particle
     // call predict with the relative pose.
@@ -742,7 +742,7 @@ void RBPF::indivSlamEvaluate(
     {
       // call evaluate with the flag which is set to true.
       cumul_weights_slam[i]
-        = segments.back()[i]->evaluate(
+        = segments[nseg-1][i]->evaluate(
             range_data, range_min, range_max, range_topics, range_poses,
             octocloud, true);
     }
@@ -750,7 +750,7 @@ void RBPF::indivSlamEvaluate(
     {
       // Calculate a probability ranging from 0 to 1.
       cumul_weights_slam[i]
-        = segments.back()[i]->evaluate(
+        = segments[nseg-1][i]->evaluate(
             range_data, range_min, range_max, range_topics, range_poses,
             octocloud);
     }
@@ -778,7 +778,7 @@ void RBPF::indivSlamResample()
     if (prev_indx == -1)
     {
       new_generation.push_back(
-        std::move(segments.back()[indx_list[i]]));
+        std::move(segments[nseg-1][indx_list[i]]));
       indx_unused[indx_list[i]] = i;
     }
     else
@@ -788,7 +788,7 @@ void RBPF::indivSlamResample()
     }
   }
   // Copy the children to the parents.
-  segments.back().swap(new_generation);
+  segments[nseg-1].swap(new_generation);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -797,7 +797,7 @@ bool RBPF::updateMap(const octomap::Pointcloud& octocloud)
   bool success = false;
   if (octocloud.size() > 0)
   {
-    for (auto p: segments.back())
+    for (auto p: segments[nseg-1])
     {
       p->update_map(octocloud);
     }
@@ -810,7 +810,7 @@ bool RBPF::updateMap(const octomap::Pointcloud& octocloud)
 void RBPF::compressMap()
 {
   // compress maps
-  for (auto p: segments.back())
+  for (auto p: segments[nseg-1])
   {
     p->compress_map();
   }
@@ -882,7 +882,7 @@ void RBPF::exchangeData()
   // predict PF (use odometory)
   const tf::Vector3 delta_pos = diff_pose.getOrigin();
   const tf::Quaternion delta_rot = diff_pose.getRotation();
-  for (auto p: segments.back())
+  for (auto p: segments[nseg-1])
   {
     // move the particle
     // call predict with the relative pose.
@@ -895,7 +895,7 @@ void RBPF::exchangeData()
   else
     dest = last_data_src;
 
-  prepareDataMsg(data_msg, dest, segments.back());
+  prepareDataMsg(data_msg, dest, segments[nseg-1]);
 
   // send data to the other
   data_pub.publish(data_msg);
@@ -933,7 +933,7 @@ void RBPF::cooplocUpdate()
     // initialize the wegith
     cumul_weights_update[ip] = 0;
     // get the particle's pose
-    tf::Pose robot_pose = segments.back()[ip]->getPose();
+    tf::Pose robot_pose = segments[nseg-1][ip]->getPose();
     // for Nref
     for (unsigned int i = 0; i < msg.particles.size(); ++i)
     {
@@ -1005,7 +1005,7 @@ void RBPF::cooplocUpdate()
     const int prev_indx = indx_unused[indx_list[ip]];
     if (prev_indx == -1)
     {
-      new_generation.push_back(std::move(segments.back()[indx_list[ip]]));
+      new_generation.push_back(std::move(segments[nseg-1][indx_list[ip]]));
       indx_unused[indx_list[ip]] = ip;
     }
     else
@@ -1014,14 +1014,14 @@ void RBPF::cooplocUpdate()
         std::make_shared<Particle>(*new_generation[prev_indx]));
     }
   }
-  segments.back().swap(new_generation);
+  segments[nseg-1].swap(new_generation);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::doSegment(const ros::Time& now)
 {
   // set the initial pose of the segment to that of the best particle.
-  init_segment_pose = segments.back()[0]->getPose();
+  init_segment_pose = segments[nseg-1][0]->getPose();
   // set the initial time of the segment to the current one.
   init_segment_time = now;
 
@@ -1034,11 +1034,11 @@ void RBPF::doSegment(const ros::Time& now)
 
     new_seg[i]
       = std::make_shared<Particle>(
-          segments.back()[indx],
+          segments[nseg-1][indx],
           resol, probHit, probMiss, threshMin, threshMax);
   }
   // add the segment to the list.
-  segments.push_back(new_seg);
+  segments[nseg] = std::move(new_seg);
   // increment nseg
   ++nseg;
 
@@ -1053,7 +1053,7 @@ bool RBPF::isTimeToSegment()
   tf::Pose best_pose;
   if (enable_segmentation)
   {
-    best_pose = segments.back()[0]->getPose();
+    best_pose = segments[nseg-1][0]->getPose();
     tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
     if (pose_in_seg.getOrigin().length() > next_seg_thresh)
       do_segment = true;
@@ -1062,10 +1062,10 @@ bool RBPF::isTimeToSegment()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool RBPF::checkEntry(const ros::Time& now)
+int RBPF::checkEntry(const ros::Time& now)
 {
-  bool entry_detected = false;
-  if (segments.size() > 1)
+  int detected_indx = -1;
+  if (segments.size() - indx_passed.size() > 1)
   {
     // get the location of the previous robot
     if (beacon_buffer.count(next_robot_name)
@@ -1080,28 +1080,35 @@ bool RBPF::checkEntry(const ros::Time& now)
         beacon_info.estimated_orientation.z
           * beacon_info.estimated_distance);
       tf::Vector3 next_robot_loc
-        = segments.back()[0]->getPose() * next_robot_loc_wrt_here;
+        = segments[nseg-1][0]->getPose() * next_robot_loc_wrt_here;
       double x = next_robot_loc.getX();
       double y = next_robot_loc.getY();
       double z = next_robot_loc.getZ();
 
-      // get the range of the oldest submap
-      auto map = segments.front()[0]->getMap();
-      double min_x, min_y, min_z;
-      map->getMetricMin(min_x, min_y, min_z);
-      double max_x, max_y, max_z;
-      map->getMetricMax(max_x, max_y, max_z);
-
-      // determine if the location is within the range
-      if (min_x <= x && x <= max_x
-       && min_y <= y && y <= max_y
-       && min_z <= z && z <= max_z)
+      for (unsigned int i = 0; i < nseg; ++i)
       {
-        entry_detected = true;
+        if (indx_passed.count(i) == 0)
+        {
+          // get the range of the oldest submap
+          auto map = segments[i][0]->getMap();
+          double min_x, min_y, min_z;
+          map->getMetricMin(min_x, min_y, min_z);
+          double max_x, max_y, max_z;
+          map->getMetricMax(max_x, max_y, max_z);
+
+          // determine if the location is within the range
+          if (min_x <= x && x <= max_x
+           && min_y <= y && y <= max_y
+           && min_z <= z && z <= max_z)
+          {
+            detected_indx = i;
+            break;
+          }
+        }
       }
     }
   }
-  return entry_detected;
+  return detected_indx;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1152,7 +1159,7 @@ void RBPF::indivSlamMiscProc(const ros::Time& now)
 void RBPF::publishTF(const ros::Time& now)
 {
   tf::StampedTransform tf_stamped(
-    segments.back()[0]->getPose(), now, world_frame_id, robot_frame_id);
+    segments[nseg-1][0]->getPose(), now, world_frame_id, robot_frame_id);
   tf_broadcaster.sendTransform(tf_stamped);
 }
 
@@ -1165,7 +1172,7 @@ void RBPF::publishCurrentSubMap(const ros::Time& now)
   std::stringstream ss;
   ss << robot_name << "-" << std::setw(3) << std::setfill('0') << (nseg-1);
   map.segid = ss.str();
-  if (octomap_msgs::fullMapToMsg(*segments.back()[0]->getMap(), map.octomap))
+  if (octomap_msgs::fullMapToMsg(*segments[nseg-1][0]->getMap(), map.octomap))
     map_pub.publish(map);
   else
     ROS_ERROR("Error serializing OctoMap");
@@ -1211,7 +1218,7 @@ void RBPF::saveTraj()
     z = 0;
     for (int i = 0; i < n_particles; ++i)
     {
-      tf::Vector3 buff = segments.back()[i]->getPose().getOrigin();
+      tf::Vector3 buff = segments[nseg-1][i]->getPose().getOrigin();
       x += buff.x()/n_particles;
       y += buff.y()/n_particles;
       z += buff.z()/n_particles;
@@ -1228,10 +1235,11 @@ void RBPF::saveTraj()
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::publishVisMap(const ros::Time& now)
 {
-  const unsigned int index_offset = nseg - segments.size();
-  for (unsigned int isgm = index_offset; isgm < nseg; ++isgm)
+  for (unsigned int index = 0; index < nseg; ++index)
   {
-    const unsigned int index = isgm - index_offset;
+    if (indx_deleted.count(index) > 0)
+      continue;
+
     const octomap::OcTree* m = segments[index][0]->getMap();
     visualization_msgs::MarkerArray occupiedNodesVis;
     occupiedNodesVis.markers.resize(m->getTreeDepth()+1);
@@ -1259,7 +1267,7 @@ void RBPF::publishVisMap(const ros::Time& now)
 
         if (enable_clr4seg)
         {
-          double val = 0.8 * isgm;
+          double val = 0.8 * index;
           cosR = std::cos(M_PI*val);
           cosG = std::cos(M_PI*(2.0/3.0+val));
           cosB = std::cos(M_PI*(4.0/3.0+val));
@@ -1287,7 +1295,7 @@ void RBPF::publishVisMap(const ros::Time& now)
           }
           else
           {
-            double brightness = (isgm + 1.0)/nseg;
+            double brightness = (index + 1.0)/nseg;
             cosR = std::cos(M_PI*z/10.0)*0.8+0.2;
             cosG = std::cos(M_PI*(2.0/3.0+z/10.0))*0.8+0.2;
             cosB = std::cos(M_PI*(4.0/3.0+z/10.0))*0.8+0.2;
@@ -1312,7 +1320,7 @@ void RBPF::publishVisMap(const ros::Time& now)
       occupiedNodesVis.markers[i].header.frame_id = "world";
       occupiedNodesVis.markers[i].header.stamp = now;
       occupiedNodesVis.markers[i].ns
-        = robot_name + "-" + std::to_string(isgm);
+        = robot_name + "-" + std::to_string(index);
       occupiedNodesVis.markers[i].id = i;
       occupiedNodesVis.markers[i].type
         = visualization_msgs::Marker::CUBE_LIST;
@@ -1346,7 +1354,7 @@ void RBPF::publishVisPoses(const ros::Time& now)
   poseArray.poses.resize(n_particles);
   for (int i = 0; i < n_particles; ++i)
   {
-    tf::Pose pose = segments.back()[i]->getPose();
+    tf::Pose pose = segments[nseg-1][i]->getPose();
     tf::Vector3 position = pose.getOrigin();
     tf::Quaternion orientation = pose.getRotation();
     poseArray.poses[i].position.x = position.x();
@@ -1414,7 +1422,7 @@ void RBPF::pf_main()
 
         tf::Vector3 position = ground_truth_tf.getOrigin();
         tf::Quaternion orientation = ground_truth_tf.getRotation();
-        for (auto p: segments.back())
+        for (auto p: segments[nseg-1])
         {
           p->initPosition(position);
           p->initOrientation(orientation);
@@ -1532,10 +1540,13 @@ void RBPF::pf_main()
       else
       {
         // NOTE: check if the previous robot is in the oldest map
-        if (checkEntry(now))
+        int detected_indx = checkEntry(now);
+        if (detected_indx >= 0)
         {
           // TODO: initiate map_transfer
           ROS_ERROR("HIT!!!!");
+
+          // indx_passed.add(detected_indx);
         }
 
         // NOTE: check if the robot received a submap
@@ -1549,16 +1560,21 @@ void RBPF::pf_main()
         // NOTE: check if the robot received an acknowledgement
         if (submap_ack_buffer.size() > 0)
         {
-          // TODO: delete the corresponding submap
-
-          // submaps.pop_front();
-          // std::lock_guard<std::mutex> lk(submap_ack_mutex);
-          // for (auto pair: submap_ack_buffer)
-          // {
-          //   auto src = pair.first;
-          //   auto lst = pair.second;
-          //
-          // }
+          std::lock_guard<std::mutex> lk(submap_ack_mutex);
+          for (auto pair: submap_ack_buffer)
+          {
+            auto src = pair.first;
+            auto lst = pair.second;
+            while (lst.size() > 0)
+            {
+              auto m = lst.front();
+              lst.pop_front();
+              int index = std::stoi(m.submap_id);
+              segments.erase(index);
+              indx_deleted.insert(index);
+            }
+          }
+          submap_ack_buffer.clear();
         }
 
         if (enable_cooploc)
