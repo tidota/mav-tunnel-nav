@@ -293,7 +293,8 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   counts_compress = 0;
 
   //       each vector of particles represent a segment.
-  nseg = 0;
+  nseg = 1;
+  npassed = 0;
   segments.resize(1);
   for (int i = 0; i < n_particles; ++i)
   {
@@ -737,7 +738,7 @@ void RBPF::indivSlamEvaluate(
   for (int i = 0; i < n_particles; ++i)
   {
     // if the current time is not far away from the initial time
-    if (nseg != 0 && now <= init_segment_time + init_seg_phase)
+    if (nseg != 1 && now <= init_segment_time + init_seg_phase)
     {
       // call evaluate with the flag which is set to true.
       cumul_weights_slam[i]
@@ -1162,7 +1163,7 @@ void RBPF::publishCurrentSubMap(const ros::Time& now)
   map.header.frame_id = world_frame_id;
   map.header.stamp = now;
   std::stringstream ss;
-  ss << robot_name << "-" << std::setw(3) << std::setfill('0') << nseg;
+  ss << robot_name << "-" << std::setw(3) << std::setfill('0') << (nseg-1);
   map.segid = ss.str();
   if (octomap_msgs::fullMapToMsg(*segments.back()[0]->getMap(), map.octomap))
     map_pub.publish(map);
@@ -1227,8 +1228,8 @@ void RBPF::saveTraj()
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::publishVisMap(const ros::Time& now)
 {
-  const unsigned int index_offset = nseg - segments.size() + 1;
-  for (unsigned int isgm = index_offset; isgm <= nseg; ++isgm)
+  const unsigned int index_offset = nseg - segments.size();
+  for (unsigned int isgm = index_offset; isgm < nseg; ++isgm)
   {
     const unsigned int index = isgm - index_offset;
     const octomap::OcTree* m = segments[index][0]->getMap();
@@ -1286,7 +1287,7 @@ void RBPF::publishVisMap(const ros::Time& now)
           }
           else
           {
-            double brightness = (isgm + 1.0)/(nseg + 1.0);
+            double brightness = (isgm + 1.0)/nseg;
             cosR = std::cos(M_PI*z/10.0)*0.8+0.2;
             cosG = std::cos(M_PI*(2.0/3.0+z/10.0))*0.8+0.2;
             cosB = std::cos(M_PI*(4.0/3.0+z/10.0))*0.8+0.2;
@@ -1549,6 +1550,15 @@ void RBPF::pf_main()
         if (submap_ack_buffer.size() > 0)
         {
           // TODO: delete the corresponding submap
+
+          // submaps.pop_front();
+          // std::lock_guard<std::mutex> lk(submap_ack_mutex);
+          // for (auto pair: submap_ack_buffer)
+          // {
+          //   auto src = pair.first;
+          //   auto lst = pair.second;
+          //
+          // }
         }
 
         if (enable_cooploc)

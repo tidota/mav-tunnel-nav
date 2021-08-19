@@ -147,6 +147,7 @@ private:
   bool enable_segmentation;
   std::deque< std::vector< std::shared_ptr<Particle> > > segments;
   unsigned int nseg;
+  unsigned int npassed;
   tf::Pose init_segment_pose;
   ros::Time init_segment_time;
   std::string next_robot_name;
