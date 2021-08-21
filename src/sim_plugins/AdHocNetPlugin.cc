@@ -117,7 +117,7 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
       = this->nh.subscribe(
           "/" + robot + "/" + submap_ack_up_topic, 1000,
           &AdHocNetPlugin::OnSubmapAckMsg, this);
-    this->submap_pubs[robot]
+    this->submap_ack_pubs[robot]
       = this->nh.advertise<mav_tunnel_nav::SubmapAck>(
           "/" + robot + "/" + submap_ack_down_topic, 1);
   }
