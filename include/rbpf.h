@@ -149,7 +149,6 @@ private:
   unsigned int nseg;
   std::set<int> indx_passed;
   std::set<int> indx_deleted;
-  unsigned int npassed;
   tf::Pose init_segment_pose;
   ros::Time init_segment_time;
   std::string next_robot_name;

@@ -294,7 +294,6 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
 
   //       each vector of particles represent a segment.
   nseg = 1;
-  npassed = 0;
   segments[0] = std::vector< std::shared_ptr<Particle> >();
   for (int i = 0; i < n_particles; ++i)
   {
@@ -469,7 +468,7 @@ void RBPF::dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
 void RBPF::submapCallback(const mav_tunnel_nav::Submap::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(submap_mutex);
-  if (submap_buffer.count(msg->source) > 0)
+  if (submap_buffer.count(msg->source) == 0)
   {
     std::deque<mav_tunnel_nav::Submap> dq;
     submap_buffer[msg->source] = dq;
@@ -481,7 +480,7 @@ void RBPF::submapCallback(const mav_tunnel_nav::Submap::ConstPtr& msg)
 void RBPF::submapAckCallback(const mav_tunnel_nav::SubmapAck::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(submap_ack_mutex);
-  if (submap_ack_buffer.count(msg->source) > 0)
+  if (submap_ack_buffer.count(msg->source) == 0)
   {
     std::deque<mav_tunnel_nav::SubmapAck> dq;
     submap_ack_buffer[msg->source] = dq;
@@ -1065,7 +1064,7 @@ bool RBPF::isTimeToSegment()
 int RBPF::checkEntry(const ros::Time& now)
 {
   int detected_indx = -1;
-  if (segments.size() - indx_passed.size() > 1)
+  if (nseg - indx_passed.size() > 1)
   {
     // get the location of the previous robot
     if (beacon_buffer.count(next_robot_name)
@@ -1095,6 +1094,12 @@ int RBPF::checkEntry(const ros::Time& now)
           map->getMetricMin(min_x, min_y, min_z);
           double max_x, max_y, max_z;
           map->getMetricMax(max_x, max_y, max_z);
+
+          // NOTE: may need add some margin as a robot's sensor can reach
+          // min_x -= 5;
+          // min_y -= 5;
+          // max_x += 5;
+          // max_y += 5;
 
           // determine if the location is within the range
           if (min_x <= x && x <= max_x
@@ -1331,6 +1336,10 @@ void RBPF::publishVisMap(const ros::Time& now)
       // without this line, rviz complains orientation is uninitialized.
       occupiedNodesVis.markers[i].pose.orientation.w = 1;
 
+      // set lifetime
+      occupiedNodesVis.markers[i].lifetime
+        = update_phase * (vismap_interval + 1.5);
+
       //occupiedNodesVis.markers[i].color = m_color_occupied;
 
       if (occupiedNodesVis.markers[i].points.size() > 0)
@@ -1478,9 +1487,40 @@ void RBPF::pf_main()
       }
       else
       {
-        // mapping only at the beginning
-        if (updateMap(octocloud))
+        // NOTE: check if the robot received a submap
+        if (submap_buffer.size() > 0)
+        {
+          mav_tunnel_nav::Submap map;
+          {
+            std::lock_guard<std::mutex> lk(submap_mutex);
+            for (auto p: submap_buffer)
+            {
+              auto& source = p.first;
+              auto& list = p.second;
+              map = list.front();
+              list.pop_front();
+
+              if (list.size() == 0)
+                submap_buffer.erase(source);
+
+              break;
+            }
+          }
+          // TODO: integrate the received submap
+
+          mav_tunnel_nav::SubmapAck msg;
+          msg.source = robot_name;
+          msg.destination = map.source;
+          msg.submap_id = map.submap_id;
+          submap_ack_pub.publish(msg);
           counts_map_update = 0;
+        }
+        else
+        {
+          // mapping only at the beginning
+          if (updateMap(octocloud))
+            counts_map_update = 0;
+        }
       }
 
       indivSlamMiscProc(now);
@@ -1541,20 +1581,52 @@ void RBPF::pf_main()
       {
         // NOTE: check if the previous robot is in the oldest map
         int detected_indx = checkEntry(now);
-        if (detected_indx >= 0)
+        if (detected_indx >= 0 && indx_passed.count(detected_indx) == 0)
         {
-          // TODO: initiate map_transfer
-          ROS_ERROR("HIT!!!!");
+          indx_passed.insert(detected_indx);
 
-          // indx_passed.add(detected_indx);
+          mav_tunnel_nav::Submap map;
+          map.source = robot_name;
+          map.destination = next_robot_name;
+          std::stringstream ss;
+          ss << detected_indx;
+          map.submap_id = ss.str();
+          if (octomap_msgs::fullMapToMsg(
+              *segments[detected_indx][0]->getMap(), map.octomap))
+            submap_pub.publish(map);
+          else
+            ROS_ERROR_STREAM(
+              "Error serializing the submap for " <<
+              next_robot_name << "(" << robot_name << ")");
         }
 
         // NOTE: check if the robot received a submap
         if (submap_buffer.size() > 0)
         {
+          mav_tunnel_nav::Submap map;
+          {
+            std::lock_guard<std::mutex> lk(submap_mutex);
+            for (auto p: submap_buffer)
+            {
+              auto& source = p.first;
+              auto& list = p.second;
+              map = list.front();
+              list.pop_front();
+
+              if (list.size() == 0)
+                submap_buffer.erase(source);
+
+              break;
+            }
+          }
           // TODO: integrate the received submap
 
-          // TODO: send an acknowledgement.
+
+          mav_tunnel_nav::SubmapAck msg;
+          msg.source = robot_name;
+          msg.destination = map.source;
+          msg.submap_id = map.submap_id;
+          submap_ack_pub.publish(msg);
         }
 
         // NOTE: check if the robot received an acknowledgement
