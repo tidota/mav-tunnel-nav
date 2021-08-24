@@ -1117,6 +1117,15 @@ int RBPF::checkEntry(const ros::Time& now)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void RBPF::overwriteMap(const octomap::OcTree* m)
+{
+  for (int i = 0; i < n_particles; ++i)
+  {
+    segments[nseg-1][i]->setMap(m);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void RBPF::indivSlamMiscProc(const ros::Time& now)
 {
   if (counts_compress >= compress_interval)
@@ -1506,7 +1515,10 @@ void RBPF::pf_main()
               break;
             }
           }
-          // TODO: integrate the received submap
+          // NOTE: overwrite maps with the received submap
+          auto m = octomap_msgs::fullMsgToMap(map.octomap);
+          overwriteMap(dynamic_cast<octomap::OcTree*>(m));
+          delete m;
 
           mav_tunnel_nav::SubmapAck msg;
           msg.source = robot_name;
@@ -1619,8 +1631,14 @@ void RBPF::pf_main()
               break;
             }
           }
-          // TODO: integrate the received submap
-
+          // TODO: integrate the received submap.
+          // case 1: localization is beging doen on the previous segment
+          //         overwrite maps with the received submap
+          // case 2: localization on the currnet segment
+          //         do segment and overwrite
+          // auto m = octomap_msgs::fullMsgToMap(map.octomap);
+          // overwriteMap(dynamic_cast<octomap::OcTree*>(m));
+          // delete m;
 
           mav_tunnel_nav::SubmapAck msg;
           msg.source = robot_name;

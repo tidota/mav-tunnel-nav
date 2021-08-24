@@ -110,6 +110,14 @@ const octomap::OcTree* Particle::getMap()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void Particle::setMap(const octomap::OcTree* m)
+{
+  if (this->map)
+    delete this->map;
+  this->map = new octomap::OcTree(*m);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void Particle::initPosition(const tf::Vector3 &position)
 {
   this->pose.setOrigin(position);

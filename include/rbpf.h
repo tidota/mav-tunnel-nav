@@ -229,6 +229,7 @@ private:
   void doSegment(const ros::Time& now);
   bool isTimeToSegment();
   int checkEntry(const ros::Time& now);
+  void overwriteMap(const octomap::OcTree* m);
 
   void indivSlamMiscProc(const ros::Time& now);
 
