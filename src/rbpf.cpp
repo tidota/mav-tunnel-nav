@@ -399,6 +399,7 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   if (!pnh.getParam("init_seg_phase", init_seg_phase_buff))
     ROS_ERROR_STREAM("no param: init_seg_phase");
   init_seg_phase = ros::Duration(init_seg_phase_buff);
+  map_from_neighbor = false;
   if (!pnh.getParam("next_seg_thresh", next_seg_thresh))
     ROS_ERROR_STREAM("no param: next_seg_thresh");
   if (!pnh.getParam("enable_clr4seg", enable_clr4seg))
@@ -736,8 +737,11 @@ void RBPF::indivSlamEvaluate(
   }
   for (int i = 0; i < n_particles; ++i)
   {
-    // if the current time is not far away from the initial time
-    if (nseg != 1 && now <= init_segment_time + init_seg_phase)
+    // NOTE: if the current map is not large enough for localization,
+    //       use the previous map.
+    if (nseg != 1 &&
+        now <= init_segment_time + init_seg_phase &&
+        !map_from_neighbor)
     {
       // call evaluate with the flag which is set to true.
       cumul_weights_slam[i]
@@ -1043,6 +1047,8 @@ void RBPF::doSegment(const ros::Time& now)
 
   // set counts to the interval to force to build a map anyway
   counts_map_update = mapping_interval;
+
+  map_from_neighbor = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,6 +1129,7 @@ void RBPF::overwriteMap(const octomap::OcTree* m)
   {
     segments[nseg-1][i]->setMap(m);
   }
+  map_from_neighbor = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1612,7 +1619,7 @@ void RBPF::pf_main()
               next_robot_name << "(" << robot_name << ")");
         }
 
-        // NOTE: check if the robot received a submap
+        // NOTE: integrate the submap if the robot received it from a neighbor.
         if (submap_buffer.size() > 0)
         {
           mav_tunnel_nav::Submap map;
@@ -1631,14 +1638,24 @@ void RBPF::pf_main()
               break;
             }
           }
-          // TODO: integrate the received submap.
-          // case 1: localization is beging doen on the previous segment
-          //         overwrite maps with the received submap
-          // case 2: localization on the currnet segment
-          //         do segment and overwrite
-          // auto m = octomap_msgs::fullMsgToMap(map.octomap);
-          // overwriteMap(dynamic_cast<octomap::OcTree*>(m));
-          // delete m;
+
+          auto m = octomap_msgs::fullMsgToMap(map.octomap);
+          if (nseg != 1 &&
+              now <= init_segment_time + init_seg_phase &&
+              !map_from_neighbor)
+          {
+            // case 1: localization is beging doen on the previous segment
+            //         overwrite maps with the received submap
+            overwriteMap(dynamic_cast<octomap::OcTree*>(m));
+          }
+          else
+          {
+            // case 2: localization on the currnet segment
+            //         do segment and overwrite
+            doSegment(now);
+            overwriteMap(dynamic_cast<octomap::OcTree*>(m));
+          }
+          delete m;
 
           mav_tunnel_nav::SubmapAck msg;
           msg.source = robot_name;

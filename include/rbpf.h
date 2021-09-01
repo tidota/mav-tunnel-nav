@@ -153,6 +153,7 @@ private:
   ros::Time init_segment_time;
   std::string next_robot_name;
   ros::Duration init_seg_phase;
+  bool map_from_neighbor;
   double next_seg_thresh;
   bool enable_clr4seg;
 
