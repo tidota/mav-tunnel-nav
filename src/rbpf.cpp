@@ -103,7 +103,7 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   if (nh.getParam("/submap_down_topic", submap_down_topic)) // global param
   {
     submap_sub
-      = nh.subscribe(submap_down_topic, 1000, &RBPF::submapCallback, this);
+      = nh.subscribe(submap_down_topic, 1, &RBPF::submapCallback, this);
   }
   else
   {
@@ -1060,6 +1060,7 @@ bool RBPF::isTimeToSegment()
   {
     best_pose = segments[nseg-1][0]->getPose();
     tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
+    // TODO: check the criteria to do segment?
     if (pose_in_seg.getOrigin().length() > next_seg_thresh)
       do_segment = true;
   }
@@ -1070,6 +1071,7 @@ bool RBPF::isTimeToSegment()
 int RBPF::checkEntry(const ros::Time& now)
 {
   int detected_indx = -1;
+  // TODO: check entry!
   if (nseg - indx_passed.size() > 1)
   {
     // get the location of the previous robot
@@ -1554,6 +1556,7 @@ void RBPF::pf_main()
         octomap::Pointcloud octocloud;
         getPC(octocloud);
 
+        // TODO: less freq for robot1 and robot2?
         if (enable_indivLoc)
         {
           std::map<std::string, double> range_data;
