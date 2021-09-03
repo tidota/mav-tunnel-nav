@@ -10,8 +10,17 @@ Panels:
         - /MarkerArray1/Namespaces1
         - /PoseArray1
         - /Marker1
+        - /MarkerArray2
+        - /MarkerArray3
+        - /MarkerArray4
+        - /MarkerArray5
+        - /MarkerArray6
+        - /MarkerArray7
+        - /MarkerArray8
+        - /MarkerArray9
+        - /MarkerArray10
       Splitter Ratio: 0.5
-    Tree Height: 720
+    Tree Height: 662
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -96,6 +105,9 @@ Visualization Manager:
       Name: MarkerArray
       Namespaces:
         robot1-0: true
+        robot1-1: true
+        robot1-2: true
+        robot1-3: true
       Queue Size: 100
       Value: true
     - Class: rviz/TF
@@ -103,6 +115,8 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        base:
+          Value: true
         robot1/base_link:
           Value: true
         robot1/base_link_inertia:
@@ -159,6 +173,286 @@ Visualization Manager:
           Value: true
         robot1_groundtruth:
           Value: true
+        robot2/base_link:
+          Value: true
+        robot2/base_link_inertia:
+          Value: true
+        robot2/camera_link:
+          Value: true
+        robot2/front_left_leg:
+          Value: true
+        robot2/front_right_leg:
+          Value: true
+        robot2/odometry_sensor1:
+          Value: true
+        robot2/odometry_sensor1_link:
+          Value: true
+        robot2/ray_dfront_link:
+          Value: true
+        robot2/ray_down_link:
+          Value: true
+        robot2/ray_drear_link:
+          Value: true
+        robot2/ray_front_link:
+          Value: true
+        robot2/ray_left_link:
+          Value: true
+        robot2/ray_lfront_link:
+          Value: true
+        robot2/ray_lrear_link:
+          Value: true
+        robot2/ray_rear_link:
+          Value: true
+        robot2/ray_rfront_link:
+          Value: true
+        robot2/ray_right_link:
+          Value: true
+        robot2/ray_rrear_link:
+          Value: true
+        robot2/ray_ufront_link:
+          Value: true
+        robot2/ray_up_link:
+          Value: true
+        robot2/ray_urear_link:
+          Value: true
+        robot2/rear_left_leg:
+          Value: true
+        robot2/rear_right_leg:
+          Value: true
+        robot2/rotor_0:
+          Value: true
+        robot2/rotor_1:
+          Value: true
+        robot2/rotor_2:
+          Value: true
+        robot2/rotor_3:
+          Value: true
+        robot2_groundtruth:
+          Value: true
+        robot3/base_link:
+          Value: true
+        robot3/base_link_inertia:
+          Value: true
+        robot3/camera_link:
+          Value: true
+        robot3/front_left_leg:
+          Value: true
+        robot3/front_right_leg:
+          Value: true
+        robot3/odometry_sensor1:
+          Value: true
+        robot3/odometry_sensor1_link:
+          Value: true
+        robot3/ray_dfront_link:
+          Value: true
+        robot3/ray_down_link:
+          Value: true
+        robot3/ray_drear_link:
+          Value: true
+        robot3/ray_front_link:
+          Value: true
+        robot3/ray_left_link:
+          Value: true
+        robot3/ray_lfront_link:
+          Value: true
+        robot3/ray_lrear_link:
+          Value: true
+        robot3/ray_rear_link:
+          Value: true
+        robot3/ray_rfront_link:
+          Value: true
+        robot3/ray_right_link:
+          Value: true
+        robot3/ray_rrear_link:
+          Value: true
+        robot3/ray_ufront_link:
+          Value: true
+        robot3/ray_up_link:
+          Value: true
+        robot3/ray_urear_link:
+          Value: true
+        robot3/rear_left_leg:
+          Value: true
+        robot3/rear_right_leg:
+          Value: true
+        robot3/rotor_0:
+          Value: true
+        robot3/rotor_1:
+          Value: true
+        robot3/rotor_2:
+          Value: true
+        robot3/rotor_3:
+          Value: true
+        robot3_groundtruth:
+          Value: true
+        robot4/base_link:
+          Value: true
+        robot4/base_link_inertia:
+          Value: true
+        robot4/camera_link:
+          Value: true
+        robot4/front_left_leg:
+          Value: true
+        robot4/front_right_leg:
+          Value: true
+        robot4/odometry_sensor1:
+          Value: true
+        robot4/odometry_sensor1_link:
+          Value: true
+        robot4/ray_dfront_link:
+          Value: true
+        robot4/ray_down_link:
+          Value: true
+        robot4/ray_drear_link:
+          Value: true
+        robot4/ray_front_link:
+          Value: true
+        robot4/ray_left_link:
+          Value: true
+        robot4/ray_lfront_link:
+          Value: true
+        robot4/ray_lrear_link:
+          Value: true
+        robot4/ray_rear_link:
+          Value: true
+        robot4/ray_rfront_link:
+          Value: true
+        robot4/ray_right_link:
+          Value: true
+        robot4/ray_rrear_link:
+          Value: true
+        robot4/ray_ufront_link:
+          Value: true
+        robot4/ray_up_link:
+          Value: true
+        robot4/ray_urear_link:
+          Value: true
+        robot4/rear_left_leg:
+          Value: true
+        robot4/rear_right_leg:
+          Value: true
+        robot4/rotor_0:
+          Value: true
+        robot4/rotor_1:
+          Value: true
+        robot4/rotor_2:
+          Value: true
+        robot4/rotor_3:
+          Value: true
+        robot4_groundtruth:
+          Value: true
+        robot5/base_link:
+          Value: true
+        robot5/base_link_inertia:
+          Value: true
+        robot5/camera_link:
+          Value: true
+        robot5/front_left_leg:
+          Value: true
+        robot5/front_right_leg:
+          Value: true
+        robot5/odometry_sensor1:
+          Value: true
+        robot5/odometry_sensor1_link:
+          Value: true
+        robot5/ray_dfront_link:
+          Value: true
+        robot5/ray_down_link:
+          Value: true
+        robot5/ray_drear_link:
+          Value: true
+        robot5/ray_front_link:
+          Value: true
+        robot5/ray_left_link:
+          Value: true
+        robot5/ray_lfront_link:
+          Value: true
+        robot5/ray_lrear_link:
+          Value: true
+        robot5/ray_rear_link:
+          Value: true
+        robot5/ray_rfront_link:
+          Value: true
+        robot5/ray_right_link:
+          Value: true
+        robot5/ray_rrear_link:
+          Value: true
+        robot5/ray_ufront_link:
+          Value: true
+        robot5/ray_up_link:
+          Value: true
+        robot5/ray_urear_link:
+          Value: true
+        robot5/rear_left_leg:
+          Value: true
+        robot5/rear_right_leg:
+          Value: true
+        robot5/rotor_0:
+          Value: true
+        robot5/rotor_1:
+          Value: true
+        robot5/rotor_2:
+          Value: true
+        robot5/rotor_3:
+          Value: true
+        robot5_groundtruth:
+          Value: true
+        robot6/base_link:
+          Value: true
+        robot6/base_link_inertia:
+          Value: true
+        robot6/camera_link:
+          Value: true
+        robot6/front_left_leg:
+          Value: true
+        robot6/front_right_leg:
+          Value: true
+        robot6/odometry_sensor1:
+          Value: true
+        robot6/odometry_sensor1_link:
+          Value: true
+        robot6/ray_dfront_link:
+          Value: true
+        robot6/ray_down_link:
+          Value: true
+        robot6/ray_drear_link:
+          Value: true
+        robot6/ray_front_link:
+          Value: true
+        robot6/ray_left_link:
+          Value: true
+        robot6/ray_lfront_link:
+          Value: true
+        robot6/ray_lrear_link:
+          Value: true
+        robot6/ray_rear_link:
+          Value: true
+        robot6/ray_rfront_link:
+          Value: true
+        robot6/ray_right_link:
+          Value: true
+        robot6/ray_rrear_link:
+          Value: true
+        robot6/ray_ufront_link:
+          Value: true
+        robot6/ray_up_link:
+          Value: true
+        robot6/ray_urear_link:
+          Value: true
+        robot6/rear_left_leg:
+          Value: true
+        robot6/rear_right_leg:
+          Value: true
+        robot6/rotor_0:
+          Value: true
+        robot6/rotor_1:
+          Value: true
+        robot6/rotor_2:
+          Value: true
+        robot6/rotor_3:
+          Value: true
+        robot6_groundtruth:
+          Value: true
         world:
           Value: true
       Marker Scale: 1
@@ -168,6 +462,8 @@ Visualization Manager:
       Show Names: true
       Tree:
         world:
+          base:
+            {}
           robot1/base_link:
             robot1/base_link_inertia:
               {}
@@ -223,6 +519,281 @@ Visualization Manager:
             {}
           robot1_groundtruth:
             {}
+          robot2/base_link:
+            robot2/base_link_inertia:
+              {}
+            robot2/camera_link:
+              {}
+            robot2/front_left_leg:
+              {}
+            robot2/front_right_leg:
+              {}
+            robot2/odometry_sensor1_link:
+              {}
+            robot2/ray_dfront_link:
+              {}
+            robot2/ray_down_link:
+              {}
+            robot2/ray_drear_link:
+              {}
+            robot2/ray_front_link:
+              {}
+            robot2/ray_left_link:
+              {}
+            robot2/ray_lfront_link:
+              {}
+            robot2/ray_lrear_link:
+              {}
+            robot2/ray_rear_link:
+              {}
+            robot2/ray_rfront_link:
+              {}
+            robot2/ray_right_link:
+              {}
+            robot2/ray_rrear_link:
+              {}
+            robot2/ray_ufront_link:
+              {}
+            robot2/ray_up_link:
+              {}
+            robot2/ray_urear_link:
+              {}
+            robot2/rear_left_leg:
+              {}
+            robot2/rear_right_leg:
+              {}
+            robot2/rotor_0:
+              {}
+            robot2/rotor_1:
+              {}
+            robot2/rotor_2:
+              {}
+            robot2/rotor_3:
+              {}
+          robot2/odometry_sensor1:
+            {}
+          robot2_groundtruth:
+            {}
+          robot3/base_link:
+            robot3/base_link_inertia:
+              {}
+            robot3/camera_link:
+              {}
+            robot3/front_left_leg:
+              {}
+            robot3/front_right_leg:
+              {}
+            robot3/odometry_sensor1_link:
+              {}
+            robot3/ray_dfront_link:
+              {}
+            robot3/ray_down_link:
+              {}
+            robot3/ray_drear_link:
+              {}
+            robot3/ray_front_link:
+              {}
+            robot3/ray_left_link:
+              {}
+            robot3/ray_lfront_link:
+              {}
+            robot3/ray_lrear_link:
+              {}
+            robot3/ray_rear_link:
+              {}
+            robot3/ray_rfront_link:
+              {}
+            robot3/ray_right_link:
+              {}
+            robot3/ray_rrear_link:
+              {}
+            robot3/ray_ufront_link:
+              {}
+            robot3/ray_up_link:
+              {}
+            robot3/ray_urear_link:
+              {}
+            robot3/rear_left_leg:
+              {}
+            robot3/rear_right_leg:
+              {}
+            robot3/rotor_0:
+              {}
+            robot3/rotor_1:
+              {}
+            robot3/rotor_2:
+              {}
+            robot3/rotor_3:
+              {}
+          robot3/odometry_sensor1:
+            {}
+          robot3_groundtruth:
+            {}
+          robot4/base_link:
+            robot4/base_link_inertia:
+              {}
+            robot4/camera_link:
+              {}
+            robot4/front_left_leg:
+              {}
+            robot4/front_right_leg:
+              {}
+            robot4/odometry_sensor1_link:
+              {}
+            robot4/ray_dfront_link:
+              {}
+            robot4/ray_down_link:
+              {}
+            robot4/ray_drear_link:
+              {}
+            robot4/ray_front_link:
+              {}
+            robot4/ray_left_link:
+              {}
+            robot4/ray_lfront_link:
+              {}
+            robot4/ray_lrear_link:
+              {}
+            robot4/ray_rear_link:
+              {}
+            robot4/ray_rfront_link:
+              {}
+            robot4/ray_right_link:
+              {}
+            robot4/ray_rrear_link:
+              {}
+            robot4/ray_ufront_link:
+              {}
+            robot4/ray_up_link:
+              {}
+            robot4/ray_urear_link:
+              {}
+            robot4/rear_left_leg:
+              {}
+            robot4/rear_right_leg:
+              {}
+            robot4/rotor_0:
+              {}
+            robot4/rotor_1:
+              {}
+            robot4/rotor_2:
+              {}
+            robot4/rotor_3:
+              {}
+          robot4/odometry_sensor1:
+            {}
+          robot4_groundtruth:
+            {}
+          robot5/base_link:
+            robot5/base_link_inertia:
+              {}
+            robot5/camera_link:
+              {}
+            robot5/front_left_leg:
+              {}
+            robot5/front_right_leg:
+              {}
+            robot5/odometry_sensor1_link:
+              {}
+            robot5/ray_dfront_link:
+              {}
+            robot5/ray_down_link:
+              {}
+            robot5/ray_drear_link:
+              {}
+            robot5/ray_front_link:
+              {}
+            robot5/ray_left_link:
+              {}
+            robot5/ray_lfront_link:
+              {}
+            robot5/ray_lrear_link:
+              {}
+            robot5/ray_rear_link:
+              {}
+            robot5/ray_rfront_link:
+              {}
+            robot5/ray_right_link:
+              {}
+            robot5/ray_rrear_link:
+              {}
+            robot5/ray_ufront_link:
+              {}
+            robot5/ray_up_link:
+              {}
+            robot5/ray_urear_link:
+              {}
+            robot5/rear_left_leg:
+              {}
+            robot5/rear_right_leg:
+              {}
+            robot5/rotor_0:
+              {}
+            robot5/rotor_1:
+              {}
+            robot5/rotor_2:
+              {}
+            robot5/rotor_3:
+              {}
+          robot5/odometry_sensor1:
+            {}
+          robot5_groundtruth:
+            {}
+          robot6/base_link:
+            robot6/base_link_inertia:
+              {}
+            robot6/camera_link:
+              {}
+            robot6/front_left_leg:
+              {}
+            robot6/front_right_leg:
+              {}
+            robot6/odometry_sensor1_link:
+              {}
+            robot6/ray_dfront_link:
+              {}
+            robot6/ray_down_link:
+              {}
+            robot6/ray_drear_link:
+              {}
+            robot6/ray_front_link:
+              {}
+            robot6/ray_left_link:
+              {}
+            robot6/ray_lfront_link:
+              {}
+            robot6/ray_lrear_link:
+              {}
+            robot6/ray_rear_link:
+              {}
+            robot6/ray_rfront_link:
+              {}
+            robot6/ray_right_link:
+              {}
+            robot6/ray_rrear_link:
+              {}
+            robot6/ray_ufront_link:
+              {}
+            robot6/ray_up_link:
+              {}
+            robot6/ray_urear_link:
+              {}
+            robot6/rear_left_leg:
+              {}
+            robot6/rear_right_leg:
+              {}
+            robot6/rotor_0:
+              {}
+            robot6/rotor_1:
+              {}
+            robot6/rotor_2:
+              {}
+            robot6/rotor_3:
+              {}
+          robot6/odometry_sensor1:
+            {}
+          robot6_groundtruth:
+            {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -247,6 +818,84 @@ Visualization Manager:
       Name: Marker
       Namespaces:
         base: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot2/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        robot2-0: true
+        robot2-1: true
+        robot2-2: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot3/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        robot3-0: true
+        robot3-1: true
+        robot3-2: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot4/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        robot4-0: true
+        robot4-1: true
+        robot4-2: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot5/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        robot5-0: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot6/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        robot6-0: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot7/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot8/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot9/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /robot10/map_marker_occupied
+      Name: MarkerArray
+      Namespaces:
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -277,33 +926,33 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 13.935575485229492
+      Distance: 68.91282653808594
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.04889903590083122
-        Y: -1.6446418762207031
-        Z: 1.5570944547653198
+        X: 10.998004913330078
+        Y: 7.841632843017578
+        Z: 3.119615077972412
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.36539894342422485
+      Pitch: 0.5953987836837769
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 4.1235880851745605
+      Yaw: 3.533587694168091
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1011
+  Height: 959
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd00000004000000000000015600000359fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003b00000359000000c700fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000359fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003b00000359000000a000fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004680000003efc0100000002fb0000000800540069006d00650100000000000004680000024400fffffffb0000000800540069006d006501000000000000045000000000000000000000030c0000035900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000015600000321fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000321000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000359fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003b00000359000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000003a60000003efc0100000002fb0000000800540069006d00650100000000000003a6000002eb00fffffffb0000000800540069006d006501000000000000045000000000000000000000024a0000032100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -312,6 +961,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1128
-  X: 2693
-  Y: 52
+  Width: 934
+  X: 336
+  Y: 57

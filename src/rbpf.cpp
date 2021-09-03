@@ -1290,7 +1290,11 @@ void RBPF::publishVisMap(const ros::Time& now)
 
         if (enable_clr4seg)
         {
-          double val = 0.8 * index;
+          // NOTE: decide the color code based on the robot's name
+          //       and slightly change based on the submap ID
+          double val = std::stoi(robot_name.substr(robot_name.size() - 1)) - 1;
+          val += 0.05 * (nseg - index - 1);
+          val *= 0.35;
           cosR = std::cos(M_PI*val);
           cosG = std::cos(M_PI*(2.0/3.0+val));
           cosB = std::cos(M_PI*(4.0/3.0+val));
