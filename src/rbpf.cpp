@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <deque>
 #include <fstream>
 #include <map>
@@ -1104,10 +1105,10 @@ int RBPF::checkEntry(const ros::Time& now)
           map->getMetricMax(max_x, max_y, max_z);
 
           // NOTE: may need add some margin as a robot's sensor can reach
-          // min_x -= 5;
-          // min_y -= 5;
-          // max_x += 5;
-          // max_y += 5;
+          min_x -= 3;
+          min_y -= 3;
+          max_x += 3;
+          max_y += 3;
 
           // determine if the location is within the range
           if (min_x <= x && x <= max_x
@@ -1585,6 +1586,15 @@ void RBPF::pf_main()
         if (isTimeToSegment())
         {
           doSegment(now);
+
+          if (nseg - indx_deleted.size() >= 10)
+          {
+            ROS_ERROR_STREAM(
+              "too many submaps held by " << robot_name
+              << " (indiv seg): nseg = " << nseg
+              << ", # of deleted indexes = " << indx_deleted.size());
+            std::exit(-3);
+          }
           if (updateMap(octocloud))
             counts_map_update = 0;
         }
@@ -1632,7 +1642,7 @@ void RBPF::pf_main()
           mav_tunnel_nav::Submap map;
           {
             std::lock_guard<std::mutex> lk(submap_mutex);
-            for (auto p: submap_buffer)
+            for (auto& p: submap_buffer)
             {
               auto& source = p.first;
               auto& list = p.second;
@@ -1660,6 +1670,26 @@ void RBPF::pf_main()
             // case 2: localization on the currnet segment
             //         do segment and overwrite
             doSegment(now);
+
+            if (nseg - indx_deleted.size() >= 5)
+            {
+              ROS_ERROR_STREAM(
+                "too many submaps held by " << robot_name
+                << " (by recv of submap "
+                << "submap_buffer.size() = "
+                << submap_buffer.size()
+                << "): nseg = " << nseg
+                << ", # of deleted indexes = " << indx_deleted.size());
+              for (auto p: submap_buffer)
+              {
+                auto& source = p.first;
+                auto& list = p.second;
+                ROS_ERROR_STREAM(
+                  "source: " << source << ", list.size(): " << list.size());
+              }
+              if (nseg - indx_deleted.size() >= 10)
+                std::exit(-2);
+            }
             overwriteMap(dynamic_cast<octomap::OcTree*>(m));
           }
           delete m;
