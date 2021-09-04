@@ -146,6 +146,7 @@ private:
   // segments
   bool enable_segmentation;
   std::map<int, std::vector< std::shared_ptr<Particle> > > segments;
+  std::map<int, tf::Vector3> segment_start_points;
   unsigned int nseg;
   std::set<int> indx_passed;
   std::set<int> indx_deleted;
@@ -230,7 +231,7 @@ private:
   void doSegment(const ros::Time& now);
   bool isTimeToSegment();
   int checkEntry(const ros::Time& now);
-  void overwriteMap(const octomap::OcTree* m);
+  void overwriteMap(const octomap::OcTree* m, const tf::Vector3& start_point);
 
   void indivSlamMiscProc(const ros::Time& now);
 

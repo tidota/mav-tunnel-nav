@@ -296,6 +296,7 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   //       each vector of particles represent a segment.
   nseg = 1;
   segments[0] = std::vector< std::shared_ptr<Particle> >();
+  segment_start_points[0] = tf::Vector3(init_x, init_y, init_z);
   for (int i = 0; i < n_particles; ++i)
   {
     segments[nseg-1].push_back(
@@ -1028,6 +1029,8 @@ void RBPF::doSegment(const ros::Time& now)
   init_segment_pose = segments[nseg-1][0]->getPose();
   // set the initial time of the segment to the current one.
   init_segment_time = now;
+  // record the initial location for the segment
+  segment_start_points[nseg] = init_segment_pose.getOrigin();
 
   // create a new segment
   std::vector< std::shared_ptr<Particle> > new_seg(n_particles, nullptr);
@@ -1072,7 +1075,7 @@ bool RBPF::isTimeToSegment()
 int RBPF::checkEntry(const ros::Time& now)
 {
   int detected_indx = -1;
-  // TODO: check entry!
+  // TODO: use the corresponding init location
   if (nseg - indx_passed.size() > 1)
   {
     // get the location of the previous robot
@@ -1126,8 +1129,10 @@ int RBPF::checkEntry(const ros::Time& now)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void RBPF::overwriteMap(const octomap::OcTree* m)
+void RBPF::overwriteMap(
+  const octomap::OcTree* m, const tf::Vector3& start_point)
 {
+  segment_start_points[nseg-1] = start_point;
   for (int i = 0; i < n_particles; ++i)
   {
     segments[nseg-1][i]->setMap(m);
@@ -1516,7 +1521,7 @@ void RBPF::pf_main()
           mav_tunnel_nav::Submap map;
           {
             std::lock_guard<std::mutex> lk(submap_mutex);
-            for (auto p: submap_buffer)
+            for (auto& p: submap_buffer)
             {
               auto& source = p.first;
               auto& list = p.second;
@@ -1531,7 +1536,10 @@ void RBPF::pf_main()
           }
           // NOTE: overwrite maps with the received submap
           auto m = octomap_msgs::fullMsgToMap(map.octomap);
-          overwriteMap(dynamic_cast<octomap::OcTree*>(m));
+          overwriteMap(
+            dynamic_cast<octomap::OcTree*>(m),
+            tf::Vector3(
+              map.start_point.x, map.start_point.y, map.start_point.z));
           delete m;
 
           mav_tunnel_nav::SubmapAck msg;
@@ -1627,6 +1635,9 @@ void RBPF::pf_main()
           std::stringstream ss;
           ss << detected_indx;
           map.submap_id = ss.str();
+          map.start_point.x = segment_start_points[detected_indx].getX();
+          map.start_point.y = segment_start_points[detected_indx].getY();
+          map.start_point.z = segment_start_points[detected_indx].getZ();
           if (octomap_msgs::fullMapToMsg(
               *segments[detected_indx][0]->getMap(), map.octomap))
             submap_pub.publish(map);
@@ -1663,7 +1674,10 @@ void RBPF::pf_main()
           {
             // case 1: localization is beging doen on the previous segment
             //         overwrite maps with the received submap
-            overwriteMap(dynamic_cast<octomap::OcTree*>(m));
+            overwriteMap(
+              dynamic_cast<octomap::OcTree*>(m),
+              tf::Vector3(
+                map.start_point.x, map.start_point.y, map.start_point.z));
           }
           else
           {
@@ -1690,7 +1704,10 @@ void RBPF::pf_main()
               if (nseg - indx_deleted.size() >= 10)
                 std::exit(-2);
             }
-            overwriteMap(dynamic_cast<octomap::OcTree*>(m));
+            overwriteMap(
+              dynamic_cast<octomap::OcTree*>(m),
+              tf::Vector3(
+                map.start_point.x, map.start_point.y, map.start_point.z));
           }
           delete m;
 
@@ -1715,6 +1732,7 @@ void RBPF::pf_main()
               lst.pop_front();
               int index = std::stoi(m.submap_id);
               segments.erase(index);
+              segment_start_points.erase(index);
               indx_deleted.insert(index);
             }
           }
