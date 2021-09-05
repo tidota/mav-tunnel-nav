@@ -1092,31 +1092,15 @@ int RBPF::checkEntry(const ros::Time& now)
           * beacon_info.estimated_distance);
       tf::Vector3 next_robot_loc
         = segments[nseg-1][0]->getPose() * next_robot_loc_wrt_here;
-      double x = next_robot_loc.getX();
-      double y = next_robot_loc.getY();
-      double z = next_robot_loc.getZ();
 
       for (unsigned int i = 0; i < nseg; ++i)
       {
         if (indx_passed.count(i) == 0)
         {
-          // get the range of the oldest submap
-          auto map = segments[i][0]->getMap();
-          double min_x, min_y, min_z;
-          map->getMetricMin(min_x, min_y, min_z);
-          double max_x, max_y, max_z;
-          map->getMetricMax(max_x, max_y, max_z);
-
-          // NOTE: may need add some margin as a robot's sensor can reach
-          min_x -= 3;
-          min_y -= 3;
-          max_x += 3;
-          max_y += 3;
+          double diff = (next_robot_loc - segment_start_points[i]).length();
 
           // determine if the location is within the range
-          if (min_x <= x && x <= max_x
-           && min_y <= y && y <= max_y
-           && min_z <= z && z <= max_z)
+          if (diff <= 1.5)
           {
             detected_indx = i;
             break;
