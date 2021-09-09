@@ -248,6 +248,7 @@
   <node name="map_saver" pkg="mav_tunnel_nav" type="map_saver" output="$(arg output)">
     <param name="filename" value="octomap.bt"/>
     <param name="octomap_topic" value="octomap"/>
+    <param name="ack_topic" value="submap_ack_down_topic"/>
     <param name="savemap_topic" value="savemap"/>
   </node>
 

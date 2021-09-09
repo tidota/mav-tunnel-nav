@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <deque>
 #include <string>
 #include <map>
 #include <memory>
@@ -25,13 +26,25 @@
 #include <mav_tunnel_nav/OctomapWithSegId.h>
 
 std::map<std::string, mav_tunnel_nav::OctomapWithSegId> map_list;
+//std::mutex map_mutex;
+
+std::deque<mav_tunnel_nav::SubmapAck> ack_list;
+//std::mutex ack_mutex;
 
 std::string filename_base, filename_ext;
 
 ////////////////////////////////////////////////////////////////////////////////
 void octomapCallback(const mav_tunnel_nav::OctomapWithSegId::ConstPtr& msg)
 {
+  //std::lock_guard<std::mutex> lk(map_mutex);
   map_list[msg->segid] = *msg;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void submapAckCallback(const mav_tunnel_nav::SubmapAck::ConstPtr& msg)
+{
+  //std::lock_guard<std::mutex> lk(ack_mutex);
+  ack_list.push_back(*msg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,6 +54,7 @@ bool savemapCallback(
   bool f_saving = request.data;
   if (f_saving)
   {
+    //std::lock_guard<std::mutex> lk(map_mutex);
     for (auto p: map_list)
     {
       octomap::OcTree *map
@@ -88,13 +102,28 @@ int main(int argc, char** argv)
 
   std::string octomap_topic;
   pnh.getParam("octomap_topic", octomap_topic);
-  ros::Subscriber octomap_sub = nh.subscribe(octomap_topic, 10, octomapCallback);
+  ros::Subscriber octomap_sub
+    = nh.subscribe(octomap_topic, 10, octomapCallback);
+
+  std::string ack_topic;
+  pnh.getParam("ack_topic", ack_topic);
+  submap_ack_sub = nh.subscribe(ack_topic, 1000, submapAckCallback);
 
   std::string savemap_topic;
   pnh.getParam("savemap_topic", savemap_topic);
   ros::ServiceServer srv = nh.advertiseService(savemap_topic, savemapCallback);
 
-  ros::spin();
+  ros::Time checkpoint = ros::Time::now();
+  const ros::Duration duration(0.01);
+  while(ros::ok())
+  {
+    if (ros::Time::now() - checkpoint >= duration)
+    {
+      // check the ack and delete the corresponding maps
+    }
+
+    ros::spinOnce();
+  }
 
   return(0);
 }
