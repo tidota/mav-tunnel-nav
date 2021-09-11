@@ -24,6 +24,7 @@
 #include <std_srvs/SetBool.h>
 
 #include <mav_tunnel_nav/OctomapWithSegId.h>
+#include <mav_tunnel_nav/SubmapAck.h>
 
 std::map<std::string, mav_tunnel_nav::OctomapWithSegId> map_list;
 //std::mutex map_mutex;
@@ -32,6 +33,8 @@ std::deque<mav_tunnel_nav::SubmapAck> ack_list;
 //std::mutex ack_mutex;
 
 std::string filename_base, filename_ext;
+
+ros::Subscriber submap_ack_sub;
 
 ////////////////////////////////////////////////////////////////////////////////
 void octomapCallback(const mav_tunnel_nav::OctomapWithSegId::ConstPtr& msg)
@@ -86,6 +89,11 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle pnh("~");
 
+  // get this robot's name
+  std::string robot_name;
+  if (!pnh.getParam("robot_name", robot_name))
+    ROS_ERROR_STREAM("no ros parameter: robot_name");
+
   std::string filename;
   pnh.getParam("filename", filename);
   std::size_t found = filename.rfind(".");
@@ -120,6 +128,24 @@ int main(int argc, char** argv)
     if (ros::Time::now() - checkpoint >= duration)
     {
       // check the ack and delete the corresponding maps
+      while (ack_list.size() > 0)
+      {
+        auto ack = ack_list.front();
+        ack_list.pop_front();
+
+        std::stringstream ss;
+        ss << robot_name << "-"
+           << std::setw(3) << std::setfill('0')
+           << std::stoi(ack.submap_id);
+        if (map_list.count(ss.str()) > 0)
+        {
+          map_list.erase(ss.str());
+        }
+        else
+        {
+          ROS_ERROR_STREAM("no such map to delete: " << ss.str());
+        }
+      }
     }
 
     ros::spinOnce();

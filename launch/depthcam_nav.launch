@@ -42,4 +42,10 @@
     <node pkg="mav_tunnel_nav" type="auto_launch_seq.py" name="robot_sequence_spawner" output="screen"/>
   </group>
 
+  <!-- spawn a server to call the robot's map_save services -->
+  <node pkg="mav_tunnel_nav" type="save_all_server" name="save_all_server" output="screen">
+    <param name="savemap_topic" value="savemap"/>
+    <param name="saveall_topic" value="saveallmaps"/>
+  </node>
+
 </launch>
