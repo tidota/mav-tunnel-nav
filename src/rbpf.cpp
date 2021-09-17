@@ -344,8 +344,8 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   if (pnh.getParam("save_traj", save_traj))
   {
     traj_filename
-      = "./" + robot_name + "_"
-        + std::to_string((int)(ros::WallTime::now().toSec()))
+      = "./" + robot_name //+ "_"
+        //+ std::to_string((int)(ros::WallTime::now().toSec()))
         + "_traj.txt";
   }
   else

@@ -24,7 +24,7 @@ robot1:
   map_only: false
   map_filename: ''
   output: screen # screen, log
-  save_traj: false
+  save_traj: true
 
 robot2:
   x: -2.0
@@ -34,6 +34,7 @@ robot2:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
 
 robot3:
   x: 2.0
@@ -43,7 +44,7 @@ robot3:
   map_only: false
   map_filename: ''
   output: screen
-  save_traj: false
+  save_traj: true
 
 robot4:
   x: -16
@@ -52,6 +53,7 @@ robot4:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
 
 robot5:
   x: -8
@@ -60,6 +62,7 @@ robot5:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
 
 robot6:
   x: 0
@@ -68,6 +71,7 @@ robot6:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
 
 robot7:
   x: 8
@@ -76,6 +80,7 @@ robot7:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
 
 robot8:
   x: 16
@@ -84,6 +89,7 @@ robot8:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
 
 robot9:
   x: 16
@@ -92,6 +98,7 @@ robot9:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
 
 robot10:
   x: 8
@@ -100,3 +107,4 @@ robot10:
   map_only: false
   map_filename: ''
   output: screen
+  save_traj: true
