@@ -1281,13 +1281,23 @@ void RBPF::publishVisMap(const ros::Time& now)
         if (enable_clr4seg)
         {
           // NOTE: decide the color code based on the robot's name
-          //       and slightly change based on the submap ID
-          double val = std::stoi(robot_name.substr(robot_name.size() - 1)) - 1;
-          val += 0.05 * (nseg - index - 1);
-          val *= 0.35;
-          cosR = std::cos(M_PI*val);
-          cosG = std::cos(M_PI*(2.0/3.0+val));
-          cosB = std::cos(M_PI*(4.0/3.0+val));
+          const double palette[10][3]
+            = { {1.0, 0.0, 0.0}, // red
+                {0.0, 1.0, 0.0}, // green
+                {0.0, 0.0, 1.0}, // blue
+                {1.0, 1.0, 0.0}, // yellow
+                {0.0, 1.0, 1.0}, // cyan
+                {1.0, 0.0, 1.0}, // magenta
+                {1.0, 0.5, 0.0}, // orange
+                {0.5, 1.0, 0.0}, // green yellow
+                {0.5, 0.0, 1.0}, // volet
+                {0.0, 0.5, 1.0}  // progress cyan
+              };
+          int index = std::stoi(robot_name.substr(robot_name.size() - 1)) - 1;
+          index %= 10;
+          cosR = palette[index][0];
+          cosG = palette[index][1];
+          cosB = palette[index][2];
         }
 
         if (m->isNodeOccupied(*it))
