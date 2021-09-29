@@ -1293,7 +1293,7 @@ void RBPF::publishVisMap(const ros::Time& now)
                 {0.5, 0.0, 1.0}, // volet
                 {0.0, 0.5, 1.0}  // progress cyan
               };
-          int index = std::stoi(robot_name.substr(robot_name.size() - 1)) - 1;
+          int index = std::stoi(robot_name.substr(5)) - 1;
           index %= 10;
           cosR = palette[index][0];
           cosG = palette[index][1];
