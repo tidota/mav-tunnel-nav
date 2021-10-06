@@ -72,7 +72,7 @@
     <param name="middle_line_rate" value="2.0"/>
     <param name="turn_yaw_rate" value="1.0"/>
     <param name="alt_rate" value="2.0"/>
-    <param name="obs_rate" value="1.0"/>
+    <param name="obs_rate" value="0.15"/>
     <param name="alt_open" value="0.8"/>
 
     <param name="max_linear_x" value="0.3"/>
@@ -150,7 +150,7 @@
 
       <param name="t_pose_adjust" value="1.5"/>
       <param name="t_only_mapping" value="2.0"/>
-      <param name="mapping_interval" value="5"/>
+      <param name="mapping_interval" value="9"/>
       <param name="publish_interval" value="0"/>
       <param name="vismap_interval" value="3"/>
       <param name="compress_interval" value="7"/>
