@@ -190,6 +190,8 @@ namespace gazebo
     private: std::mt19937 gen;
     private: double sigmaDst;
     private: double sigmaOri;
+    private: double biasDst;
+    private: double biasOri;
 
     /// \brief shape to check line-of-sight condition.
     private: physics::RayShapePtr line_of_sight;

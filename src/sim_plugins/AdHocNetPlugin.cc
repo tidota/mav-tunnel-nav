@@ -45,6 +45,8 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
 
   this->nh.param("sigmaDst", this->sigmaDst, this->sigmaDst);
   this->nh.param("sigmaOri", this->sigmaOri, this->sigmaOri);
+  this->nh.param("biasDst", this->biasDst, this->biasDst);
+  this->nh.param("biasOri", this->biasOri, this->biasOri);
   this->gen.seed(1000);
 
   std::string beacon_up_topic;
@@ -358,8 +360,8 @@ void AdHocNetPlugin::OnBeaconMsg(const mav_tunnel_nav::Beacon::ConstPtr& msg)
   // std::lock_guard<std::mutex> lk(this->beacon_mutex);
   // this->beacon_buff(std::make_shared<mav_tunnel_nav::Beacon>(*msg));
 
-  std::normal_distribution<> dst_noise(0, sigmaDst);
-  std::normal_distribution<> ori_noise(0, sigmaOri);
+  std::normal_distribution<> dst_noise(biasDst, sigmaDst);
+  std::normal_distribution<> ori_noise(biasOri, sigmaOri);
 
   if (this->beacon_subs.count(msg->source) > 0)
   {
@@ -434,8 +436,8 @@ void AdHocNetPlugin::OnSyncMsg(const mav_tunnel_nav::SrcDst::ConstPtr& msg)
   // std::lock_guard<std::mutex> lk(this->sync_mutex);
   // this->sync_buff(std::make_shared<mav_tunnel_nav::SrcDst>(*msg));
 
-  std::normal_distribution<> dst_noise(0, sigmaDst);
-  std::normal_distribution<> ori_noise(0, sigmaOri);
+  std::normal_distribution<> dst_noise(biasDst, sigmaDst);
+  std::normal_distribution<> ori_noise(biasOri, sigmaOri);
 
   if (this->sync_subs.count(msg->source) > 0)
   {
@@ -545,8 +547,8 @@ void AdHocNetPlugin::OnDataMsg(const mav_tunnel_nav::Particles::ConstPtr& msg)
   // std::lock_guard<std::mutex> lk(this->data_mutex);
   // this->data_buff(std::make_shared<mav_tunnel_nav::ParticlesMsg>(*msg));
 
-  std::normal_distribution<> dst_noise(0, sigmaDst);
-  std::normal_distribution<> ori_noise(0, sigmaOri);
+  std::normal_distribution<> dst_noise(biasDst, sigmaDst);
+  std::normal_distribution<> ori_noise(biasOri, sigmaOri);
 
   if (this->data_subs.count(msg->source) > 0)
   {
