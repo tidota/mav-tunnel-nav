@@ -12,6 +12,7 @@
   <arg name="map_filename" default=""/>
   <arg name="extra_gazebo_args" default="--verbose"/>
   <arg name="batch_spawn" default="false"/>
+  <arg name="start_gui" default="true"/>
 
   <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/robots.yaml" />
   <rosparam command="load" file="$(find mav_tunnel_nav)/config/robot_settings/comm.yaml" />
@@ -47,5 +48,10 @@
     <param name="savemap_topic" value="savemap"/>
     <param name="saveall_topic" value="saveallmaps"/>
   </node>
+
+  <!-- include the gui launch file -->
+  <group if="$(arg start_gui)">
+    <include file="$(find mav_tunnel_nav)/launch/gui.launch"/>
+  </group>
 
 </launch>
