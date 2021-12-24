@@ -246,6 +246,12 @@ target_link_libraries(map_only
   ${OCTOMAP_LIBRARIES}
 )
 
+add_executable(colormap src/colormap.cpp)
+add_dependencies(colormap ${catkin_EXPORTED_TARGETS})
+target_link_libraries(colormap
+  ${catkin_LIBRARIES}
+)
+
 add_executable(teleop_node src/teleop_node.cpp)
 add_dependencies(teleop_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(teleop_node ${catkin_LIBRARIES})

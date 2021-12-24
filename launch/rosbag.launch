@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- to get a bag file: rosbag record /tf /tf_static -e "/(.*)/map_marker_occupied" -->
+  <!-- once this file is launched: rosbag play <the file> -->
+
+  <env name="ROSCONSOLE_CONFIG_FILE" value="$(find mav_tunnel_nav)/config/rosconsole.config"/>
+
+  <arg name="extra_gazebo_args" default="--verbose"/>
+  <arg name="bagfile" default=""/>
+
+  <node pkg="rviz" type="rviz" name="rviz_nav" output="screen" args="-d $(find mav_tunnel_nav)/config/rosbag/rosbag.rviz"></node>
+  <node pkg="mav_tunnel_nav" type="colormap" name="color" output="screen"/>
+
+</launch>
