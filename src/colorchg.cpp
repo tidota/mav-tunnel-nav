@@ -99,7 +99,7 @@ void mkCallback(const visualization_msgs::MarkerArray::ConstPtr& msg)
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "rbpf");
+  ros::init(argc, argv, "colorchg");
   ros::NodeHandle nh;
 
   const double palette[10][3]

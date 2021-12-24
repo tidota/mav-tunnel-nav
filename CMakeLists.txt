@@ -252,6 +252,13 @@ target_link_libraries(colorchg
   ${catkin_LIBRARIES}
 )
 
+add_executable(maploadvis src/maploadvis.cpp)
+add_dependencies(maploadvis ${catkin_EXPORTED_TARGETS})
+target_link_libraries(maploadvis
+  ${catkin_LIBRARIES}
+  ${OCTOMAP_LIBRARIES}
+)
+
 add_executable(teleop_node src/teleop_node.cpp)
 add_dependencies(teleop_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(teleop_node ${catkin_LIBRARIES})

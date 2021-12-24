@@ -7,8 +7,18 @@
 
   <arg name="extra_gazebo_args" default="--verbose"/>
   <arg name="bagfile" default=""/>
+  <arg name="localfiles" default="false"/>
 
   <node pkg="rviz" type="rviz" name="rviz_nav" output="screen" args="-d $(find mav_tunnel_nav)/config/colorchg/colorchg.rviz"></node>
   <node pkg="mav_tunnel_nav" type="colorchg" name="colorchg" output="screen"/>
+
+  <group if="$(arg localfiles)">
+    <node pkg="mav_tunnel_nav" type="maploadvis" name="maploadvis" output="screen">
+      <param name="dir_name" value="localmaps_case1"/>
+      <param name="file_list"
+        value = "octomap-robot1-000-211006_015803.bt"
+        />
+    </node>
+  </group>
 
 </launch>
