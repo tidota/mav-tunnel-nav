@@ -1,4 +1,4 @@
-// colormap.cpp
+// colorchg.cpp
 
 #include <algorithm>
 #include <cmath>
