@@ -246,9 +246,9 @@ target_link_libraries(map_only
   ${OCTOMAP_LIBRARIES}
 )
 
-add_executable(colormap src/colormap.cpp)
-add_dependencies(colormap ${catkin_EXPORTED_TARGETS})
-target_link_libraries(colormap
+add_executable(colorchg src/colorchg.cpp)
+add_dependencies(colorchg ${catkin_EXPORTED_TARGETS})
+target_link_libraries(colorchg
   ${catkin_LIBRARIES}
 )
 
