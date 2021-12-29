@@ -10,7 +10,9 @@ Panels:
         - /MarkerArray1/Namespaces1
         - /MarkerArray2
         - /MarkerArray3
+        - /MarkerArray3/Namespaces1
         - /MarkerArray4
+        - /MarkerArray4/Namespaces1
         - /MarkerArray5
         - /MarkerArray6
         - /MarkerArray7
@@ -102,7 +104,8 @@ Visualization Manager:
       Marker Topic: /robot1/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        robot1-000: true
+        robot1-005: true
+        robot1-006: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -110,73 +113,82 @@ Visualization Manager:
       Marker Topic: /robot2/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        robot2-000: true
+        robot2-004: true
+        robot2-005: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /robot3/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        {}
+        robot3-006: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /robot4/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        {}
+        robot4-000: false
+        robot4-005: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /robot5/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        {}
+        robot5-004: true
+        robot5-005: true
+        robot5-006: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /robot6/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        {}
+        robot6-003: true
+        robot6-004: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /robot7/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        {}
+        robot7-001: true
+        robot7-002: true
+        robot7-003: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /robot8/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        {}
+        robot8-003: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /robot9/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        {}
+        robot9-000: true
+        robot9-001: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /robot10/map_marker_mapped_color
       Name: MarkerArray
       Namespaces:
-        {}
+        robot10-000: true
+        robot10-002: true
       Queue Size: 100
-      Value: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 255; 255; 255
@@ -204,26 +216,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/Orbit
-      Distance: 87.53276824951172
+      Angle: 0
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: 6.490820407867432
-        Y: 26.51702880859375
-        Z: -2.212672472000122
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Scale: 10
       Target Frame: <Fixed Frame>
-      Value: Orbit (rviz)
-      Yaw: 4.713193893432617
+      Value: TopDownOrtho (rviz)
+      X: -10.237314224243164
+      Y: 27.56952476501465
     Saved: ~
 Window Geometry:
   Displays:
