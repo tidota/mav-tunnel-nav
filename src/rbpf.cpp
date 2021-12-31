@@ -1533,8 +1533,9 @@ void RBPF::pf_main()
           msg.submap_id = map.submap_id;
           submap_ack_pub.publish(msg);
 
+          // TODO: choose a map randomly
           // NOTE: overwrite maps with the received submap
-          auto m = octomap_msgs::fullMsgToMap(map.octomap);
+          auto m = octomap_msgs::fullMsgToMap(map.octomap[0]);
           overwriteMap(
             dynamic_cast<octomap::OcTree*>(m),
             tf::Vector3(
@@ -1632,8 +1633,10 @@ void RBPF::pf_main()
           map.start_point.x = segment_start_points[detected_indx].getX();
           map.start_point.y = segment_start_points[detected_indx].getY();
           map.start_point.z = segment_start_points[detected_indx].getZ();
+          // TODO: add a subset of particles
+          map.octomap.resize(1);
           if (octomap_msgs::fullMapToMsg(
-              *segments[detected_indx][0]->getMap(), map.octomap))
+              *segments[detected_indx][0]->getMap(), map.octomap[0]))
             submap_pub.publish(map);
           else
             ROS_ERROR_STREAM(
@@ -1667,7 +1670,8 @@ void RBPF::pf_main()
           msg.submap_id = map.submap_id;
           submap_ack_pub.publish(msg);
 
-          auto m = octomap_msgs::fullMsgToMap(map.octomap);
+          // TODO: choose a random map
+          auto m = octomap_msgs::fullMsgToMap(map.octomap[0]);
           if (nseg != 1 &&
               now <= init_segment_time + init_seg_phase &&
               !map_from_neighbor)
