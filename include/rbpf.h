@@ -231,7 +231,8 @@ private:
   void doSegment(const ros::Time& now);
   bool isTimeToSegment();
   int checkEntry(const ros::Time& now);
-  void overwriteMap(const octomap::OcTree* m, const tf::Vector3& start_point);
+  void overwriteMap(
+    const std::vector<octomap::OcTree*> m_list, const tf::Vector3& start_point);
 
   void indivSlamMiscProc(const ros::Time& now);
 

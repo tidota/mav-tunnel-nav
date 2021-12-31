@@ -1113,12 +1113,14 @@ int RBPF::checkEntry(const ros::Time& now)
 
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::overwriteMap(
-  const octomap::OcTree* m, const tf::Vector3& start_point)
+  const std::vector<octomap::OcTree*> m_list, const tf::Vector3& start_point)
 {
+  int index = 0;
   segment_start_points[nseg-1] = start_point;
   for (int i = 0; i < n_particles; ++i)
   {
-    segments[nseg-1][i]->setMap(m);
+    segments[nseg-1][i]->setMap(m_list[index]);
+    index = (index + 1) % m_list.size();
   }
   map_from_neighbor = true;
 }
@@ -1535,12 +1537,20 @@ void RBPF::pf_main()
 
           // TODO: choose a map randomly
           // NOTE: overwrite maps with the received submap
-          auto m = octomap_msgs::fullMsgToMap(map.octomap[0]);
+          std::vector<octomap::OcTree*> m_list;
+          for (auto& octomap: map.octomap)
+          {
+            auto m = octomap_msgs::fullMsgToMap(octomap);
+            m_list.push_back(dynamic_cast<octomap::OcTree*>(m));
+          }
           overwriteMap(
-            dynamic_cast<octomap::OcTree*>(m),
+            m_list,
             tf::Vector3(
               map.start_point.x, map.start_point.y, map.start_point.z));
-          delete m;
+          for (auto& m: m_list)
+          {
+            delete m;
+          }
 
           counts_map_update = 0;
         }
@@ -1670,8 +1680,12 @@ void RBPF::pf_main()
           msg.submap_id = map.submap_id;
           submap_ack_pub.publish(msg);
 
-          // TODO: choose a random map
-          auto m = octomap_msgs::fullMsgToMap(map.octomap[0]);
+          std::vector<octomap::OcTree*> m_list;
+          for (auto& octomap: map.octomap)
+          {
+            auto m = octomap_msgs::fullMsgToMap(octomap);
+            m_list.push_back(dynamic_cast<octomap::OcTree*>(m));
+          }
           if (nseg != 1 &&
               now <= init_segment_time + init_seg_phase &&
               !map_from_neighbor)
@@ -1679,7 +1693,7 @@ void RBPF::pf_main()
             // case 1: localization is beging doen on the previous segment
             //         overwrite maps with the received submap
             overwriteMap(
-              dynamic_cast<octomap::OcTree*>(m),
+              m_list,
               tf::Vector3(
                 map.start_point.x, map.start_point.y, map.start_point.z));
           }
@@ -1709,11 +1723,14 @@ void RBPF::pf_main()
                 std::exit(-2);
             }
             overwriteMap(
-              dynamic_cast<octomap::OcTree*>(m),
+              m_list,
               tf::Vector3(
                 map.start_point.x, map.start_point.y, map.start_point.z));
           }
-          delete m;
+          for (auto& m: m_list)
+          {
+            delete m;
+          }
         }
 
         // NOTE: check if the robot received an acknowledgement
