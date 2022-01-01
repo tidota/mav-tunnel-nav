@@ -405,6 +405,10 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
     ROS_ERROR_STREAM("no param: next_seg_thresh");
   if (!pnh.getParam("enable_clr4seg", enable_clr4seg))
     ROS_ERROR_STREAM("no param: enable_clr4seg");
+  if (!pnh.getParam("n_submaps", n_submaps))
+    ROS_ERROR_STREAM("no param: n_submaps");
+
+
 
   // === For data exchange. ==
   // 95 % of difference should be in approx. 2.7 * sigma_kde
@@ -1643,15 +1647,24 @@ void RBPF::pf_main()
           map.start_point.x = segment_start_points[detected_indx].getX();
           map.start_point.y = segment_start_points[detected_indx].getY();
           map.start_point.z = segment_start_points[detected_indx].getZ();
-          // TODO: add a subset of particles
-          map.octomap.resize(1);
-          if (octomap_msgs::fullMapToMsg(
-              *segments[detected_indx][0]->getMap(), map.octomap[0]))
+          bool all_submaps_ok = true;
+          map.octomap.resize(n_submaps);
+          for (int i = 0; i < n_submaps; ++i)
+          {
+            if (!octomap_msgs::fullMapToMsg(
+                *segments[detected_indx][i]->getMap(),
+                map.octomap[i]))
+            {
+              all_submaps_ok = false;
+              ROS_ERROR_STREAM(
+                "Error serializing the submap for " <<
+                next_robot_name << "(" << robot_name << ")");
+            }
+          }
+          if (all_submaps_ok)
+          {
             submap_pub.publish(map);
-          else
-            ROS_ERROR_STREAM(
-              "Error serializing the submap for " <<
-              next_robot_name << "(" << robot_name << ")");
+          }
         }
 
         // NOTE: integrate the submap if the robot received it from a neighbor.

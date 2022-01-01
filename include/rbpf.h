@@ -157,6 +157,7 @@ private:
   bool map_from_neighbor;
   double next_seg_thresh;
   bool enable_clr4seg;
+  int n_submaps;
 
   // parameters for cooperative localization
   int Nref;

@@ -207,6 +207,7 @@
       <param name="init_seg_phase" value="3.0"/>
       <param name="next_seg_thresh" value="10.0"/>
       <param name="enable_clr4seg" value="true"/>
+      <param name="n_submaps" value="1"/>
 
       <!-- for evaluation -->
       <param name="save_traj" value="$(arg save_traj)"/>
