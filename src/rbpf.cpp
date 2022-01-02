@@ -777,6 +777,27 @@ void RBPF::indivSlamEvaluate(
 ////////////////////////////////////////////////////////////////////////////////
 void RBPF::indivSlamResample()
 {
+  double sum_w = 0;
+  double sum_w_squared = 0;
+  for (int i = 0; i < n_particles; ++i)
+  {
+    double w = (i == 0)? cumul_weights_slam[0]:
+                         cumul_weights_slam[i] - cumul_weights_slam[i-1];
+    sum_w += w;
+    sum_w_squared += w*w;
+  }
+  double val = sum_w*sum_w/sum_w_squared;
+  if (val >= n_particles/2)
+  {
+    if (robot_name == "robot1")
+      ROS_ERROR_STREAM(" don't resample... " << val);
+    return;
+  }
+  if (robot_name == "robot1")
+  {
+    ROS_ERROR_STREAM("======= resample!!!!! ======= " << val);
+  }
+
   // resample PF (and update map)
   std::vector<int> indx_list(n_particles);
   for (int i = 0; i < n_particles; ++i)
