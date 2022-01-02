@@ -1616,7 +1616,16 @@ void RBPF::pf_main()
         }
         else
         {
-          if (counts_map_update >= mapping_interval)
+          if (nseg != 1 &&
+                now <= init_segment_time + init_seg_phase &&
+                !map_from_neighbor)
+          {
+            if (robot_name == "robot1")
+              ROS_ERROR_STREAM("map update in init phase of seg");
+            if (updateMap(octocloud))
+              counts_map_update = 0;
+          }
+          else if (counts_map_update >= mapping_interval)
           {
             if (updateMap(octocloud))
               counts_map_update = 0;
