@@ -1539,7 +1539,6 @@ void RBPF::pf_main()
           msg.submap_id = map.submap_id;
           submap_ack_pub.publish(msg);
 
-          // TODO: choose a map randomly
           // NOTE: overwrite maps with the received submap
           std::vector<octomap::OcTree*> m_list;
           for (auto& octomap: map.octomap)
