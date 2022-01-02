@@ -1527,6 +1527,12 @@ void RBPF::pf_main()
               break;
             }
           }
+          mav_tunnel_nav::SubmapAck msg;
+          msg.source = robot_name;
+          msg.destination = map.source;
+          msg.submap_id = map.submap_id;
+          submap_ack_pub.publish(msg);
+
           // NOTE: overwrite maps with the received submap
           auto m = octomap_msgs::fullMsgToMap(map.octomap);
           overwriteMap(
@@ -1535,11 +1541,6 @@ void RBPF::pf_main()
               map.start_point.x, map.start_point.y, map.start_point.z));
           delete m;
 
-          mav_tunnel_nav::SubmapAck msg;
-          msg.source = robot_name;
-          msg.destination = map.source;
-          msg.submap_id = map.submap_id;
-          submap_ack_pub.publish(msg);
           counts_map_update = 0;
         }
         else
