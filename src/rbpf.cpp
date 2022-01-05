@@ -474,14 +474,14 @@ void RBPF::dataCallback(const mav_tunnel_nav::Particles::ConstPtr& msg)
 void RBPF::submapCallback(const mav_tunnel_nav::Submap::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> lk(submap_mutex);
+  mav_tunnel_nav::SubmapAck ack_msg;
+  ack_msg.source = robot_name;
+  ack_msg.destination = msg->source;
+  ack_msg.submap_id = msg->submap_id;
+  submap_ack_pub.publish(ack_msg);
+
   if (submap_buffer.count(msg->source) == 0)
   {
-    mav_tunnel_nav::SubmapAck ack_msg;
-    ack_msg.source = robot_name;
-    ack_msg.destination = msg->source;
-    ack_msg.submap_id = msg->submap_id;
-    submap_ack_pub.publish(ack_msg);
-
     std::deque<mav_tunnel_nav::Submap> dq;
     submap_buffer[msg->source] = dq;
   }
