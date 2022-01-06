@@ -651,8 +651,7 @@ void AdHocNetPlugin::OnSubmapAckMsg(const mav_tunnel_nav::SubmapAck::ConstPtr& m
    && this->submap_ack_pubs.count(msg->destination) > 0)
   {
     // if the destination is in the range
-    // NOTE: assume the Ack packet is always sent
-    //if (getTopoInfo(msg->source, msg->destination))
+    if (getTopoInfo(msg->source, msg->destination))
     {
       this->submap_ack_pubs[msg->destination].publish(*msg);
     }

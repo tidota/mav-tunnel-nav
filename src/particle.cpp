@@ -238,9 +238,21 @@ double Particle::evaluate(
     }
   }
 
+  tf::Pose sens_pose = this->pose;
+  // {
+  //   // NOTE: if the pose seems in an unknown area, just reutrn 0.
+  //   tf::Vector3 tf_sens = tf::Vector3(0.3, 0, 0);
+  //   tf::Vector3 tf_target = sens_pose * tf_sens;
+  //   octomap::point3d query
+  //     = octomap::point3d(tf_target.getX(), tf_target.getY(), tf_target.getZ());
+  //   octomap::OcTreeNode* res2check = map2use->search(query);
+  //   if (!res2check)
+  //   {
+  //     return 0;
+  //   }
+  // }
   double log_lik = 0;
   int hits = 0;
-  tf::Pose sens_pose = this->pose;
   // for all point in the point cloud
   octomap::OcTreeKey key;
   //octomap::OcTreeNode *node;
@@ -266,7 +278,7 @@ double Particle::evaluate(
       //  (node = this->map->search(key,0 /*depth*/)))
       // {
         double err = (oct_target - hit).norm();
-        if (err > 0.2)
+        // if (err > 0.2)
         {
 
           log_lik +=
@@ -274,12 +286,12 @@ double Particle::evaluate(
               2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0
             -err*err/sensor_noise_depth_sigma/sensor_noise_depth_sigma/2.0;
         }
-        else
-        {
-          log_lik +=
-            -std::log(
-              2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0;
-        }
+        // else
+        // {
+        //   log_lik +=
+        //     -std::log(
+        //       2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0;
+        // }
         ++hits;
       // }
     }
@@ -290,7 +302,7 @@ double Particle::evaluate(
       //  (node = this->map->search(key,0 /*depth*/)))
       // {
       double err = (oct_target - hit).norm();
-      if (err > 0.2)
+      //if (err > 0.2)
       {
 
         log_lik +=
@@ -298,12 +310,12 @@ double Particle::evaluate(
             2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0
           -err*err/sensor_noise_depth_sigma/sensor_noise_depth_sigma/2.0;
       }
-      else
-      {
-        log_lik +=
-          -std::log(
-            2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0;
-      }
+      // else
+      // {
+      //   log_lik +=
+      //     -std::log(
+      //       2*3.14159*sensor_noise_depth_sigma*sensor_noise_depth_sigma)/2.0;
+      // }
       ++hits;
       // }
     }

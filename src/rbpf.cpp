@@ -990,8 +990,10 @@ void RBPF::cooplocUpdate()
           += std::exp(
               -(diff_range*diff_range)
                 /sigmaLocR/sigmaLocR/ml_eval_cons
+                *((enable_conservative)? 1-conserv_omega: 1)
               -(diff_rad*diff_rad)
-                /sigmaLocT/sigmaLocT/ml_eval_cons);
+                /sigmaLocT/sigmaLocT/ml_eval_cons
+                *((enable_conservative)? 1-conserv_omega: 1));
       }
     }
 
@@ -1558,7 +1560,7 @@ void RBPF::pf_main()
 
           counts_map_update = 0;
         }
-        else
+        else if (!map_from_neighbor)
         {
           // mapping only at the beginning
           if (updateMap(octocloud))
@@ -1615,18 +1617,9 @@ void RBPF::pf_main()
           if (updateMap(octocloud))
             counts_map_update = 0;
         }
-        else
+        else if (!map_from_neighbor)
         {
-          if (nseg != 1 &&
-                now <= init_segment_time + init_seg_phase &&
-                !map_from_neighbor)
-          {
-            if (robot_name == "robot1")
-              ROS_ERROR_STREAM("map update in init phase of seg");
-            if (updateMap(octocloud))
-              counts_map_update = 0;
-          }
-          else if (counts_map_update >= mapping_interval)
+          if (counts_map_update >= mapping_interval)
           {
             if (updateMap(octocloud))
               counts_map_update = 0;
@@ -1702,8 +1695,7 @@ void RBPF::pf_main()
             auto m = octomap_msgs::fullMsgToMap(octomap);
             m_list.push_back(dynamic_cast<octomap::OcTree*>(m));
           }
-          if (nseg != 1 &&
-              now <= init_segment_time + init_seg_phase &&
+          if ((nseg == 1 || now <= init_segment_time + init_seg_phase) &&
               !map_from_neighbor)
           {
             // case 1: localization is beging doen on the previous segment
