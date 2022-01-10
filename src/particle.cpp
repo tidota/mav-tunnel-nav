@@ -132,16 +132,16 @@ void Particle::initOrientation(const tf::Quaternion &orientation)
 ////////////////////////////////////////////////////////////////////////////////
 void Particle::predict(
   const tf::Vector3 &delta_pos, const tf::Quaternion &delta_rot,
-  std::mt19937 &gen)
+  std::mt19937 &gen, double ratio)
 {
   std::normal_distribution<> motion_noise_lin(0, motion_noise_lin_sigma);
   tf::Vector3 delta_pos_noise(
-    delta_pos.x() + motion_noise_lin(gen),
-    delta_pos.y() + motion_noise_lin(gen),
-    delta_pos.z() + motion_noise_lin(gen));
+    delta_pos.x() + motion_noise_lin(gen) * ratio,
+    delta_pos.y() + motion_noise_lin(gen) * ratio,
+    delta_pos.z() + motion_noise_lin(gen) * ratio);
   std::normal_distribution<> motion_noise_rot(0, motion_noise_rot_sigma);
   tf::Quaternion delta_rot_noise(
-    tf::Vector3(0,0,1), motion_noise_rot(gen));
+    tf::Vector3(0,0,1), motion_noise_rot(gen) * ratio);
   this->pose
     = this->pose
       * tf::Transform(delta_rot, delta_pos_noise)

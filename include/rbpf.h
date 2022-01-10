@@ -214,19 +214,19 @@ private:
   void getRanges(std::map<std::string, double>& range_data);
   void getPC(octomap::Pointcloud& octocloud);
 
-  void indivSlamPredict(const tf::Transform& diff_pose);
+  void indivSlamPredict(const tf::Transform& diff_pose, const double& ratio);
   void indivSlamEvaluate(
     const ros::Time& now,
     const std::map<std::string, double>& range_data,
     const octomap::Pointcloud& octocloud);
-  void indivSlamResample();
+  bool indivSlamResample();
 
   bool updateMap(const octomap::Pointcloud& octocloud);
   void compressMap();
 
   std::string checkSyncReq(const ros::Time& now);
   bool initiateSync(const ros::Time& now);
-  void exchangeData();
+  void exchangeData(const double& ratio);
   void cooplocUpdate();
 
   void doSegment(const ros::Time& now);

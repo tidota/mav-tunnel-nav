@@ -56,7 +56,7 @@ class Particle
   public: void predict(
     const tf::Vector3 &delta_pos, const tf::Quaternion &delta_rot,
     //const double &deltaT,
-    std::mt19937 &gen);
+    std::mt19937 &gen, double ratio = 1);
   public: double evaluate(
     const std::map<std::string, double> &range_data,
     const double& range_min, const double& range_max,

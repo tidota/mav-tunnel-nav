@@ -724,7 +724,7 @@ void RBPF::getPC(octomap::Pointcloud& octocloud)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void RBPF::indivSlamPredict(const tf::Transform& diff_pose)
+void RBPF::indivSlamPredict(const tf::Transform& diff_pose, const double& ratio)
 {
   const tf::Vector3 delta_pos = diff_pose.getOrigin();
   const tf::Quaternion delta_rot = diff_pose.getRotation();
@@ -732,7 +732,7 @@ void RBPF::indivSlamPredict(const tf::Transform& diff_pose)
   {
     // move the particle
     // call predict with the relative pose.
-    p->predict(delta_pos, delta_rot, gen_indivloc);
+    p->predict(delta_pos, delta_rot, gen_indivloc, ratio);
   }
 }
 
@@ -775,7 +775,7 @@ void RBPF::indivSlamEvaluate(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void RBPF::indivSlamResample()
+bool RBPF::indivSlamResample()
 {
   double sum_w = 0;
   double sum_w_squared = 0;
@@ -789,9 +789,7 @@ void RBPF::indivSlamResample()
   double val = sum_w*sum_w/sum_w_squared;
   if (val >= n_particles/2)
   {
-    if (robot_name == "robot1")
-      ROS_ERROR_STREAM(" don't resample... " << val);
-    return;
+    return false;
   }
   if (robot_name == "robot1")
   {
@@ -824,6 +822,8 @@ void RBPF::indivSlamResample()
   }
   // Copy the children to the parents.
   segments[nseg-1].swap(new_generation);
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -906,7 +906,7 @@ bool RBPF::initiateSync(const ros::Time& now)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void RBPF::exchangeData()
+void RBPF::exchangeData(const double& ratio)
 {
   // Odometry data
   tf::Transform diff_pose;
@@ -921,7 +921,7 @@ void RBPF::exchangeData()
   {
     // move the particle
     // call predict with the relative pose.
-    p->predict(delta_pos, delta_rot, gen_indivloc);
+    p->predict(delta_pos, delta_rot, gen_indivloc, ratio);
   }
 
   std::string dest;
@@ -1602,6 +1602,7 @@ void RBPF::pf_main()
         getPC(octocloud);
 
         // TODO: less freq for robot1 and robot2?
+        bool resampled = false;
         if (enable_indivLoc)
         {
           std::map<std::string, double> range_data;
@@ -1613,13 +1614,17 @@ void RBPF::pf_main()
           diff_pose = pose_prev.inverse() * pose_curr;
           pose_prev = pose_curr;
 
+          double ratio
+            = std::min((now - last_cooploc).toSec(),
+                       (now - last_update).toSec()) / update_phase.toSec();
+
           // predict PF (use odometory)
-          indivSlamPredict(diff_pose);
+          indivSlamPredict(diff_pose, ratio);
 
           // weight PF (use depth cam)
           indivSlamEvaluate(now, range_data, octocloud);
 
-          indivSlamResample();
+          resampled = indivSlamResample();
         }
 
         // if far away from the init position of the segment
@@ -1640,7 +1645,7 @@ void RBPF::pf_main()
         }
         else if (!map_from_neighbor)
         {
-          if (counts_map_update >= mapping_interval)
+          if (counts_map_update >= mapping_interval || resampled)
           {
             if (updateMap(octocloud))
               counts_map_update = 0;
@@ -1818,12 +1823,20 @@ void RBPF::pf_main()
     }
     else if (state == SyncReact)
     {
-      exchangeData();
+      double ratio
+        = std::min((now - last_cooploc).toSec(),
+                   (now - last_update).toSec()) / cooploc_phase.toSec();
+
+      exchangeData(ratio);
       state = DataWaiting;
     }
     else if (state == DataSending)
     {
-      exchangeData();
+      double ratio
+        = std::min((now - last_cooploc).toSec(),
+                   (now - last_update).toSec()) / cooploc_phase.toSec();
+
+      exchangeData(ratio);
       state = Update;
     }
     else if (state == DataWaiting)
