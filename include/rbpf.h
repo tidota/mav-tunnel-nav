@@ -143,6 +143,8 @@ private:
   std::vector<double> cumul_weights_slam;
   std::vector<double> errors;
 
+  double resamp_ratio;
+
   // segments
   bool enable_segmentation;
   std::map<int, std::vector< std::shared_ptr<Particle> > > segments;

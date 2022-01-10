@@ -309,6 +309,9 @@ RBPF::RBPF(ros::NodeHandle& nh, ros::NodeHandle& pnh):
   cumul_weights_slam.resize(n_particles);
   errors.resize(n_particles);
 
+  if(!pnh.getParam("resamp_ratio", resamp_ratio))
+    ROS_ERROR_STREAM("no param: resamp_ratio");
+
   // === entry detection ===
   // the name of the next robot for map transfer
   {
@@ -787,7 +790,7 @@ bool RBPF::indivSlamResample()
     sum_w_squared += w*w;
   }
   double val = sum_w*sum_w/sum_w_squared;
-  if (val >= n_particles/2)
+  if (val >= n_particles*resamp_ratio)
   {
     return false;
   }
