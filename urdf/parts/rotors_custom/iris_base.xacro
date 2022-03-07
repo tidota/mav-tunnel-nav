@@ -1,7 +1,21 @@
 <?xml version="1.0"?>
 
 <robot name="iris" xmlns:xacro="http://ros.org/wiki/xacro">
-  <xacro:include filename="$(find rotors_description)/urdf/component_snippets.xacro" />
+  <!--<xacro:include filename="$(find rotors_description)/urdf/component_snippets.xacro" />-->
+  <!-- Macro to add the controller interface. -->
+  <xacro:macro name="controller_plugin_macro" params="namespace imu_sub_topic">
+    <gazebo>
+      <plugin name="controller_interface" filename="librotors_gazebo_controller_interface.so">
+        <robotNamespace>${namespace}</robotNamespace>
+        <commandAttitudeThrustSubTopic>command/attitude</commandAttitudeThrustSubTopic>
+        <commandRateThrustSubTopic>command/rate</commandRateThrustSubTopic>
+        <commandMotorSpeedSubTopic>command/motor_speed</commandMotorSpeedSubTopic>
+        <imuSubTopic>${imu_sub_topic}</imuSubTopic>
+        <motorSpeedCommandPubTopic>gazebo/command/motor_speed</motorSpeedCommandPubTopic>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+
   <!-- Instantiate iris "mechanics" -->
   <xacro:include filename="$(find mav_tunnel_nav)/urdf/parts/rotors_custom/iris.xacro" />
 
