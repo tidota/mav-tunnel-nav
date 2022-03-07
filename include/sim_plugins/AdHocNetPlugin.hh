@@ -253,6 +253,9 @@ namespace gazebo
     /// NOTE: visualization
     private: bool enable_vis_cooploc;
     private: ros::Publisher marker_pub;
+
+    /// \brief If it is set totrue, the first robot will automatically start.
+    private: bool first_robot_autostart;
   };
 }
 #endif

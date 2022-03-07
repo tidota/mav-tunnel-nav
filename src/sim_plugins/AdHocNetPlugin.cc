@@ -179,6 +179,9 @@ void AdHocNetPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
   enable_vis_cooploc = _sdf->Get<bool>("enable_vis_cooploc");
   marker_pub
     = this->nh.advertise<visualization_msgs::Marker>("data_viz", 10);
+
+  this->nh.param("first_robot_autostart",
+    this->first_robot_autostart, this->first_robot_autostart);
 }
 
 /////////////////////////////////////////////////
@@ -307,7 +310,7 @@ void AdHocNetPlugin::OnUpdate()
           srv.request.z = this->initLoc.getZ();
           srv.request.Y = this->initOri;
         }
-        if (this->spawnedList.size() == 0)
+        if (!this->first_robot_autostart && this->spawnedList.size() == 0)
           srv.request.auto_enable_by_slam = false;
         else
           srv.request.auto_enable_by_slam = true;

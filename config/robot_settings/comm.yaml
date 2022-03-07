@@ -15,6 +15,7 @@ submap_ack_up_topic: submap_ack_up_topic
 submap_ack_down_topic: submap_ack_down_topic
 
 spawn_service_name: spawn_robot
+first_robot_autostart: true
 
 # The distance of the last robot from the base divided by comm_range
 # Once the ratio reaches this value, a new robot is spawned.
