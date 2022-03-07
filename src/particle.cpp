@@ -135,13 +135,14 @@ void Particle::predict(
   std::mt19937 &gen, double ratio)
 {
   std::normal_distribution<> motion_noise_lin(0, motion_noise_lin_sigma);
+  double vel = (ratio != 0)? delta_pos.length() / ratio: 0;
   tf::Vector3 delta_pos_noise(
-    delta_pos.x() + motion_noise_lin(gen) * ratio,
-    delta_pos.y() + motion_noise_lin(gen) * ratio,
-    delta_pos.z() + motion_noise_lin(gen) * ratio);
+    delta_pos.x() + motion_noise_lin(gen) * vel,
+    delta_pos.y() + motion_noise_lin(gen) * vel,
+    delta_pos.z() + motion_noise_lin(gen) * vel);
   std::normal_distribution<> motion_noise_rot(0, motion_noise_rot_sigma);
   tf::Quaternion delta_rot_noise(
-    tf::Vector3(0,0,1), motion_noise_rot(gen) * ratio);
+    tf::Vector3(0,0,1), motion_noise_rot(gen) * vel);
   this->pose
     = this->pose
       * tf::Transform(delta_rot, delta_pos_noise)
