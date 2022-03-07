@@ -142,11 +142,11 @@
       <param name="map_threshMin" value="0.12"/>
       <param name="map_threshMax" value="0.97"/>
 
-      <param name="motion_noise_lin_sigma" value="0.005"/>
-      <param name="motion_noise_rot_sigma" value="0.01"/>
+      <param name="motion_noise_lin_sigma" value="0.075"/>
+      <param name="motion_noise_rot_sigma" value="0.1"/>
 
       <param name="sensor_noise_range_sigma" value="1000.0"/>
-      <param name="sensor_noise_depth_sigma" value="10000.0"/>
+      <param name="sensor_noise_depth_sigma" value="1"/>
 
       <param name="t_pose_adjust" value="1.5"/>
       <param name="t_only_mapping" value="2.0"/>
@@ -155,7 +155,7 @@
       <param name="vismap_interval" value="3"/>
       <param name="compress_interval" value="7"/>
       <param name="enable_indivLoc" value="true"/>
-      <param name="resamp_ratio" value="0.98"/>
+      <param name="resamp_ratio" value="0.5"/>
       <param name="seed_indivloc" value="1500"/>
       <!-- <param name="locdata_interval" value="1000"/> -->
 
@@ -188,14 +188,14 @@
       <!-- parameters for cooperative localization -->
       <param name="enable_cooploc" value="true"/>
       <param name="enable_conservative" value="true"/>
-      <param name="conserv_omega" value="0.6"/>
-      <param name="sigma_kde" value="0.2"/>
+      <param name="conserv_omega" value="0.7"/>
+      <param name="sigma_kde" value="0.1"/>
       <param name="Nref" value="20"/>
       <param name="seed_cooploc" value="1000"/>
       <param name="sigmaLocR" value="0.5"/>
       <param name="sigmaLocT" value="0.05"/>
-      <param name="gl_eval_cons" value="2"/>
-      <param name="ml_eval_cons" value="2"/>
+      <param name="gl_eval_cons" value="1"/>
+      <param name="ml_eval_cons" value="1"/>
 
       <param name="beacon_lifetime" value="1.0"/>
       <param name="cooploc_phase" value="0.4"/>
@@ -205,10 +205,10 @@
 
       <!-- parameters for segmentation -->
       <param name="enable_segmentation" value="true"/>
-      <param name="init_seg_phase" value="3.0"/>
+      <param name="init_seg_phase" value="10.0"/>
       <param name="next_seg_thresh" value="10.0"/>
       <param name="enable_clr4seg" value="true"/>
-      <param name="n_submaps" value="1"/>
+      <param name="n_submaps" value="3"/>
 
       <!-- for evaluation -->
       <param name="save_traj" value="$(arg save_traj)"/>
