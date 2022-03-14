@@ -794,10 +794,6 @@ bool RBPF::indivSlamResample()
   {
     return false;
   }
-  if (robot_name == "robot1")
-  {
-    ROS_ERROR_STREAM("======= resample!!!!! ======= " << val);
-  }
 
   // resample PF (and update map)
   std::vector<int> indx_list(n_particles);
@@ -1099,7 +1095,6 @@ bool RBPF::isTimeToSegment()
   {
     best_pose = segments[nseg-1][0]->getPose();
     tf::Pose pose_in_seg = init_segment_pose.inverse() * best_pose;
-    // TODO: check the criteria to do segment?
     if (pose_in_seg.getOrigin().length() > next_seg_thresh)
       do_segment = true;
   }
@@ -1110,7 +1105,6 @@ bool RBPF::isTimeToSegment()
 int RBPF::checkEntry(const ros::Time& now)
 {
   int detected_indx = -1;
-  // TODO: use the corresponding init location
   if (nseg - indx_passed.size() > 1)
   {
     // get the location of the previous robot
@@ -1604,7 +1598,6 @@ void RBPF::pf_main()
         octomap::Pointcloud octocloud;
         getPC(octocloud);
 
-        // TODO: less freq for robot1 and robot2?
         bool resampled = false;
         if (enable_indivLoc)
         {

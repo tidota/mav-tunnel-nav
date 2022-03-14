@@ -140,7 +140,6 @@ int main(int argc, char** argv)
         if (map_list.count(ss.str()) > 0)
         {
           map_list.erase(ss.str());
-          ROS_ERROR_STREAM("deleting map (" << robot_name << "): " << ss.str());
         }
         else
         {

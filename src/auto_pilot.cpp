@@ -703,7 +703,7 @@ void control_main()
         }
         catch (const std::out_of_range& oor)
         {
-          ROS_ERROR_STREAM("possibly problem in range_data: " << oor.what());
+          ROS_ERROR_STREAM("possibly a problem exists in range_data: " << oor.what());
         }
 
         // ros::Time update_time = ros::Time::now();

@@ -163,7 +163,6 @@ void foo()
 
 void updateRobotPose(const geometry_msgs::PoseStamped::ConstPtr& new_pose)
 {
-  ROS_INFO("This message is from updateRobotPose");
   r_pose = *new_pose;
 }
 
